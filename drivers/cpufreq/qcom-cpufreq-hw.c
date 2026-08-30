@@ -48,7 +48,29 @@ enum {
 
 	REG_ARRAY_SIZE,
 };
-
+static bool of_check_freq_enabled(u32 *table, int len, u32 freq)
+{
+	int i;
+	if (!table || len <= 0) {
+		return true; 
+	}
+	for (i = 0; i < len; i += 2) {
+		if (table[i] == freq) {
+			if ((i + 1) < len) {
+				if (table[i + 1] == 1) {
+					return true;
+				} else {
+					return false; 
+				}
+			} else {
+				pr_warn("[FREQ_WARN] Freq %u found in DTB, but Enable Switch is MISSING! Enabling by default.\n",
+					freq);
+				return true;
+			}
+		}
+	}
+	return false;
+}
 static unsigned int lut_row_size = LUT_ROW_SIZE;
 static unsigned int lut_max_entries = LUT_MAX_ENTRIES;
 static bool accumulative_counter;
@@ -441,46 +463,80 @@ static struct cpufreq_driver cpufreq_qcom_hw_driver = {
 	.ready		= qcom_cpufreq_ready,
 };
 
-static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
-				    struct cpufreq_qcom *c)
+static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq_qcom *c)
 {
 	struct device *dev = &pdev->dev, *cpu_dev;
 	void __iomem *base_freq, *base_volt;
 	u32 data, src, lval, i, core_count, prev_cc, prev_freq, cur_freq, volt;
 	u32 vc;
 	unsigned long cpu;
-
+	int of_len = 0;
+	u32 *of_table = NULL;
+	char tbl_name[32];
+	bool invalidate_freq = false;
 	c->table = devm_kcalloc(dev, lut_max_entries + 1,
 				sizeof(*c->table), GFP_KERNEL);
 	if (!c->table)
 		return -ENOMEM;
-
 	spin_lock_init(&c->skip_data.lock);
 	base_freq = c->reg_bases[REG_FREQ_LUT_TABLE];
 	base_volt = c->reg_bases[REG_VOLT_LUT_TABLE];
-
 	prev_cc = 0;
-
+	{
+		int domain_index = 0;
+		int of_ret;
+		if (cpumask_test_cpu(4, &c->related_cpus)) {
+			domain_index = 1;
+		} else if (cpumask_test_cpu(7, &c->related_cpus)) {
+			domain_index = 2;
+		} else {
+			domain_index = 0;
+		}
+		snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d", domain_index);
+		if (of_find_property(dev->of_node, tbl_name, &of_len) && of_len > 0) {
+			of_len /= sizeof(u32);
+			of_table = devm_kcalloc(dev, of_len, sizeof(u32), GFP_KERNEL);
+			if (of_table) {
+				of_ret = of_property_read_u32_array(dev->of_node, tbl_name, of_table, of_len);
+				if (of_ret) {
+					devm_kfree(dev, of_table);
+					of_table = NULL;
+				}
+			}
+		}
+	}
 	for (i = 0; i < lut_max_entries; i++) {
 		data = readl_relaxed(base_freq + i * lut_row_size);
 		src = (data & GENMASK(31, 30)) >> 30;
 		lval = data & GENMASK(7, 0);
 		core_count = CORE_COUNT_VAL(data);
-
 		data = readl_relaxed(base_volt + i * lut_row_size);
 		volt = (data & GENMASK(11, 0)) * 1000;
 		vc = data & GENMASK(21, 16);
-
 		if (src)
 			c->table[i].frequency = c->xo_rate * lval / 1000;
 		else
 			c->table[i].frequency = c->cpu_hw_rate / 1000;
-
 		cur_freq = c->table[i].frequency;
-
-		dev_dbg(dev, "index=%d freq=%d, core_count %d\n",
-			i, c->table[i].frequency, core_count);
-
+		pr_err("[FREQ_TABLE_RAW_HW] DOMAIN: %*pbl, INDEX: %u, FREQ: %u kHz, VOLT: %u uV\n",
+		       cpumask_pr_args(&c->related_cpus), i, cur_freq, volt);
+		{
+			if (!of_check_freq_enabled(of_table, of_len, cur_freq)) {
+				c->table[i].frequency = CPUFREQ_ENTRY_INVALID; 
+				cur_freq = CPUFREQ_ENTRY_INVALID;
+				c->table[i].flags = CPUFREQ_BOOST_FREQ;
+				invalidate_freq = true; 
+				prev_cc = core_count;
+				prev_freq = cur_freq;
+				pr_err("[FREQ_SWITCH_DISABLE] DOMAIN: %*pbl, INDEX: %u, FREQ WAS DISABLED by DTB!\n",
+				       cpumask_pr_args(&c->related_cpus), i);
+				continue; 
+			} else {
+				invalidate_freq = false; 
+			}
+		}
+		dev_dbg(dev, "index=%d freq=%d, volt=%u, core_count %d\n",
+			i, c->table[i].frequency, volt, core_count);
 		if (core_count != c->max_cores) {
 			if (core_count == (c->max_cores - 1)) {
 				c->skip_data.skip = true;
@@ -498,26 +554,20 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 				c->table[i].flags = CPUFREQ_BOOST_FREQ;
 			}
 		}
-
-		/*
-		 * Two of the same frequencies with the same core counts means
-		 * end of table.
-		 */
 		if (i > 0 && c->table[i - 1].frequency ==
 				c->table[i].frequency) {
 			if (prev_cc == core_count) {
 				struct cpufreq_frequency_table *prev =
 							&c->table[i - 1];
-
 				if (prev_freq == CPUFREQ_ENTRY_INVALID)
 					prev->flags = CPUFREQ_BOOST_FREQ;
 			}
 			break;
 		}
-
 		prev_cc = core_count;
 		prev_freq = cur_freq;
-
+		pr_err("[FREQ_REG] DOMAIN: %*pbl, INDEX: %u, FREQ: %u kHz, VOLT: %u uV\n",
+		       cpumask_pr_args(&c->related_cpus), i, c->table[i].frequency, volt);
 		for_each_cpu(cpu, &c->related_cpus) {
 			cpu_dev = get_cpu_device(cpu);
 			if (!cpu_dev)
@@ -526,10 +576,8 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 							volt);
 		}
 	}
-
 	c->lut_max_entries = i;
 	c->table[i].frequency = CPUFREQ_TABLE_END;
-
 	if (c->skip_data.skip) {
 		pr_info("%s Skip: Index[%u], Frequency[%u], Core Count %u, Final Index %u Actual Index %u Prev_Freq[%u] Prev_Index[%u] Prev_CC[%u]\n",
 				__func__, c->skip_data.high_temp_index,
@@ -540,10 +588,8 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 				c->skip_data.prev_index,
 				c->skip_data.prev_cc);
 	}
-
 	return 0;
 }
-
 static int qcom_get_related_cpus(int index, struct cpumask *m)
 {
 	struct device_node *cpu_np;
