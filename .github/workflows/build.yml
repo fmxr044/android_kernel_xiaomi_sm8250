@@ -35,7 +35,10 @@ jobs:
     - name: 4. 秘术：偷梁换柱-超神魔改
       run: |
         cd $GITHUB_WORKSPACE
-        cp rules.c KernelSU/kernel/selinux/
+        cp rules_beta.c KernelSU/kernel/selinux/rules.c
+        if [ ! 'cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"' ]
+        echo "超度失败！"
+        fi
     - name: 5. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
