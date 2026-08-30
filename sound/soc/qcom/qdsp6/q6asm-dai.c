@@ -23,12 +23,12 @@
 
 #define PLAYBACK_MIN_NUM_PERIODS    2
 #define PLAYBACK_MAX_NUM_PERIODS   8
-#define PLAYBACK_MAX_PERIOD_SIZE    65536
-#define PLAYBACK_MIN_PERIOD_SIZE    128
+#define PLAYBACK_MAX_PERIOD_SIZE    8192
+#define PLAYBACK_MIN_PERIOD_SIZE    8192
 #define CAPTURE_MIN_NUM_PERIODS     2
-#define CAPTURE_MAX_NUM_PERIODS     8
-#define CAPTURE_MAX_PERIOD_SIZE     4096
-#define CAPTURE_MIN_PERIOD_SIZE     320
+#define CAPTURE_MAX_NUM_PERIODS     4
+#define CAPTURE_MAX_PERIOD_SIZE     1024
+#define CAPTURE_MIN_PERIOD_SIZE     1024
 #define SID_MASK_DEFAULT	0xF
 
 enum stream_state {
@@ -49,6 +49,8 @@ struct q6asm_dai_rtd {
 	struct audio_client *audio_client;
 	uint16_t session_id;
 	enum stream_state state;
+	spinlock_t lock;                 // 新增
+    bool pending_event;
 };
 
 struct q6asm_dai_data {
@@ -144,6 +146,7 @@ static void event_handler(uint32_t opcode, uint32_t token,
 {
 	struct q6asm_dai_rtd *prtd = priv;
 	struct snd_pcm_substream *substream = prtd->substream;
+	unsigned long flags;
 
 	switch (opcode) {
 	case ASM_CLIENT_EVENT_CMD_RUN_DONE:
@@ -155,7 +158,9 @@ static void event_handler(uint32_t opcode, uint32_t token,
 		prtd->state = Q6ASM_STREAM_STOPPED;
 		break;
 	case ASM_CLIENT_EVENT_DATA_WRITE_DONE: {
+	    spin_lock_irqsave(&prtd->lock, flags);
 		prtd->pcm_irq_pos += prtd->pcm_count;
+		spin_unlock_irqrestore(&prtd->lock, flags);
 		snd_pcm_period_elapsed(substream);
 		if (prtd->state == Q6ASM_STREAM_RUNNING)
 			q6asm_write_async(prtd->audio_client,
@@ -234,7 +239,7 @@ static int q6asm_dai_prepare(struct snd_pcm_substream *substream)
 	}
 
 	prtd->session_id = q6asm_get_session_id(prtd->audio_client);
-	ret = q6routing_stream_open(soc_prtd->dai_link->id, LEGACY_PCM_MODE,
+	ret = q6routing_stream_open(soc_prtd->dai_link->id, ULTRA_LOW_LATENCY_PCM_MODE,
 			      prtd->session_id, substream->stream);
 	if (ret) {
 		pr_err("%s: stream reg failed ret:%d\n", __func__, ret);
@@ -317,9 +322,10 @@ static int q6asm_dai_open(struct snd_pcm_substream *substream)
 		return -ENOMEM;
 
 	prtd->substream = substream;
+	spin_lock_init(&prtd->lock);
 	prtd->audio_client = q6asm_audio_client_alloc(dev,
 				(q6asm_cb)event_handler, prtd, stream_id,
-				LEGACY_PCM_MODE);
+				ULTRA_LOW_LATENCY_PCM_MODE);
 	if (IS_ERR(prtd->audio_client)) {
 		pr_info("%s: Could not allocate memory\n", __func__);
 		ret = PTR_ERR(prtd->audio_client);
@@ -355,13 +361,13 @@ static int q6asm_dai_open(struct snd_pcm_substream *substream)
 	}
 
 	ret = snd_pcm_hw_constraint_step(runtime, 0,
-		SNDRV_PCM_HW_PARAM_PERIOD_SIZE, 480);
+		SNDRV_PCM_HW_PARAM_PERIOD_SIZE, 128);
 	if (ret < 0) {
 		pr_err("constraint for period bytes step ret = %d\n",
 								ret);
 	}
 	ret = snd_pcm_hw_constraint_step(runtime, 0,
-		SNDRV_PCM_HW_PARAM_BUFFER_SIZE, 480);
+		SNDRV_PCM_HW_PARAM_BUFFER_SIZE, 128);
 	if (ret < 0) {
 		pr_err("constraint for buffer bytes step ret = %d\n",
 								ret);
@@ -410,11 +416,15 @@ static snd_pcm_uframes_t q6asm_dai_pointer(struct snd_pcm_substream *substream)
 
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct q6asm_dai_rtd *prtd = runtime->private_data;
+	unsigned long flags;
+	snd_pcm_uframes_t pos;
 
+    spin_lock_irqsave(&prtd->lock, flags);
 	if (prtd->pcm_irq_pos >= prtd->pcm_size)
 		prtd->pcm_irq_pos = 0;
-
-	return bytes_to_frames(runtime, (prtd->pcm_irq_pos));
+    pos = bytes_to_frames(runtime, (prtd->pcm_irq_pos));
+	spin_unlock_irqrestore(&prtd->lock, flags);
+	return pos;
 }
 
 static int q6asm_dai_mmap(struct snd_pcm_substream *substream,
@@ -472,7 +482,9 @@ static int q6asm_dai_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	int size, ret;
 
 	dev = c->dev;
-	size = q6asm_dai_hardware_playback.buffer_bytes_max;
+    // pcm_new() 中使用更小的 buffer
+    size = PLAYBACK_MAX_NUM_PERIODS * PLAYBACK_MAX_PERIOD_SIZE; /* 32KB */
+    // Capture buffer: 4KB
 	psubstream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 	if (psubstream) {
 		ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, dev, size,
