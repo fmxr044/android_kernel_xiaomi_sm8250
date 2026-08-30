@@ -10,7 +10,7 @@ jobs:
     - name: 1. 检出云端内核源码
       uses: actions/checkout@v4
       with:
-        ref: lineage-23.2
+        ref: master
     - name: 2. 初始化编译环境
       run: |
         sudo apt-get update
@@ -32,15 +32,10 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
-    - name: 4. 秘术：偷梁换柱
+    - name: 4. 秘术：偷梁换柱-超神魔改
       run: |
         cd $GITHUB_WORKSPACE
-        ls
-    - name: 4.5 秘术：凭空捏造
-      run: |
-        cd $GITHUB_WORKSPACE
-        ls KernelSU/kernel/selinux
-        cat KernelSU/kernel/selinux/rules.c
+        cp rules.c KernelSU/kernel/selinux/
     - name: 5. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
