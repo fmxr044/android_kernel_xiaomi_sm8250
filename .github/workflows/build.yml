@@ -36,10 +36,12 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         cp rules_beta.c KernelSU/kernel/selinux/rules.c
-        if cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"; then
-        echo "超度失败！"
-        else
+        cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"
+        STATUS=$?
+        if [ $STATUS -eq 0]; then
         echo "超度成功！"
+        else
+        echo "超度失败！"
         fi
     - name: 5. 配置环境&开始编译
       run: |
