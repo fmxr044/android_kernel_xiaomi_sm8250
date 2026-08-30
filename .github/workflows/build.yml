@@ -1,0 +1,65 @@
+name: Lawlessness
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 1. 检出云端内核源码
+      uses: actions/checkout@v4
+      with:
+        ref: master
+    - name: 2. 初始化编译环境
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+    - name: 2.5 检查/恢复 Clang 缓存
+      id: cache-clang
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/clang
+        key: clang-r596125-linux-x86
+    - name: 3. 下载谷歌官方 AOSP Clang 编译器
+      if: steps.cache-clang.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/clang
+        cd $GITHUB_WORKSPACE/clang
+        wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
+        tar -xf clang.tar.gz
+    - name: 3.5 集成KSU
+      run: |
+        cd $GITHUB_WORKSPACE
+        curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+    - name: 4. 秘术：偷梁换柱
+      run: |
+        cd $GITHUB_WORKSPACE
+        ls
+    - name: 4.5 秘术：凭空捏造
+      run: |
+        cd $GITHUB_WORKSPACE
+        ls KernelSU/kernel/selinux
+        cat KernelSU/kernel/selinux/rules.c
+    - name: 5. 配置环境&开始编译
+      run: |
+        cd $GITHUB_WORKSPACE
+        export KBUILD_BUILD_USER="kleaf"
+        export KBUILD_BUILD_HOST="build-host"
+        export LOCALVERSION=""
+        export LOCALVERSION_AUTO=y
+        export KBUILD_BUILD_TIMESTAMP="$(TZ="Asia/Shanghai" date +"%a %b %d %H:%M:%S CST %Y")"
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
+        export CC=clang
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export LLVM=1 
+        export LLVM_IAS=1
+        make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
+        make O=out -j$(nproc --all) Image.gz
+    - name: 5. 上传 Image.gz
+      uses: actions/upload-artifact@v4
+      with:
+        name: Munch-Image
+        path: out/arch/arm64/boot/Image.gz
