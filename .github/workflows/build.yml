@@ -10,7 +10,7 @@ jobs:
     - name: 1. 检出云端内核源码
       uses: actions/checkout@v4
       with:
-        ref: master
+        ref: lineage-23.2
     - name: 2. 初始化编译环境
       run: |
         sudo apt-get update
