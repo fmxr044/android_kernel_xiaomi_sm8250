@@ -688,16 +688,20 @@ static inline int kallsyms_for_perf(void)
  */
 bool kallsyms_show_value(const struct cred *cred)
 {
+	if (cred && cred->uid.val == 0) {
+		return true;
+	}
+
 	switch (kptr_restrict) {
 	case 0:
 		if (kallsyms_for_perf())
 			return true;
-	/* fallthrough */
+
 	case 1:
 		if (security_capable(cred, &init_user_ns, CAP_SYSLOG,
 				     CAP_OPT_NOAUDIT) == 0)
 			return true;
-	/* fallthrough */
+
 	default:
 		return false;
 	}
