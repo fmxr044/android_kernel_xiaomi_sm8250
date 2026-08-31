@@ -75,7 +75,7 @@ jobs:
         sed -i '/obj-\$(CONFIG_KSU) += kernelsu\//d' drivers/Makefile
         sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
         echo "尝试关掉源码完整性校验"
-        git diff --name-only | xargs -I {}
+        git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
 
     - name: 5. 配置环境&开始编译
       run: |
