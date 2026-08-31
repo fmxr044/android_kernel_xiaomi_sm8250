@@ -209,15 +209,23 @@ void apply_kernelsu_rules()
     // Create unconstrained file type
     ksu_type(db, KERNEL_SU_FILE, "file_type");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
-    
     //超神魔改
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
+        //尝试给u:r:su:s0加码
+        ksu_allowxperm(db, "su", ALL, ALL, ALL);
     }
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
+    //尝试给u:r:su:s0加码
+    ksu_allow(db, ALL, "su", ALL, ALL);
+    ksu_type(db, "su", "domain");
+    ksu_permissive(db, "su");
+    ksu_typeattribute(db, "su", "mlstrustedsubject");
+    ksu_typeattribute(db, "su", "netdomain");
+    ksu_typeattribute(db, "su", "bluetoothdomain");
     //超神魔改
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
