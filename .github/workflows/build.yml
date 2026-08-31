@@ -68,15 +68,12 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         DEFCONFIG_PATH="arch/arm64/configs/vendor/kona-perf_defconfig"
-        echo "正在从 $DEFCONFIG_PATH 中彻底关闭 KSU 配置..."
-        
-        # 移除可能已存在的 KSU 开启宏
+        echo "关闭KSU编译开关"
         sed -i '/CONFIG_KSU/d' $DEFCONFIG_PATH
         sed -i '/CONFIG_KSU_MANUAL_HOOK/d' $DEFCONFIG_PATH
-        
-        # 显式追加关闭配置
-        echo "CONFIG_KSU=n" >> $DEFCONFIG_PATH
-        echo "CONFIG_KSU_MANUAL_HOOK=n" >> $DEFCONFIG_PATH
+        echo "在Makefile与Kconfig中移除KSU有关代码"
+        sed -i '/obj-\$(CONFIG_KSU) += kernelsu\//d' drivers/Makefile
+        sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
 
     - name: 5. 配置环境&开始编译
       run: |
