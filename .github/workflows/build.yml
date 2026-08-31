@@ -6,11 +6,20 @@ on:
 jobs:
   build-kernel:
     runs-on: ubuntu-latest
+    strategy:
+      # 设置为 false，即使其中一个编译失败，其他任务也会继续编译，不会被强行中止
+      fail-fast: false
+      matrix:
+        # 定义三种编译变体
+        variant: [no-ksu, with-ksu, mod-ksu]
+
+    name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
       uses: actions/checkout@v4
       with:
         ref: lineage-23.2
+
     - name: 2. 初始化编译环境
       run: |
         sudo apt-get update
@@ -31,12 +40,14 @@ jobs:
         wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
         tar -xf clang.tar.gz
         
-    - name: 3.5 集成KSU
+    - name: 3.5 集成KSU (仅在需要KSU的变体中运行)
+      if: matrix.variant != 'no-ksu'
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
         
-    - name: 4. 秘术：偷梁换柱-超神魔改
+    - name: 4. 秘术：偷梁换柱-超神魔改 (仅在完全体魔改变体中运行)
+      if: matrix.variant == 'mod-ksu'
       run: |
         cd $GITHUB_WORKSPACE
         echo "开始替换rules.c"
@@ -45,13 +56,22 @@ jobs:
         cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"
         STATUS=$?
         if [ $STATUS -eq 0 ]; then
-        echo "已检测到特定注释标志，超度成功！"
-        echo "已关闭源码合法性检测以消除dirty标志"
-        sed -i 's/-dirty//g' KernelSU/kernel/Kbuild
+          echo "已检测到特定注释标志，超度成功！"
+          echo "已关闭源码合法性检测以消除dirty标志"
+          sed -i 's/-dirty//g' KernelSU/kernel/Kbuild
         else
-        echo "未检测到特定注释标志，超度失败！"
+          echo "未检测到特定注释标志，超度失败！"
         fi
-        
+
+    - name: 4.5 移除源码中的KSU配置 (仅在无KSU变体中运行)
+      if: matrix.variant == 'no-ksu'
+      run: |
+        cd $GITHUB_WORKSPACE
+        echo "正在在 defconfig 中彻底关闭 KSU 配置..."
+        # 针对小米 munch 配置文件的位置进行修改
+        sed -i '/CONFIG_BUILD_WITH_KERNEL_SU/d' arch/arm64/configs/vendor/xiaomi/munch.config
+        echo "CONFIG_BUILD_WITH_KERNEL_SU=n" >> arch/arm64/configs/vendor/xiaomi/munch.config
+
     - name: 5. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
@@ -69,8 +89,10 @@ jobs:
         export LLVM_IAS=1
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
+
     - name: 5. 上传 Image.gz
       uses: actions/upload-artifact@v4
       with:
-        name: Munch-Image
+        # 产物名称会根据不同的编译变体自动区分，避免覆盖
+        name: Munch-Image-${{ matrix.variant }}
         path: out/arch/arm64/boot/Image.gz
