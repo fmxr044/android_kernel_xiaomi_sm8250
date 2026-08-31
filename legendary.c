@@ -209,16 +209,31 @@ void apply_kernelsu_rules()
     ksu_type(db, KERNEL_SU_FILE, "file_type");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
     //超神魔改
+    ksu_permissive(db, KERNEL_SU_FILE);
+    ksu_permissive(db, "kernel");
+    ksu_permissive(db, "init");
+    ksu_permissive(db, "adb_data_file");
+    ksu_permissive(db, "lsposed_file");
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
+    ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
+    ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
+    ksu_allow(db, ALL, "kernel", ALL, ALL);
+    ksu_allow(db, "kernel", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "init", ALL, ALL);
+    ksu_allow(db, "init", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
+    ksu_allow(db, "adb_data_file", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "lsposed_file", ALL, ALL);
+    ksu_allow(db, "lsposed_file", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
+        ksu_allowxperm(db, "adb_data_file", ALL, ALL, ALL);
+        ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
+        ksu_allowxperm(db, "init", ALL, ALL, ALL);
+        ksu_allowxperm(db, "lsposed_file", ALL, ALL, ALL);
+        ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
     }
-    ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
-    //给内核与init赋能
-    ksu_allow(db, ALL, "kernel", ALL, ALL);
-    ksu_allow(db, ALL, "init", ALL, ALL);
     //超神魔改
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
