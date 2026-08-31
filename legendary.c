@@ -208,8 +208,11 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "bluetoothdomain");
 
     // Create unconstrained file type
-    ksu_type(db, KERNEL_SU_FILE, "file_type");
-    ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
+    //ksu_type(db, KERNEL_SU_FILE, "file_type");
+    //ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
+    //超神魔改
+    ksu_type(db, KERNEL_SU_FILE, ALL);
+    ksu_typeattribute(db, KERNEL_SU_FILE, ALL);
     
     //超神魔改
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
