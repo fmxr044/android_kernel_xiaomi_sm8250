@@ -7,10 +7,8 @@ jobs:
   build-kernel:
     runs-on: ubuntu-latest
     strategy:
-      # 设置为 false，即使其中一个编译失败，其他任务也会继续编译，不会被强行中止
       fail-fast: false
       matrix:
-        # 定义三种编译变体：无KSU、默认带KSU、完全体魔改KSU
         variant: [no-ksu, with-ksu, mod-ksu]
 
     name: 编译内核 (${{ matrix.variant }})
@@ -74,8 +72,12 @@ jobs:
         echo "在Makefile与Kconfig中移除KSU有关代码"
         sed -i '/obj-\$(CONFIG_KSU) += kernelsu\//d' drivers/Makefile
         sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
-        echo "尝试关掉源码完整性校验"
-        git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
+        echo "尝试关闭本地源码完整性校验"
+        # 1. 随便配置一个本地的用户名和邮箱（Git 规范要求，不需要是真实的，更不需要密码）
+        git config --local user.email "bot@github-actions.local"
+        git config --local user.name "Kernel-Builder-Bot"
+        git add -A
+        git commit -m "temp: disable ksu for build matrix" || true
 
     - name: 5. 配置环境&开始编译
       run: |
