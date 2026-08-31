@@ -9,14 +9,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [no-ksu, with-ksu, mod-ksu]
+        variant: [normal, ksu, ksu_pro-max]
 
     name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
       uses: actions/checkout@v4
       with:
-        ref: lineage-23.2
+        ref: master
 
     - name: 2. 初始化编译环境
       run: |
@@ -39,13 +39,13 @@ jobs:
         tar -xf clang.tar.gz
         
     - name: 3.5 集成KSU (仅在需要KSU的变体中运行)
-      if: matrix.variant != 'no-ksu'
+      if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
         
     - name: 4. 秘术：偷梁换柱-超神魔改 (仅在完全体魔改变体中运行)
-      if: matrix.variant == 'mod-ksu'
+      if: matrix.variant == 'ksu_pro-max'
       run: |
         cd $GITHUB_WORKSPACE
         echo "开始替换rules.c"
@@ -61,8 +61,8 @@ jobs:
           echo "未检测到特定注释标志，超度失败！"
         fi
 
-    - name: 4.5 移除源码中的KSU配置与打上若干补丁
-      if: matrix.variant == 'no-ksu'
+    - name: 4.5 打上若干补丁 + 移除 KSU 配置
+      if: matrix.variant == 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         DEFCONFIG_PATH="arch/arm64/configs/vendor/kona-perf_defconfig"
@@ -96,6 +96,5 @@ jobs:
     - name: 5. 上传 Image.gz
       uses: actions/upload-artifact@v4
       with:
-        # 产物名称会根据不同的编译变体自动区分
         name: Munch-Image-${{ matrix.variant }}
         path: out/arch/arm64/boot/Image.gz
