@@ -10,7 +10,7 @@ jobs:
       # 设置为 false，即使其中一个编译失败，其他任务也会继续编译，不会被强行中止
       fail-fast: false
       matrix:
-        # 定义三种编译变体
+        # 定义三种编译变体：无KSU、默认带KSU、完全体魔改KSU
         variant: [no-ksu, with-ksu, mod-ksu]
 
     name: 编译内核 (${{ matrix.variant }})
@@ -37,7 +37,7 @@ jobs:
       run: |
         mkdir -p $GITHUB_WORKSPACE/clang
         cd $GITHUB_WORKSPACE/clang
-        wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
+        wget -nv https://googlesource.com -O clang.tar.gz
         tar -xf clang.tar.gz
         
     - name: 3.5 集成KSU (仅在需要KSU的变体中运行)
@@ -51,7 +51,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         echo "开始替换rules.c"
-        cp rules_beta.c KernelSU/kernel/selinux/rules.c
+        cp legendary.c KernelSU/kernel/selinux/rules.c
         echo "替换后检测是否更改成功"
         cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"
         STATUS=$?
@@ -67,10 +67,16 @@ jobs:
       if: matrix.variant == 'no-ksu'
       run: |
         cd $GITHUB_WORKSPACE
-        echo "正在在 defconfig 中彻底关闭 KSU 配置..."
-        # 针对小米 munch 配置文件的位置进行修改
-        sed -i '/CONFIG_BUILD_WITH_KERNEL_SU/d' arch/arm64/configs/vendor/xiaomi/munch.config
-        echo "CONFIG_BUILD_WITH_KERNEL_SU=n" >> arch/arm64/configs/vendor/xiaomi/munch.config
+        DEFCONFIG_PATH="arch/arm64/configs/vendor/kona-perf_defconfig"
+        echo "正在从 $DEFCONFIG_PATH 中彻底关闭 KSU 配置..."
+        
+        # 移除可能已存在的 KSU 开启宏
+        sed -i '/CONFIG_KSU/d' $DEFCONFIG_PATH
+        sed -i '/CONFIG_KSU_MANUAL_HOOK/d' $DEFCONFIG_PATH
+        
+        # 显式追加关闭配置
+        echo "CONFIG_KSU=n" >> $DEFCONFIG_PATH
+        echo "CONFIG_KSU_MANUAL_HOOK=n" >> $DEFCONFIG_PATH
 
     - name: 5. 配置环境&开始编译
       run: |
@@ -93,6 +99,6 @@ jobs:
     - name: 5. 上传 Image.gz
       uses: actions/upload-artifact@v4
       with:
-        # 产物名称会根据不同的编译变体自动区分，避免覆盖
+        # 产物名称会根据不同的编译变体自动区分
         name: Munch-Image-${{ matrix.variant }}
         path: out/arch/arm64/boot/Image.gz
