@@ -17,64 +17,57 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: master
-
     - name: 2. 初始化编译环境
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
-        
     - name: 2.5 检查/恢复 Clang 缓存
       id: cache-clang
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
-        key: clang-r596125-linux-x86
-        
+        key: clang-r596125-linux-x86   
     - name: 3. 下载谷歌官方 AOSP Clang 编译器
       if: steps.cache-clang.outputs.cache-hit != 'true'
       run: |
         mkdir -p $GITHUB_WORKSPACE/clang
         cd $GITHUB_WORKSPACE/clang
-        wget -nv https://googlesource.com -O clang.tar.gz
+        wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
         tar -xf clang.tar.gz
-        
-    - name: 3.5 集成KSU (仅在需要KSU的变体中运行)
+    - name: 3.5 集成KSU
       if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
-        curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
-        
-    - name: 4. 秘术：偷梁换柱-超神魔改 (仅在完全体魔改变体中运行)
+        curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash  
+    - name: 4. 秘术：超神魔改赋能
       if: matrix.variant == 'ksu_pro-max'
       run: |
         cd $GITHUB_WORKSPACE
-        echo "开始替换rules.c"
+        echo "开始为RE-SUKISU赋能"
         cp legendary.c KernelSU/kernel/selinux/rules.c
-        echo "替换后检测是否更改成功"
+        echo "赋能后检查是否赋能成功"
         cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"
         STATUS=$?
         if [ $STATUS -eq 0 ]; then
-          echo "已检测到特定注释标志，超度成功！"
-          echo "已关闭源码合法性检测以消除dirty标志"
+          echo "已检测到特定标志，赋能成功！"
+          echo "关闭源码完整性检测消除dirty标志"
           sed -i 's/-dirty//g' KernelSU/kernel/Kbuild
         else
-          echo "未检测到特定注释标志，超度失败！"
+          echo "未检测到特定标志，赋能失败！"
         fi
-
     - name: 4.5 打上若干补丁 + 移除 KSU 配置
       if: matrix.variant == 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         DEFCONFIG_PATH="arch/arm64/configs/vendor/kona-perf_defconfig"
-        echo "关闭KSU编译开关"
+        echo "移除KSU配置"
         sed -i '/CONFIG_KSU/d' $DEFCONFIG_PATH
         sed -i '/CONFIG_KSU_MANUAL_HOOK/d' $DEFCONFIG_PATH
-        echo "在Makefile与Kconfig中移除KSU有关代码"
+        echo "在Makefile与Kconfig中移除KSU相关代码"
         sed -i '/obj-\$(CONFIG_KSU) += kernelsu\//d' drivers/Makefile
         sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
-        echo "尝试关闭本地源码完整性校验"
+        echo "关闭本地源码完整性校验"
         git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
-        
     - name: 5. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
@@ -92,7 +85,6 @@ jobs:
         export LLVM_IAS=1
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
-
     - name: 5. 上传 Image.gz
       uses: actions/upload-artifact@v4
       with:
