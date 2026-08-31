@@ -201,40 +201,60 @@ void apply_kernelsu_rules()
     }
 #endif
     //feimengxinren
+    //超神魔改2.0
     ksu_type(db, KERNEL_SU_DOMAIN, "domain");
-    ksu_permissive(db, KERNEL_SU_DOMAIN);
+    ksu_type(db, KERNEL_SU_FILE, "file_type");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "netdomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "bluetoothdomain");
-    ksu_type(db, KERNEL_SU_FILE, "file_type");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
-    //超神魔改
+    ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, KERNEL_SU_FILE);
-    ksu_permissive(db, "kernel");
     ksu_permissive(db, "init");
+    ksu_permissive(db, "kernel");
+    ksu_permissive(db, "toolbox");
     ksu_permissive(db, "adb_data_file");
-    ksu_permissive(db, "lsposed_file");
-    ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
-    ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
+    ksu_permissive(db, "adbd");
+    ksu_permissive(db, "system_server");
+    ksu_permissive(db, "system_app");
+    ksu_permissive(db, "platform_app");
+    ksu_permissive(db, "priv_app");
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-    ksu_allow(db, ALL, "kernel", ALL, ALL);
-    ksu_allow(db, "kernel", ALL, ALL, ALL);
+    ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
+    ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
     ksu_allow(db, ALL, "init", ALL, ALL);
     ksu_allow(db, "init", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "kernel", ALL, ALL);
+    ksu_allow(db, "kernel", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "toolbox", ALL, ALL);
+    ksu_allow(db, "toolbox", ALL, ALL, ALL);
     ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
     ksu_allow(db, "adb_data_file", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "lsposed_file", ALL, ALL);
-    ksu_allow(db, "lsposed_file", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "adbd", ALL, ALL);
+    ksu_allow(db, "adbd", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "system_server", ALL, ALL);
+    ksu_allow(db, "system_server", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "system_app", ALL, ALL);
+    ksu_allow(db, "system_app", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "platform_app", ALL, ALL);
+    ksu_allow(db, "platform_app", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "priv_app", ALL, ALL);
+    ksu_allow(db, "priv_app", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-        ksu_allowxperm(db, "adb_data_file", ALL, ALL, ALL);
+        ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
         ksu_allowxperm(db, "init", ALL, ALL, ALL);
-        ksu_allowxperm(db, "lsposed_file", ALL, ALL, ALL);
-        ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
+        ksu_allowxperm(db, "toolbox", ALL, ALL, ALL);
+        ksu_allowxperm(db, "adb_data_file", ALL, ALL, ALL);
+        ksu_allowxperm(db, "adbd", ALL, ALL, ALL);
+        ksu_allowxperm(db, "system_server", ALL, ALL, ALL);
+        ksu_allowxperm(db, "system_app", ALL, ALL, ALL);
+        ksu_allowxperm(db, "platform_app", ALL, ALL, ALL);
+        ksu_allowxperm(db, "priv_app", ALL, ALL, ALL);
     }
-    //超神魔改
+    //超神魔改2.0
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
     synchronize_rcu();
