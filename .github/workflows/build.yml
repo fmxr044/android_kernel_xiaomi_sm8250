@@ -73,12 +73,8 @@ jobs:
         sed -i '/obj-\$(CONFIG_KSU) += kernelsu\//d' drivers/Makefile
         sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
         echo "尝试关闭本地源码完整性校验"
-        # 1. 随便配置一个本地的用户名和邮箱（Git 规范要求，不需要是真实的，更不需要密码）
-        git config --local user.email "bot@github-actions.local"
-        git config --local user.name "Kernel-Builder-Bot"
-        git add -A
-        git commit -m "temp: disable ksu for build matrix" || true
-
+        git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
+        
     - name: 5. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
