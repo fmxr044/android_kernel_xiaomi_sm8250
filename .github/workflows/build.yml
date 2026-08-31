@@ -15,12 +15,14 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+        
     - name: 2.5 检查/恢复 Clang 缓存
       id: cache-clang
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
         key: clang-r596125-linux-x86
+        
     - name: 3. 下载谷歌官方 AOSP Clang 编译器
       if: steps.cache-clang.outputs.cache-hit != 'true'
       run: |
@@ -28,21 +30,28 @@ jobs:
         cd $GITHUB_WORKSPACE/clang
         wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
         tar -xf clang.tar.gz
+        
     - name: 3.5 集成KSU
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+        
     - name: 4. 秘术：偷梁换柱-超神魔改
       run: |
         cd $GITHUB_WORKSPACE
+        sed -i 
         cp rules_beta.c KernelSU/kernel/selinux/rules.c
         cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"
         STATUS=$?
         if [ $STATUS -eq 0 ]; then
-        echo "超度成功！"
+        echo "已检测到特定注释标志，超度成功！"
+        echo 
+        echo "已关闭源码合法性检测以消除dirty标志"
+        sed -i 's/-dirty//g' KernelSU/kernel/Kbuild
         else
-        echo "超度失败！"
+        echo "未检测到特定注释标志，超度失败！"
         fi
+        
     - name: 5. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
