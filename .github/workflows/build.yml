@@ -50,8 +50,8 @@ jobs:
         STATUS=$?
         if [ $STATUS -eq 0 ]; then
           echo "已检测到特定标志，赋能成功！"
-          echo "关闭源码完整性检测消除dirty标志"
-          sed -i 's/-dirty//g' KernelSU/kernel/Kbuild
+          echo "已打上特定标签标记完全体版本"
+          sed -i 's/-dirty/-pro_max/g' KernelSU/kernel/Kbuild
         else
           echo "未检测到特定标志，赋能失败！"
         fi
