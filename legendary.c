@@ -201,9 +201,6 @@ void apply_kernelsu_rules()
     }
 #endif
     //feimengxinren
-    //超神魔改 V11.0
-    //应用强力赋能代表您已悉知该操作的危险性
-    //仅适用于调试尝鲜用途，正常情况下并不需要如此高权能，除非您想要体验超神模式
     ksu_type(db, KERNEL_SU_DOMAIN, "domain");
     ksu_type(db, KERNEL_SU_DOMAIN, "file_type");
     ksu_type(db, KERNEL_SU_FILE, "domain");
@@ -297,32 +294,6 @@ void apply_kernelsu_rules()
     ksu_allow(db, "system_suspend", ALL, ALL, ALL);
     ksu_allow(db, ALL, "zygote", ALL, ALL);
     ksu_allow(db, "zygote", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_dontaudit(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, KERNEL_SU_FILE, ALL, ALL);
-    ksu_dontaudit(db, KERNEL_SU_FILE, ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "init", ALL, ALL);
-    ksu_dontaudit(db, "init", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "kernel", ALL, ALL);
-    ksu_dontaudit(db, "kernel", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "toolbox", ALL, ALL);
-    ksu_dontaudit(db, "toolbox", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "adb_data_file", ALL, ALL);
-    ksu_dontaudit(db, "adb_data_file", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "adbd", ALL, ALL);
-    ksu_dontaudit(db, "adbd", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "system_server", ALL, ALL);
-    ksu_dontaudit(db, "system_server", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "system_app", ALL, ALL);
-    ksu_dontaudit(db, "system_app", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "platform_app", ALL, ALL);
-    ksu_dontaudit(db, "platform_app", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "priv_app", ALL, ALL);
-    ksu_dontaudit(db, "priv_app", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "system_suspend", ALL, ALL);
-    ksu_dontaudit(db, "system_suspend", ALL, ALL, ALL);
-    ksu_dontaudit(db, ALL, "zygote", ALL, ALL);
-    ksu_dontaudit(db, "zygote", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
@@ -337,21 +308,7 @@ void apply_kernelsu_rules()
         ksu_allowxperm(db, "priv_app", ALL, ALL, ALL);
         ksu_allowxperm(db, "system_suspend", ALL, ALL, ALL);
         ksu_allowxperm(db, "zygote", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-        ksu_dontauditxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "kernel", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "init", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "toolbox", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "adb_data_file", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "adbd", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "system_server", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "system_app", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "platform_app", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "priv_app", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "system_suspend", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "zygote", ALL, ALL, ALL);
     }
-    //超神魔改 V11.0
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
     synchronize_rcu();
