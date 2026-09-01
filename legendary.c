@@ -201,19 +201,63 @@ void apply_kernelsu_rules()
     }
 #endif
     //feimengxinren
-    //超神魔改 V10.0
-    //应用强力赋能代表您已悉知此次操作的危险性
+    //超神魔改 V11.0
+    //应用强力赋能代表您已悉知该操作的危险性
     //仅适用于调试尝鲜用途，正常情况下并不需要如此高权能，除非您想要体验超神模式
     ksu_type(db, KERNEL_SU_DOMAIN, "domain");
     ksu_type(db, KERNEL_SU_DOMAIN, "file_type");
     ksu_type(db, KERNEL_SU_FILE, "domain");
     ksu_type(db, KERNEL_SU_FILE, "file_type");
+    ksu_type(db, "init", "domain");
+    ksu_type(db, "init", "file_type");
+    ksu_type(db, "kernel", "domain");
+    ksu_type(db, "kernel", "file_type");
+    ksu_type(db, "toolbox", "domain");
+    ksu_type(db, "toolbox", "file_type");
+    ksu_type(db, "adb_data_file", "domain");
+    ksu_type(db, "adb_data_file", "file_type");
+    ksu_type(db, "adbd", "domain");
+    ksu_type(db, "adbd", "file_type");
+    ksu_type(db, "system_server", "domain");
+    ksu_type(db, "system_server", "file_type");
+    ksu_type(db, "system_app", "domain");
+    ksu_type(db, "system_app", "file_type");
+    ksu_type(db, "platform_app", "domain");
+    ksu_type(db, "platform_app", "file_type");
+    ksu_type(db, "priv_app", "domain");
+    ksu_type(db, "priv_app", "file_type");
+    ksu_type(db, "system_suspend", "domain");
+    ksu_type(db, "system_suspend", "file_type");
+    ksu_type(db, "zygote", "domain");
+    ksu_type(db, "zygote", "file_type");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "netdomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "bluetoothdomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedobject");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedsubject");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
+    ksu_typeattribute(db, "init", "mlstrustedsubject");
+    ksu_typeattribute(db, "init", "mlstrustedobject");
+    ksu_typeattribute(db, "kernel", "mlstrustedsubject");
+    ksu_typeattribute(db, "kernel", "mlstrustedobject");
+    ksu_typeattribute(db, "toolbox", "mlstrustedsubject");
+    ksu_typeattribute(db, "toolbox", "mlstrustedobject");
+    ksu_typeattribute(db, "adb_data_file", "mlstrustedsubject");
+    ksu_typeattribute(db, "adb_data_file", "mlstrustedobject");
+    ksu_typeattribute(db, "adbd", "mlstrustedsubject");
+    ksu_typeattribute(db, "adbd", "mlstrustedobject");
+    ksu_typeattribute(db, "system_server", "mlstrustedsubject");
+    ksu_typeattribute(db, "system_server", "mlstrustedobject");
+    ksu_typeattribute(db, "system_app", "mlstrustedsubject");
+    ksu_typeattribute(db, "system_app", "mlstrustedobject");
+    ksu_typeattribute(db, "platform_app", "mlstrustedsubject");
+    ksu_typeattribute(db, "platform_app", "mlstrustedobject");
+    ksu_typeattribute(db, "priv_app", "mlstrustedsubject");
+    ksu_typeattribute(db, "priv_app", "mlstrustedobject");
+    ksu_typeattribute(db, "system_suspend", "mlstrustedsubject");
+    ksu_typeattribute(db, "system_suspend", "mlstrustedobject");
+    ksu_typeattribute(db, "zygote", "mlstrustedsubject");
+    ksu_typeattribute(db, "zygote", "mlstrustedobject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, KERNEL_SU_FILE);
     ksu_permissive(db, "init");
@@ -307,7 +351,7 @@ void apply_kernelsu_rules()
         ksu_dontauditxperm(db, "system_suspend", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "zygote", ALL, ALL, ALL);
     }
-    //超神魔改 V10.0
+    //超神魔改 V11.0
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
     synchronize_rcu();
