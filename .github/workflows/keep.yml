@@ -29,7 +29,7 @@ jobs:
           LOCAL_VER=$(${{ github.workspace }}/clang/bin/clang --version | grep -o 'based on r[0-9]*' | grep -o 'r[0-9]*')
           WEB_VER=$(echo "$LATEST_VER" | grep -o 'r[0-9]*')     
           echo "local cache ver: ${LOCAL_VER}，latest ver: ${WEB_VER}"
-          if [ "$LOCAL_VER" != "$LATEST_VER" ]; then
+          if [ "$LOCAL_VER" != "$WEB_VER" ]; then
             echo "new ver detected"
             rm -rf ${{ github.workspace }}/clang
             NEED_DOWNLOAD="true"
