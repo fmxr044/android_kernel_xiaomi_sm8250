@@ -1,46 +1,99 @@
 name: Lawlessness
-
 on:
+  schedule:
+    - cron: '0 0 * * *'
   workflow_dispatch:
-
+    inputs:
+      build_normal:
+        description: '是否编译 normal 版本'
+        required: false
+        type: boolean
+        default: false
+      build_ksu:
+        description: '是否编译 ksu 版本'
+        required: false
+        type: boolean
+        default: false
+      build_ksu_pro_max:
+        description: '是否编译 KSU加强版'
+        required: false
+        type: boolean
+        default: false
 jobs:
-  build-kernel:
+  manage-clang:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [normal, ksu, ksu_pro-max]
-
-    name: 编译内核 (${{ matrix.variant }})
+    outputs:
+      clang_version: ${{ steps.get_latest.outputs.latest_version }}
+      selected_count: ${{ steps.count_inputs.outputs.count }}
+      single_variant: ${{ steps.count_inputs.outputs.single_variant }}
     steps:
-    - name: 1. 检出云端内核源码
-      uses: actions/checkout@v4
-      with:
-        ref: master
-    - name: 2. 初始化编译环境
+    - name: 1.1 自动爬取 AOSP 页面获取最新 Clang 版本
+      id: get_latest
       run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
-    - name: 2.5 检查/恢复 Clang 缓存
+        LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
+        if [ -z "$LATEST_VER" ] || [ "$LATEST_VER" = "null" ]; then
+          LATEST_VER="clang-r596125"
+        fi   
+        echo "当前最新版=$LATEST_VER" >> $GITHUB_OUTPUT
+    - name: 1.2 统计手动勾选的数量与路由决策
+      id: count_inputs
+      run: |
+        COUNT=0
+        SINGLE_VARIANT=""
+        if [ "${{ github.event.inputs.build_normal }}" = "true" ]; then COUNT=$((COUNT+1)); SINGLE_VARIANT="normal"; fi
+        if [ "${{ github.event.inputs.build_ksu }}" = "true" ]; then COUNT=$((COUNT+1)); SINGLE_VARIANT="ksu"; fi
+        if [ "${{ github.event.inputs.build_ksu_pro_max }}" = "true" ]; then COUNT=$((COUNT+1)); SINGLE_VARIANT="ksu_pro-max"; fi
+        if [ "${{ github.event_name }}" = "schedule" ]; then COUNT=0; fi  
+        echo "多任务数量=$COUNT" >> $GITHUB_OUTPUT
+        echo "=$SINGLE_VARIANT" >> $GITHUB_OUTPUT
+        echo "您已勾选 $COUNT 个任务。"
+    - name: 1.3 检查/恢复该最新版本的云端缓存
       id: cache-clang
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
-        key: clang-r596125-linux-x86   
-    - name: 3. 下载谷歌官方 AOSP Clang 编译器
+        key: ${{ steps.get_latest.outputs.latest_version }}-linux-x86
+    - name: 1.4 下载最新编译器（仅在缓存未命中/版本不匹配时执行）
       if: steps.cache-clang.outputs.cache-hit != 'true'
       run: |
-        mkdir -p $GITHUB_WORKSPACE/clang
-        cd $GITHUB_WORKSPACE/clang
-        wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
+        mkdir -p ${{ github.workspace }}/clang
+        cd ${{ github.workspace }}/clang
+        echo "检查到新版本: ${{ steps.get_latest.outputs.latest_version }}"
+        wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/${{ steps.get_latest.outputs.latest_version }}.tar.gz" -O clang.tar.gz
         tar -xf clang.tar.gz
+    - name: 1.5 定时检查cache确保是当前最新版
+      if: steps.cache-clang.outputs.cache-hit == 'true'
+      run: |
+        echo "clang 已是最新版，未触发更新。"
+        if [ -f "${{ github.workspace }}/clang/bin/clang" ]; then
+          ${{ github.workspace }}/clang/bin/clang --version
+        fi
+  build-single-kernel:
+    runs-on: ubuntu-latest
+    needs: manage-clang
+    if: needs.manage-clang.outputs.selected_count == '1'
+    name: 编译单内核变体 (${{ needs.manage-clang.outputs.single_variant }})  
+    steps:
+    - name: 1. 检出云端内核源码
+      uses: actions/checkout@v4
+      with:
+        ref: master 
+    - name: 2. 初始化编译环境
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev  
+    - name: 2.5 恢复前序准备好的最新 Clang 缓存（秒级挂载）
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/clang
+        key: ${{ needs.manage-clang.outputs.clang_version }}-linux-x86  
     - name: 3.5 集成KSU
-      if: matrix.variant != 'normal'
+      if: needs.manage-clang.outputs.single_variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash  
     - name: 4. 秘术：超神魔改赋能
-      if: matrix.variant == 'ksu_pro-max'
+      if: needs.manage-clang.outputs.single_variant == 'ksu_pro-max'
       run: |
         cd $GITHUB_WORKSPACE
         echo "开始为RE-SUKISU赋能"
@@ -56,7 +109,7 @@ jobs:
           echo "未检测到特定标志，赋能失败！"
         fi
     - name: 4.5 打上若干补丁 + 移除 KSU 配置
-      if: matrix.variant == 'normal'
+      if: needs.manage-clang.outputs.single_variant == 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         DEFCONFIG_PATH="arch/arm64/configs/vendor/kona-perf_defconfig"
@@ -85,8 +138,103 @@ jobs:
         export LLVM_IAS=1
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
-    - name: 5. 上传 Image.gz
+    - name: 5.5 上传 Image.gz
       uses: actions/upload-artifact@v4
       with:
-        name: Munch-Image-${{ matrix.variant }}
+        name: Munch-Image-${{ needs.manage-clang.outputs.single_variant }}
         path: out/arch/arm64/boot/Image.gz
+  build-matrix-kernel:
+    runs-on: ubuntu-latest
+    needs: manage-clang
+    if: |
+      needs.manage-clang.outputs.selected_count != '0' && 
+      needs.manage-clang.outputs.selected_count != '1'  
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [normal, ksu, ksu_pro-max]
+    name: 编译内核 (${{ matrix.variant }})
+    steps:
+    - name: 0. 验证矩阵内部执行授权
+      id: check_matrix_auth
+      run: |
+        VARIANT="${{ matrix.variant }}"
+        AUTH="false"
+        if [ "$VARIANT" = "normal" ] && [ "${{ github.event.inputs.build_normal }}" = "true" ]; then AUTH="true"; fi
+        if [ "$VARIANT" = "ksu" ] && [ "${{ github.event.inputs.build_ksu }}" = "true" ]; then AUTH="true"; fi
+        if [ "$VARIANT" = "ksu_pro-max" ] && [ "${{ github.event.inputs.build_ksu_pro_max }}" = "true" ]; then AUTH="true"; fi
+        echo "auth_status=$AUTH" >> $GITHUB_OUTPUT
+        if [ "$AUTH" = "false" ]; then
+          echo "变体 [ $VARIANT ] 未在本次多选勾选名单中，立即结束本线程以节省性能。"
+        fi
+    - name: 1. 提取源码
+      if: steps.check_matrix_auth.outputs.auth_status == 'true'
+      uses: actions/checkout@v4
+      with:
+        ref: master  
+    - name: 2. 环境初始化
+      if: steps.check_matrix_auth.outputs.auth_status == 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+    - name: 2.5 恢复缓存中的工具
+      if: steps.check_matrix_auth.outputs.auth_status == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/clang
+        key: ${{ needs.manage-clang.outputs.clang_version }}-linux-x86
+    - name: 3.5 集成 RE-SUKISU
+      if: steps.check_matrix_auth.outputs.auth_status == 'true' && matrix.variant != 'normal'
+      run: |
+        cd $GITHUB_WORKSPACE
+        curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+    - name: 4. 秘术：超神魔改赋能
+      if: steps.check_matrix_auth.outputs.auth_status == 'true' && matrix.variant == 'ksu_pro-max'
+      run: |
+        cd $GITHUB_WORKSPACE
+        echo "开始为RE-SUKISU赋能"
+        cp legendary.c KernelSU/kernel/selinux/rules.c
+        echo "赋能后检查是否赋能成功"
+        cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"
+        STATUS=$?
+        if [ $STATUS -eq 0 ]; then
+          echo "已检测到特定标志，赋能成功！"
+          echo "已打上特定标签标记完全体版本"
+          sed -i 's/-dirty/-pro_max/g' KernelSU/kernel/Kbuild
+        else
+          echo "未检测到特定标志，赋能失败！"
+        fi 
+    - name: 4.5 打上若干补丁 + 移除 KSU 配置
+      if: steps.check_matrix_auth.outputs.auth_status == 'true' && matrix.variant == 'normal'
+      run: |
+        cd $GITHUB_WORKSPACE
+        DEFCONFIG_PATH="arch/arm64/configs/vendor/kona-perf_defconfig"
+        echo "移除KSU配置"
+        sed -i '/CONFIG_KSU/d' $DEFCONFIG_PATH
+        sed -i '/CONFIG_KSU_MANUAL_HOOK/d' $DEFCONFIG_PATH
+        echo "在Makefile与Kconfig中移除KSU相关代码"
+        sed -i '/obj-$(CONFIG_KSU) += kernelsu//d' drivers/Makefile
+        sed -i '/source "drivers/kernelsu/Kconfig"/d' drivers/Kconfig
+        echo "关闭本地源码完整性校验"
+        git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
+    - name: 5. 配置环境 & 开始编译
+      if: steps.check_matrix_auth.outputs.auth_status == 'true'
+      run: |
+        cd $GITHUB_WORKSPACE
+        export KBUILD_BUILD_USER="kleaf"
+        export KBUILD_BUILD_HOST="build-host"
+        export LOCALVERSION=""
+        export LOCALVERSION_AUTO=y
+        export KBUILD_BUILD_TIMESTAMP="$(TZ="Asia/Shanghai" date +"%a %b %d %H:%M:%S CST %Y")"
+        export ARCH=arm64export SUBARCH=arm64
+        export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
+        export CC=clangexport CROSS_COMPILE=aarch64-linux-gnu-
+        export LLVM=1export LLVM_IAS=1
+        make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
+        make O=out -j$(nproc --all) Image.gz
+    - name: 5.5 上传产物
+      if: steps.check_matrix_auth.outputs.auth_status == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+      name: Munch-Image-${{ matrix.variant }}
+      path: out/arch/arm64/boot/Image.gz
