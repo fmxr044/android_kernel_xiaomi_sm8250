@@ -208,19 +208,24 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
     ksu_typeattribute(db, "kernel", "mlstrustedsubject");
+    ksu_typeattribute(db, "su", "mlstrustedsubject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, KERNEL_SU_FILE);
     ksu_permissive(db, "kernel");
+    ksu_permissive(db, "su");
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
     ksu_allow(db, ALL, "kernel", ALL, ALL);
     ksu_allow(db, "kernel", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "su", ALL, ALL);
+    ksu_allow(db, "su", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
+        ksu_allowxperm(db, "su", ALL, ALL, ALL);
     }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
