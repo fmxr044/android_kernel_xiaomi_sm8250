@@ -11,14 +11,13 @@ jobs:
       id: get_version
       run: |
         LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
-        echo "CURRENT_VERSION=$LATEST_VER" >> $GITHUB_ENV
         echo "latest ver: $LATEST_VER"
     - name: 2. try get clang on cache storage
       id: cache-clang
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
-        key: aosp-clang-latest-linux-x86
+        key: aosp-clang-linux-x86
     - name: 3. version comparison
       run: |
         NEED_DOWNLOAD="false"
@@ -44,7 +43,7 @@ jobs:
           mkdir -p ${{ github.workspace }}/clang
           cd ${{ github.workspace }}/clang
           echo "downloading : $CURRENT_VERSION"
-          wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/${{ steps.get_version.outputs.version }}.tar.gz" -O clang.tar.gz
+          wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/$LATEST_VER.tar.gz" -O clang.tar.gz
           tar -xf clang.tar.gz
           chmod -R +x ${{ github.workspace }}/clang/bin/
           echo "upgrade complete"
