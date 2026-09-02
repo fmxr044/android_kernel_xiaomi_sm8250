@@ -10,7 +10,6 @@ jobs:
       fail-fast: false
       matrix:
         variant: [normal, ksu, ksu_pro-max]
-
     name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
@@ -26,15 +25,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
-        key: clang-r596125-linux-x86   
-    - name: 3. 下载谷歌官方 AOSP Clang 编译器
-      if: steps.cache-clang.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p $GITHUB_WORKSPACE/clang
-        cd $GITHUB_WORKSPACE/clang
-        wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
-        tar -xf clang.tar.gz
-    - name: 3.5 集成KSU
+        key: aosp-clang-linux-x86
+    - name: 3 集成KSU
       if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
