@@ -1,24 +1,8 @@
 name: Lawlessness
+
 on:
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch:
-    inputs:
-      build_normal:
-        description: '是否编译 normal 版本'
-        required: false
-        type: boolean
-        default: false
-      build_ksu:
-        description: '是否编译 ksu 版本'
-        required: false
-        type: boolean
-        default: false
-      build_ksu_pro_max:
-        description: '是否编译 ksu_pro-max 版本'
-        required: false
-        type: boolean
-        default: false
+
 jobs:
   build-kernel:
     runs-on: ubuntu-latest
@@ -26,84 +10,40 @@ jobs:
       fail-fast: false
       matrix:
         variant: [normal, ksu, ksu_pro-max]
+
     name: 编译内核 (${{ matrix.variant }})
     steps:
-    - name: 1.1 自动爬取 AOSP 页面获取最新 Clang 版本
+    - name: 1. 检出云端内核源码
+      uses: actions/checkout@v4
+      with:
+        ref: master
+    - name: 2. 初始化编译环境
       run: |
-        LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
-        if [ -z "$LATEST_VER" ] || [ "$LATEST_VER" = "null" ]; then
-          LATEST_VER="clang-r596125"
-        fi
-        echo "CURRENT_CLANG_VERSION=$LATEST_VER" >> $GITHUB_ENV
-        echo "----------------------------------------"
-        echo " Latest aosp clang: $LATEST_VER"
-        echo "----------------------------------------"
-    - name: 1.2 统计勾选数量 & 编译授权
-      id: check_auth
-      run: |
-        COUNT=0
-        AUTH="false"
-        VARIANT="${{ matrix.variant }}"
-        
-        if [ "${{ github.event.inputs.build_normal }}" = "true" ]; then COUNT=$((COUNT+1)); fi
-        if [ "${{ github.event.inputs.build_ksu }}" = "true" ]; then COUNT=$((COUNT+1)); fi
-        if [ "${{ github.event.inputs.build_ksu_pro_max }}" = "true" ]; then COUNT=$((COUNT+1)); fi
-        
-        if [ "$VARIANT" = "normal" ] && [ "${{ github.event.inputs.build_normal }}" = "true" ]; then AUTH="true"; fi
-        if [ "$VARIANT" = "ksu" ] && [ "${{ github.event.inputs.build_ksu }}" = "true" ]; then AUTH="true"; fi
-        if [ "$VARIANT" = "ksu_pro-max" ] && [ "${{ github.event.inputs.build_ksu_pro_max }}" = "true" ]; then AUTH="true"; fi
-        if [ "${{ github.event_name }}" = "schedule" ]; then
-          COUNT=0
-          AUTH="false"
-        fi       
-        
-        # 普通命令直观 echo 展示在日志中
-        echo "当前矩阵分支: $VARIANT"
-        echo "全局手动勾选总数: $COUNT 个任务"
-        echo "当前分支授权状态: $AUTH"       
-        
-        # 输出至 outputs，解决 if 条件句无法提前读取 env 的物理限制
-        echo "auth_status=${AUTH}" >> $GITHUB_OUTPUT
-        echo "selected_count=${COUNT}" >> $GITHUB_OUTPUT
-    - name: 1.3 检查/恢复最新版缓存
-      if: github.event_name == 'schedule' || steps.check_auth.outputs.auth_status == 'true' || steps.check_auth.outputs.selected_count == '0'
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+    - name: 2.5 检查/恢复 Clang 缓存
       id: cache-clang
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
-        key: ${{ env.CURRENT_CLANG_VERSION }}-linux-x86
-    - name: 1.4 下载最新编译器（ 缓存未命中 / 版本不匹配 ）
-      if: (github.event_name == 'schedule' || steps.check_auth.outputs.auth_status == 'true' || steps.check_auth.outputs.selected_count == '0') && steps.cache-clang.outputs.cache-hit != 'true'
+        key: clang-r596125-linux-x86   
+    - name: 3. 下载谷歌官方 AOSP Clang 编译器
+      if: steps.cache-clang.outputs.cache-hit != 'true'
       run: |
-        mkdir -p ${{ github.workspace }}/clang
-        cd ${{ github.workspace }}/clang
-        echo "不存在有效缓存或版本已更新，从谷歌源拉取: {{ steps.get_version.outputs.version }}"
-        wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/{{ steps.get_version.outputs.version }}.tar.gz" -O clang.tar.gz
+        mkdir -p $GITHUB_WORKSPACE/clang
+        cd $GITHUB_WORKSPACE/clang
+        wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
         tar -xf clang.tar.gz
-    - name: 1.5 每日定时保活（ 版本未更新 / 缓存命中 ）
-      if: (github.event_name == 'schedule' || steps.check_auth.outputs.auth_status == 'true' || steps.check_auth.outputs.selected_count == '0') && steps.cache-clang.outputs.cache-hit == 'true'
-      run: |
-        echo "缓存版本与网页一致，无需下载。"
         if [ -f "${{ github.workspace }}/clang/bin/clang" ]; then
           ${{ github.workspace }}/clang/bin/clang --version
         fi
-    - name: 1. 检出云端内核源码
-      if: steps.check_auth.outputs.auth_status == 'true'
-      uses: actions/checkout@v4
-      with:
-        ref: master     
-    - name: 2. 初始化编译环境
-      if: steps.check_auth.outputs.auth_status == 'true'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
     - name: 3.5 集成KSU
-      if: steps.check_auth.outputs.auth_status == 'true' && matrix.variant != 'normal'
+      if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash  
     - name: 4. 秘术：超神魔改赋能
-      if: steps.check_auth.outputs.auth_status == 'true' && matrix.variant == 'ksu_pro-max'
+      if: matrix.variant == 'ksu_pro-max'
       run: |
         cd $GITHUB_WORKSPACE
         echo "开始为RE-SUKISU赋能"
@@ -119,7 +59,7 @@ jobs:
           echo "未检测到特定标志，赋能失败！"
         fi
     - name: 4.5 打上若干补丁 + 移除 KSU 配置
-      if: steps.check_auth.outputs.auth_status == 'true' && matrix.variant == 'normal'
+      if: matrix.variant == 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         DEFCONFIG_PATH="arch/arm64/configs/vendor/kona-perf_defconfig"
@@ -132,7 +72,6 @@ jobs:
         echo "关闭本地源码完整性校验"
         git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
     - name: 5. 配置环境&开始编译
-      if: steps.check_auth.outputs.auth_status == 'true'
       run: |
         cd $GITHUB_WORKSPACE
         export KBUILD_BUILD_USER="kleaf"
@@ -150,7 +89,6 @@ jobs:
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
     - name: 5. 上传 Image.gz
-      if: steps.check_auth.outputs.auth_status == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: Munch-Image-${{ matrix.variant }}
