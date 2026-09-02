@@ -236,5 +236,5 @@ jobs:
       if: steps.check_matrix_auth.outputs.auth_status == 'true'
       uses: actions/upload-artifact@v4
       with:
-      name: Munch-Image-${{ matrix.variant }}
-      path: out/arch/arm64/boot/Image.gz
+        name: Munch-Image-${{ matrix.variant }}
+        path: out/arch/arm64/boot/Image.gz
