@@ -25,7 +25,7 @@ jobs:
         CUR_VER=$LATEST_VER
         NEED_DOWNLOAD="false"
         if [ "${{ steps.cache-clang.outputs.cache-hit }}" != 'true' ]; then
-          echo "cache is null ! exec downlaod now"
+          echo "cache is null ! exec download now"
           NEED_DOWNLOAD="true"
         else
           LOCAL_VER=$(${{ github.workspace }}/clang/bin/clang --version | grep -o 'based on r[0-9]*' | grep -o 'r[0-9]*')
@@ -42,7 +42,7 @@ jobs:
           fi
         fi
         if [ "$NEED_DOWNLOAD" = "true" ]; then
-          echo "downloading : $CURRENT_VERSION"
+          echo "downloading : $CUR_VERSION"
           mkdir -p ${{ github.workspace }}/clang
           cd ${{ github.workspace }}/clang
           wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/$CUR_VER.tar.gz" -O clang.tar.gz
