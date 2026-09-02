@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [normal, ksu, ksu_pro-max]
+        variant: [normal, ksu]
     name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
@@ -32,7 +32,7 @@ jobs:
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash  
     - name: 4. 秘术：超神魔改赋能
-      if: matrix.variant == 'ksu_pro-max'
+      if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         echo "开始为RE-SUKISU赋能"
@@ -80,7 +80,7 @@ jobs:
         export LLVM_IAS=1
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
-    - name: 5. 上传 Image.gz
+    - name: 6. 上传 Image.gz
       uses: actions/upload-artifact@v4
       with:
         name: Munch-Image-${{ matrix.variant }}
