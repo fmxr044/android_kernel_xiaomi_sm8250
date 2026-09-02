@@ -11,8 +11,7 @@ jobs:
       id: get_version
       run: |
         LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
-        CUR_VER=$LATEST_VER
-        echo "latest ver: $CUR_VER"
+        echo "latest ver: $LATEST_VER"
     - name: 2. try get clang on cache storage
       id: cache-clang
       uses: actions/cache@v4
@@ -22,17 +21,15 @@ jobs:
     - name: 3. version comparison
       run: |
         LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
-        CUR_VER=$LATEST_VER
         NEED_DOWNLOAD="false"
         if [ "${{ steps.cache-clang.outputs.cache-hit }}" != 'true' ]; then
           echo "cache is null ! exec download now"
           NEED_DOWNLOAD="true"
         else
           LOCAL_VER=$(${{ github.workspace }}/clang/bin/clang --version | grep -o 'based on r[0-9]*' | grep -o 'r[0-9]*')
-          WEB_VER=$(echo "$CUR_VERSION" | grep -o 'r[0-9]*')     
-          echo "local cache ver: r${LOCAL_VER}，latest ver: r${WEB_VER}"
-          
-          if [ "$LOCAL_VER" != "$WEB_VER" ]; then
+          WEB_VER=$(echo "$LATEST_VER" | grep -o 'r[0-9]*')     
+          echo "local cache ver: r${LOCAL_VER}，latest ver: r${LATEST_VER}"
+          if [ "$LOCAL_VER" != "$LATEST_VER" ]; then
             echo "new ver detected"
             rm -rf ${{ github.workspace }}/clang
             NEED_DOWNLOAD="true"
@@ -42,10 +39,10 @@ jobs:
           fi
         fi
         if [ "$NEED_DOWNLOAD" = "true" ]; then
-          echo "downloading : $CUR_VER"
+          echo "downloading : $LATEST_VER"
           mkdir -p ${{ github.workspace }}/clang
           cd ${{ github.workspace }}/clang
-          wget "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/$CUR_VER.tar.gz" -O clang.tar.gz
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/$LATEST_VER.tar.gz -O clang.tar.gz
           tar -xf clang.tar.gz
           echo "upgrade complete"
         fi
