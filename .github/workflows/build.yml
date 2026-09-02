@@ -34,7 +34,7 @@ jobs:
         if [ -z "$LATEST_VER" ] || [ "$LATEST_VER" = "null" ]; then
           LATEST_VER="clang-r596125"
         fi
-        echo "version=${LATEST_VER}" >> $GITHUB_OUTPUT
+        echo "CURRENT_CLANG_VERSION=$LATEST_VER" >> $GITHUB_ENV
         echo "----------------------------------------"
         echo " Latest aosp clang: $LATEST_VER"
         echo "----------------------------------------"
@@ -71,7 +71,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
-        key: ${{ steps.get_version.outputs.version }}-linux-x86
+        key: ${{ env.CURRENT_CLANG_VERSION }}-linux-x86
     - name: 1.4 下载最新编译器（ 缓存未命中 / 版本不匹配 ）
       if: (github.event_name == 'schedule' || steps.check_auth.outputs.auth_status == 'true' || steps.check_auth.outputs.selected_count == '0') && steps.cache-clang.outputs.cache-hit != 'true'
       run: |
