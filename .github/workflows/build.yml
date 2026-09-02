@@ -28,22 +28,16 @@ jobs:
         variant: [normal, ksu, ksu_pro-max]
     name: 编译内核 (${{ matrix.variant }})
     steps:
-    # =============================================================
-    # 【新上半部分】：Clang 动态抓取、下载、比对、保活与多分支流控
-    # =============================================================
     - name: 1.1 自动爬取 AOSP 页面获取最新 Clang 版本
       run: |
         LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
         if [ -z "$LATEST_VER" ] || [ "$LATEST_VER" = "null" ]; then
           LATEST_VER="clang-r596125"
         fi
-        
-        # 统一规范化：直接将抓取结果声明到 outputs，确保接下来的 step 能够无延迟拦截读取
         echo "version=${LATEST_VER}" >> $GITHUB_OUTPUT
         echo "----------------------------------------"
         echo " Latest aosp clang: $LATEST_VER"
         echo "----------------------------------------"
-
     - name: 1.2 统计勾选数量 & 编译授权
       id: check_auth
       run: |
@@ -58,7 +52,6 @@ jobs:
         if [ "$VARIANT" = "normal" ] && [ "${{ github.event.inputs.build_normal }}" = "true" ]; then AUTH="true"; fi
         if [ "$VARIANT" = "ksu" ] && [ "${{ github.event.inputs.build_ksu }}" = "true" ]; then AUTH="true"; fi
         if [ "$VARIANT" = "ksu_pro-max" ] && [ "${{ github.event.inputs.build_ksu_pro_max }}" = "true" ]; then AUTH="true"; fi
-        
         if [ "${{ github.event_name }}" = "schedule" ]; then
           COUNT=0
           AUTH="false"
@@ -84,8 +77,8 @@ jobs:
       run: |
         mkdir -p ${{ github.workspace }}/clang
         cd ${{ github.workspace }}/clang
-        echo "不存在有效缓存或版本已更新，从谷歌源拉取: ${{ steps.get_version.outputs.version }}"
-        wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/${CURRENT_CLANG_VERSION}.tar.gz" -O clang.tar.gz
+        echo "不存在有效缓存或版本已更新，从谷歌源拉取: {{ steps.get_version.outputs.version }}"
+        wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/{{ steps.get_version.outputs.version }}.tar.gz" -O clang.tar.gz
         tar -xf clang.tar.gz
     - name: 1.5 每日定时保活（ 版本未更新 / 缓存命中 ）
       if: (github.event_name == 'schedule' || steps.check_auth.outputs.auth_status == 'true' || steps.check_auth.outputs.selected_count == '0') && steps.cache-clang.outputs.cache-hit == 'true'
