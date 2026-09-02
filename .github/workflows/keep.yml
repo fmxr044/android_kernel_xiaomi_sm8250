@@ -21,6 +21,8 @@ jobs:
         key: aosp-clang-linux-x86
     - name: 3. version comparison
       run: |
+        LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
+        CUR_VER=$LATEST_VER
         NEED_DOWNLOAD="false"
         if [ "${{ steps.cache-clang.outputs.cache-hit }}" != 'true' ]; then
           echo "cache is null ! exec downlaod now"
