@@ -42,7 +42,7 @@ jobs:
           fi
         fi
         if [ "$NEED_DOWNLOAD" = "true" ]; then
-          echo "downloading : $CUR_VERSION"
+          echo "downloading : $CUR_VER"
           mkdir -p ${{ github.workspace }}/clang
           cd ${{ github.workspace }}/clang
           wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/$CUR_VER.tar.gz" -O clang.tar.gz
