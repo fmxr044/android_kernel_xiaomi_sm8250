@@ -34,9 +34,6 @@ jobs:
         cd $GITHUB_WORKSPACE/clang
         wget -nv https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz -O clang.tar.gz
         tar -xf clang.tar.gz
-        if [ -f "${{ github.workspace }}/clang/bin/clang" ]; then
-          ${{ github.workspace }}/clang/bin/clang --version
-        fi
     - name: 3.5 集成KSU
       if: matrix.variant != 'normal'
       run: |
@@ -74,6 +71,9 @@ jobs:
     - name: 5. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
+        if [ -f "${{ github.workspace }}/clang/bin/clang" ]; then
+          ${{ github.workspace }}/clang/bin/clang --version
+        fi
         export KBUILD_BUILD_USER="kleaf"
         export KBUILD_BUILD_HOST="build-host"
         export LOCALVERSION=""
