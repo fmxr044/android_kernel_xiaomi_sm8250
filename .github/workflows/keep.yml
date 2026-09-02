@@ -48,7 +48,7 @@ jobs:
           mkdir -p ${{ github.workspace }}/clang
           cd ${{ github.workspace }}/clang
           echo "正在下载新版本: $CURRENT_VERSION"
-          wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/{{ steps.get_version.outputs.version }}.tar.gz" -O clang.tar.gz
+          wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/${{ steps.get_version.outputs.version }}.tar.gz" -O clang.tar.gz
           tar -xf clang.tar.gz
           chmod -R +x ${{ github.workspace }}/clang/bin/
           echo "更新完成。"
