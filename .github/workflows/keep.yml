@@ -1,55 +1,51 @@
-name: Clang Auto-Update & KeepAlive Bot
-
+name: clang update & cache KeepAlive
 on:
   schedule:
-    # 每天北京时间早上 08:00 自动触发检查与保活
     - cron: '0 0 * * *'
   workflow_dispatch:
-    # 允许你随时手动点击按钮提前刷新一次
 jobs:
   refresh-cache:
     runs-on: ubuntu-latest
     steps:
-    - name: 1. 抓取谷歌 AOSP 页面获取最新 Clang 版本号
+    - name: 1. get latest clang ver
       id: get_version
       run: |
         LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
         echo "CURRENT_VERSION=$LATEST_VER" >> $GITHUB_ENV
-        echo "当前网页最新的编译器版本为: $LATEST_VER"
-        echo "CURRENT_CLANG_VERSION=$LATEST_VER" >> $GITHUB_ENV
-    - name: 2. 尝试提取 Clang 缓存
+        echo "latest ver: $LATEST_VER"
+    - name: 2. try get clang on cache storage
       id: cache-clang
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
         key: aosp-clang-latest-linux-x86
-    - name: 3. 版本深度比对（仅在缓存内版本过旧或缓存不存在时，下载并强制覆盖）
+    - name: 3. version comparison
       run: |
         NEED_DOWNLOAD="false"
         if [ "${{ steps.cache-clang.outputs.cache-hit }}" != 'true' ]; then
-          echo "云端无任何缓存，需要执行初次下载。"
+          echo "cache is null ! exec downlaod now"
           NEED_DOWNLOAD="true"
         else
           chmod -R +x ${{ github.workspace }}/clang/bin/ || true
           LOCAL_VER=$(${{ github.workspace }}/clang/bin/clang --version | grep -o 'based on r[0-9]*' | grep -o 'r[0-9]*')
           WEB_VER=$(echo "$CURRENT_VERSION" | grep -o 'r[0-9]*')     
-          echo "本地缓存版本: r${LOCAL_VER}，网页最新版本: r${WEB_VER}"
+          echo "local cache ver: r${LOCAL_VER}，latest ver: r${WEB_VER}"
           
           if [ "$LOCAL_VER" != "$WEB_VER" ]; then
-            echo "⚠️ 检测到新版本，执行覆盖。"
+            echo "new ver detected"
             rm -rf ${{ github.workspace }}/clang
             NEED_DOWNLOAD="true"
           else
-            echo "版本与网页一致。无操作。"
+            echo "already up-to-date no actions"
             ${{ github.workspace }}/clang/bin/clang --version
           fi
         fi
         if [ "$NEED_DOWNLOAD" = "true" ]; then
           mkdir -p ${{ github.workspace }}/clang
           cd ${{ github.workspace }}/clang
-          echo "正在下载新版本: $CURRENT_VERSION"
+          echo "downloading : $CURRENT_VERSION"
           wget -nv "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/${{ steps.get_version.outputs.version }}.tar.gz" -O clang.tar.gz
           tar -xf clang.tar.gz
           chmod -R +x ${{ github.workspace }}/clang/bin/
-          echo "更新完成。"
+          echo "upgrade complete"
         fi
