@@ -203,45 +203,24 @@ void apply_kernelsu_rules()
     //feimengxinren
     ksu_type(db, KERNEL_SU_DOMAIN, "domain");
     ksu_type(db, KERNEL_SU_FILE, "file_type");
-    ksu_type(db, "init", "domain");
-    ksu_type(db, "kernel", "domain");
-    ksu_type(db, "toolbox", "domain");
-    ksu_type(db, "adb_data_file", "file_type");
-    ksu_type(db, "adbd", "domain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "netdomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "bluetoothdomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
-    ksu_typeattribute(db, "init", "mlstrustedsubject");
     ksu_typeattribute(db, "kernel", "mlstrustedsubject");
-    ksu_typeattribute(db, "toolbox", "mlstrustedsubject");
-    ksu_typeattribute(db, "adb_data_file", "mlstrustedobject");
-    ksu_typeattribute(db, "adbd", "mlstrustedsubject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, KERNEL_SU_FILE);
-    ksu_permissive(db, "init");
     ksu_permissive(db, "kernel");
-    ksu_permissive(db, "toolbox");
-    ksu_permissive(db, "adbd");
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
-    ksu_allow(db, ALL, "init", ALL, ALL);
-    ksu_allow(db, "init", ALL, ALL, ALL);
     ksu_allow(db, ALL, "kernel", ALL, ALL);
     ksu_allow(db, "kernel", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "toolbox", ALL, ALL);
-    ksu_allow(db, "toolbox", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "adbd", ALL, ALL);
-    ksu_allow(db, "adbd", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
-        ksu_allowxperm(db, "init", ALL, ALL, ALL);
-        ksu_allowxperm(db, "toolbox", ALL, ALL, ALL);
-        ksu_allowxperm(db, "adbd", ALL, ALL, ALL);
     }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
