@@ -238,17 +238,9 @@ void apply_kernelsu_rules()
     ksu_deny(db, "app_zygote", "selinuxfs", "dir", "open");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "read");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "open");
-    ksu_deny(db, "app_zygote", KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_dontaudit(db, "app_zygote", KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_deny(db, "app_zygote", KERNEL_SU_FILE, ALL, ALL);
-    ksu_dontaudit(db, "app_zygote", KERNEL_SU_FILE, ALL, ALL);
     //针对 app_zygote 策略
     //
     //针对 普通app 策略
-    ksu_deny(db, "untrusted_app_all", KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_dontaudit(db, "untrusted_app_all", KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_deny(db, "untrusted_app_all", KERNEL_SU_FILE, ALL, ALL);
-    ksu_dontaudit(db, "untrusted_app_all", KERNEL_SU_FILE, ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "read");
     ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "open");
     ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "read");
