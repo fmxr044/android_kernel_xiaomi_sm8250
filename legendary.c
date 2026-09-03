@@ -245,6 +245,10 @@ void apply_kernelsu_rules()
     ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "open");
     ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "read");
     ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "open");
+    ksu_deny(db, "untrusted_app_all", "selinuxfs", "dir", "read");
+    ksu_deny(db, "untrusted_app_all", "selinuxfs", "dir", "open");
+    ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "dir", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "dir", "open");
     //针对 普通app 策略
     //除了这些您还可以使用其他函数自定规则
     //如果需要同时允许或拒绝多个操作请一个个列出，因为传参不支持同时有多个
