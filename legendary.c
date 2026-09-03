@@ -27,7 +27,6 @@ extern int avc_ss_reset(u32 seqno);
 #else
 extern int avc_ss_reset(struct selinux_avc *avc, u32 seqno);
 #endif
-// reset avc cache table, otherwise the new rules will not take effect if already denied
 static void reset_avc_cache()
 {
 #if ((!defined(KSU_COMPAT_USE_SELINUX_STATE)) || LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))
@@ -46,7 +45,6 @@ static void reset_avc_cache()
 static struct policydb *get_policydb(void)
 {
     struct policydb *db;
-// selinux_state does not exists before 4.19
 #ifdef KSU_COMPAT_USE_SELINUX_STATE
 #ifdef SELINUX_POLICY_INSTEAD_SELINUX_SS
 #error It should not happen!
@@ -208,26 +206,60 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
     ksu_typeattribute(db, "kernel", "mlstrustedsubject");
+    ksu_typeattribute(db, "toolbox", "mlstrustedsubject");
     ksu_typeattribute(db, "su", "mlstrustedsubject");
+    ksu_typeattribute(db, "zygote", "mlstrustedsubject");
+    ksu_typeattribute(db, "system_server", "mlstrustedsubject");
+    ksu_typeattribute(db, "system_app", "mlstrustedsubject");
+    ksu_typeattribute(db, "system_suspend", "mlstrustedsubject");
+    ksu_typeattribute(db, "platform_app", "mlstrustedsubject");
+    ksu_typeattribute(db, "priv_app", "mlstrustedsubject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, KERNEL_SU_FILE);
     ksu_permissive(db, "kernel");
+    ksu_permissive(db, "toolbox");
     ksu_permissive(db, "su");
+    ksu_permissive(db, "zygote");
+    ksu_permissive(db, "system_server");
+    ksu_permissive(db, "system_app");
+    ksu_permissive(db, "system_suspend");
+    ksu_permissive(db, "platform_app");
+    ksu_permissive(db, "priv_app");
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
     ksu_allow(db, ALL, "kernel", ALL, ALL);
     ksu_allow(db, "kernel", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "toolbox", ALL, ALL);
+    ksu_allow(db, "toolbox", ALL, ALL, ALL);
     ksu_allow(db, ALL, "su", ALL, ALL);
     ksu_allow(db, "su", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "zygote", ALL, ALL);
+    ksu_allow(db, "zygote", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "system_server", ALL, ALL);
+    ksu_allow(db, "system_server", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "system_app", ALL, ALL);
+    ksu_allow(db, "system_app", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "system_suspend", ALL, ALL);
+    ksu_allow(db, "system_suspend", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "platform_app", ALL, ALL);
+    ksu_allow(db, "platform_app", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "priv_app", ALL, ALL);
+    ksu_allow(db, "priv_app", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
+        ksu_allowxperm(db, "toolbox", ALL, ALL, ALL);
         ksu_allowxperm(db, "su", ALL, ALL, ALL);
+        ksu_allowxperm(db, "zygote", ALL, ALL, ALL);
+        ksu_allowxperm(db, "system_server", ALL, ALL, ALL);
+        ksu_allowxperm(db, "system_app", ALL, ALL, ALL);
+        ksu_allowxperm(db, "system_suspend", ALL, ALL, ALL);
+        ksu_allowxperm(db, "platform_app", ALL, ALL, ALL);
+        ksu_allowxperm(db, "priv_app", ALL, ALL, ALL);
     }
-    //针对 app_zygote 策略
     ksu_deny(db, "app_zygote", "selinuxfs", "file", "read");
     ksu_deny(db, "app_zygote", "selinuxfs", "file", "write");
     ksu_deny(db, "app_zygote", "selinuxfs", "file", "open");
@@ -238,9 +270,6 @@ void apply_kernelsu_rules()
     ksu_deny(db, "app_zygote", "selinuxfs", "dir", "open");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "read");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "open");
-    //针对 app_zygote 策略
-    //
-    //针对 普通app 策略
     ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "read");
     ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "open");
     ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "read");
@@ -249,7 +278,14 @@ void apply_kernelsu_rules()
     ksu_deny(db, "untrusted_app_all", "selinuxfs", "dir", "open");
     ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "dir", "read");
     ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "dir", "open");
-    //针对 普通app 策略
+    ksu_deny(db, "isolated_app", "selinuxfs", "file", "read");
+    ksu_deny(db, "isolated_app", "selinuxfs", "file", "open");
+    ksu_dontaudit(db, "isolated_app", "selinuxfs", "file", "read");
+    ksu_dontaudit(db, "isolated_app", "selinuxfs", "file", "open");
+    ksu_deny(db, "isolated_app", "selinuxfs", "dir", "read");
+    ksu_deny(db, "isolated_app", "selinuxfs", "dir", "open");
+    ksu_dontaudit(db, "isolated_app", "selinuxfs", "dir", "read");
+    ksu_dontaudit(db, "isolated_app", "selinuxfs", "dir", "open");
     //除了这些您还可以使用其他函数自定规则
     //如果需要同时允许或拒绝多个操作请一个个列出，因为传参不支持同时有多个
     //不被允许的调用ksu_deny(db, "目标", "目标", "类型", "操作A 操作B 操作C 操作D");
@@ -276,7 +312,6 @@ void apply_kernelsu_rules()
     //bool ksu_type_member(struct policydb *db, const char *src, const char *tgt, const char *cls, const char *def);
     // File system labeling
     //bool ksu_genfscon(struct policydb *db, const char *fs_name, const char *path, const char *ctx);
-    
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
     synchronize_rcu();
