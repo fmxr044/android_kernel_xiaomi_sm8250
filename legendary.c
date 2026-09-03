@@ -227,41 +227,72 @@ void apply_kernelsu_rules()
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
         ksu_allowxperm(db, "su", ALL, ALL, ALL);
     }
-    //防御
+    //针对 app_zygote 策略
     ksu_deny(db, "app_zygote", "selinuxfs", "file", "read");
     ksu_deny(db, "app_zygote", "selinuxfs", "file", "write");
     ksu_deny(db, "app_zygote", "selinuxfs", "file", "open");
-    //ksu_deny(db, "app_zygote", "selinuxfs", "file", "map");
-    //ksu_deny(db, "app_zygote", "selinuxfs", "file", "watch");
-    //ksu_deny(db, "app_zygote", "selinuxfs", "file", "watch_reads");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "file", "read");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "file", "write");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "file", "open");
-    //ksu_dontaudit(db, "app_zygote", "selinuxfs", "file", "map");
-    //ksu_dontaudit(db, "app_zygote", "selinuxfs", "file", "watch");
-    //ksu_dontaudit(db, "app_zygote", "selinuxfs", "file", "watch_reads");
     ksu_deny(db, "app_zygote", "selinuxfs", "dir", "read");
     ksu_deny(db, "app_zygote", "selinuxfs", "dir", "open");
-    //ksu_deny(db, "app_zygote", "selinuxfs", "dir", "watch");
-    //ksu_deny(db, "app_zygote", "selinuxfs", "dir", "watch_reads");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "read");
     ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "open");
-    //ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "watch");
-    //ksu_dontaudit(db, "app_zygote", "selinuxfs", "dir", "watch_reads");
-    ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "read");
-    ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "open");
-    ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "read");
-    ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "open");
+    ksu_deny(db, "app_zygote", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_dontaudit(db, "app_zygote", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_deny(db, "app_zygote", KERNEL_SU_FILE, ALL, ALL);
+    ksu_dontaudit(db, "app_zygote", KERNEL_SU_FILE, ALL, ALL);
+    //针对 app_zygote 策略
+    //
+    //针对 webview即isolated_app 策略
     ksu_deny(db, "isolated_app", "selinuxfs", "file", "read");
     ksu_deny(db, "isolated_app", "selinuxfs", "file", "open");
     ksu_dontaudit(db, "isolated_app", "selinuxfs", "file", "read");
     ksu_dontaudit(db, "isolated_app", "selinuxfs", "file", "open");
-
-
-
-
-    
-    
+    ksu_deny(db, "isolated_app", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_dontaudit(db, "isolated_app", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_deny(db, "isolated_app", KERNEL_SU_FILE, ALL, ALL);
+    ksu_dontaudit(db, "isolated_app", KERNEL_SU_FILE, ALL, ALL);
+    //针对 webview即isolated_app 策略
+    //
+    //针对 普通app 策略
+    ksu_deny(db, "untrusted_app_all", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_dontaudit(db, "untrusted_app_all", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_deny(db, "untrusted_app_all", KERNEL_SU_FILE, ALL, ALL);
+    ksu_dontaudit(db, "untrusted_app_all", KERNEL_SU_FILE, ALL, ALL);
+    ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "read");
+    ksu_deny(db, "untrusted_app_all", "selinuxfs", "file", "open");
+    ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", "file", "open");
+    ksu_deny(db, "untrusted_app_all", "proc_net_tcp_udp", "file", "read");
+    ksu_deny(db, "untrusted_app_all", "proc_net_tcp_udp", "file", "open");
+    ksu_dontaudit(db, "untrusted_app_all", "proc_net_tcp_udp", "file", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "proc_net_tcp_udp", "file", "open");
+    ksu_deny(db, "untrusted_app_all", "proc_asound", "dir", "search");
+    ksu_deny(db, "untrusted_app_all", "proc_asound", "dir", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "proc_asound", "dir", "search");
+    ksu_dontaudit(db, "untrusted_app_all", "proc_asound", "dir", "read");
+    ksu_deny(db, "untrusted_app_all", "qemu_sf_lcd_density_prop", "file", "read");
+    ksu_deny(db, "untrusted_app_all", "qemu_sf_lcd_density_prop", "file", "open");
+    ksu_dontaudit(db, "untrusted_app_all", "qemu_sf_lcd_density_prop", "file", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "qemu_sf_lcd_density_prop", "file", "open");
+    ksu_deny(db, "untrusted_app_all", "proc_pid_max", "file", "read");
+    ksu_deny(db, "untrusted_app_all", "proc_pid_max", "file", "open");
+    ksu_dontaudit(db, "untrusted_app_all", "proc_pid_max", "file", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "proc_pid_max", "file", "open");
+    ksu_deny(db, "untrusted_app_all", "untrusted_app_userfaultfd", "anon_inode", "read");
+    ksu_deny(db, "untrusted_app_all", "untrusted_app_25_userfaultfd", "anon_inode", "read");
+    ksu_deny(db, "untrusted_app_all", "untrusted_app_27_userfaultfd", "anon_inode", "read");
+    ksu_deny(db, "untrusted_app_all", "untrusted_app_29_userfaultfd", "anon_inode", "read");
+    ksu_deny(db, "untrusted_app_all", "untrusted_app_30_userfaultfd", "anon_inode", "read");
+    ksu_deny(db, "untrusted_app_all", "untrusted_app_32_userfaultfd", "anon_inode", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "untrusted_app_userfaultfd", "anon_inode", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "untrusted_app_25_userfaultfd", "anon_inode", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "untrusted_app_27_userfaultfd", "anon_inode", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "untrusted_app_29_userfaultfd", "anon_inode", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "untrusted_app_30_userfaultfd", "anon_inode", "read");
+    ksu_dontaudit(db, "untrusted_app_all", "untrusted_app_32_userfaultfd", "anon_inode", "read");
+    //针对 普通app 策略
     //除了这些您还可以使用其他函数自定规则
     //如果需要同时允许或拒绝多个操作请一个个列出，因为传参不支持同时有多个
     //不被允许的调用ksu_deny(db, "目标", "目标", "类型", "操作A 操作B 操作C 操作D");
