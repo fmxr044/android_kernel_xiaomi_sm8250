@@ -4544,32 +4544,32 @@ static int smblib_update_thermal_readings(struct smb_charger *chg)
 
 /* SW thermal regulation thresholds in deciDegC */
 #define DIE_TEMP_RST_THRESH		1000
-#define DIE_TEMP_REG_H_THRESH		800
-#define DIE_TEMP_REG_L_THRESH		600
+#define DIE_TEMP_REG_H_THRESH		850
+#define DIE_TEMP_REG_L_THRESH		850
 
-#define CONNECTOR_TEMP_SHDN_THRESH	700
-#define CONNECTOR_TEMP_RST_THRESH	600
-#define CONNECTOR_TEMP_REG_H_THRESH	550
-#define CONNECTOR_TEMP_REG_L_THRESH	500
+#define CONNECTOR_TEMP_SHDN_THRESH	850
+#define CONNECTOR_TEMP_RST_THRESH	850
+#define CONNECTOR_TEMP_REG_H_THRESH	850
+#define CONNECTOR_TEMP_REG_L_THRESH	850
 
 #define SMB_TEMP_SHDN_THRESH		1400
 #define SMB_TEMP_RST_THRESH		900
-#define SMB_TEMP_REG_H_THRESH		800
-#define SMB_TEMP_REG_L_THRESH		600
+#define SMB_TEMP_REG_H_THRESH		850
+#define SMB_TEMP_REG_L_THRESH		850
 
-#define SKIN_TEMP_SHDN_THRESH		700
-#define SKIN_TEMP_RST_THRESH		600
-#define SKIN_TEMP_REG_H_THRESH		550
-#define SKIN_TEMP_REG_L_THRESH		500
+#define SKIN_TEMP_SHDN_THRESH		850
+#define SKIN_TEMP_RST_THRESH		850
+#define SKIN_TEMP_REG_H_THRESH		850
+#define SKIN_TEMP_REG_L_THRESH		850
 
 #define THERM_REG_RECHECK_DELAY_1S	1000	/* 1 sec */
 #define THERM_REG_RECHECK_DELAY_8S	8000	/* 8 sec */
 #define THERM_REG_RECHECK_DELAY_200MS	200	/* 200 msec */
 #define THERM_REG_RECHECK_DELAY_5S	5000	/* 5 sec */
 #define THERM_REG_RECHECK_DELAY_10S	10000	/* 10 sec */
-#define CONNECTOR_THERM_ABOVE		200	/* 20 Dec */
-#define CONNECTOR_THERM_HIG			500	/* 50 Dec */
-#define CONNECTOR_THERM_TOO_HIG		700	/* 70 Dec */
+#define CONNECTOR_THERM_ABOVE		100	/* 20 Dec */
+#define CONNECTOR_THERM_HIG			850	/* 50 Dec */
+#define CONNECTOR_THERM_TOO_HIG		850	/* 70 Dec */
 
 int smblib_set_vbus_disable(struct smb_charger *chg,
 					bool disable)
