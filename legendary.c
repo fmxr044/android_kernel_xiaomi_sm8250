@@ -211,10 +211,13 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, "toolbox", "mlstrustedsubject");
     ksu_typeattribute(db, "su", "mlstrustedsubject");
     ksu_typeattribute(db, "zygote", "mlstrustedsubject");
+    ksu_typeattribute(db, "adbd", "mlstrustedsubject");
     ksu_typeattribute(db, "system_server", "mlstrustedsubject");
     ksu_typeattribute(db, "system_app", "mlstrustedsubject");
     ksu_typeattribute(db, "platform_app", "mlstrustedsubject");
     ksu_typeattribute(db, "priv_app", "mlstrustedsubject");
+    ksu_typeattribute(db, "gmscore_app", "mlstrustedsubject");
+    ksu_typeattribute(db, "gpuservice", "mlstrustedsubject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, KERNEL_SU_FILE);
     ksu_permissive(db, "init");
@@ -222,10 +225,13 @@ void apply_kernelsu_rules()
     ksu_permissive(db, "toolbox");
     ksu_permissive(db, "su");
     ksu_permissive(db, "zygote");
+    ksu_permissive(db, "adbd");
     ksu_permissive(db, "system_server");
     ksu_permissive(db, "system_app");
     ksu_permissive(db, "platform_app");
     ksu_permissive(db, "priv_app");
+    ksu_permissive(db, "gmscore_app");
+    ksu_permissive(db, "gpuservice");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
@@ -241,6 +247,8 @@ void apply_kernelsu_rules()
     ksu_allow(db, ALL, "su", ALL, ALL);
     ksu_allow(db, "zygote", ALL, ALL, ALL);
     ksu_allow(db, ALL, "zygote", ALL, ALL);
+    ksu_allow(db, "adbd", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "adbd", ALL, ALL);
     ksu_allow(db, "system_server", ALL, ALL, ALL);
     ksu_allow(db, ALL, "system_server", ALL, ALL);
     ksu_allow(db, "system_app", ALL, ALL, ALL);
@@ -249,6 +257,10 @@ void apply_kernelsu_rules()
     ksu_allow(db, ALL, "platform_app", ALL, ALL);
     ksu_allow(db, "priv_app", ALL, ALL, ALL);
     ksu_allow(db, ALL, "priv_app", ALL, ALL);
+    ksu_allow(db, "gmscore_app", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "gmscore_app", ALL, ALL);
+    ksu_allow(db, "gpuservice", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "gpuservice", ALL, ALL);
     ksu_dontaudit(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_dontaudit(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_dontaudit(db, KERNEL_SU_FILE, ALL, ALL, ALL);
@@ -264,6 +276,8 @@ void apply_kernelsu_rules()
     ksu_dontaudit(db, ALL, "su", ALL, ALL);
     ksu_dontaudit(db, "zygote", ALL, ALL, ALL);
     ksu_dontaudit(db, ALL, "zygote", ALL, ALL);
+    ksu_dontaudit(db, "adbd", ALL, ALL, ALL);
+    ksu_dontaudit(db, ALL, "adbd", ALL, ALL);
     ksu_dontaudit(db, "system_server", ALL, ALL, ALL);
     ksu_dontaudit(db, ALL, "system_server", ALL, ALL);
     ksu_dontaudit(db, "system_app", ALL, ALL, ALL);
@@ -272,6 +286,10 @@ void apply_kernelsu_rules()
     ksu_dontaudit(db, ALL, "platform_app", ALL, ALL);
     ksu_dontaudit(db, "priv_app", ALL, ALL, ALL);
     ksu_dontaudit(db, ALL, "priv_app", ALL, ALL);
+    ksu_dontaudit(db, "gmscore_app", ALL, ALL, ALL);
+    ksu_dontaudit(db, ALL, "gmscore_app", ALL, ALL);
+    ksu_dontaudit(db, "gpuservice", ALL, ALL, ALL);
+    ksu_dontaudit(db, ALL, "gpuservice", ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_allowxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
@@ -280,10 +298,13 @@ void apply_kernelsu_rules()
         ksu_allowxperm(db, "toolbox", ALL, ALL, ALL);
         ksu_allowxperm(db, "su", ALL, ALL, ALL);
         ksu_allowxperm(db, "zygote", ALL, ALL, ALL);
+        ksu_allowxperm(db, "adbd", ALL, ALL, ALL);
         ksu_allowxperm(db, "system_server", ALL, ALL, ALL);
         ksu_allowxperm(db, "system_app", ALL, ALL, ALL);
         ksu_allowxperm(db, "platform_app", ALL, ALL, ALL);
         ksu_allowxperm(db, "priv_app", ALL, ALL, ALL);
+        ksu_allowxperm(db, "gmscore_app", ALL, ALL, ALL);
+        ksu_allowxperm(db, "gpuservice", ALL, ALL, ALL);
         ksu_dontauditxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_dontauditxperm(db, KERNEL_SU_FILE, ALL, ALL, ALL);
         ksu_dontauditxperm(db, "init", ALL, ALL, ALL);
@@ -291,10 +312,13 @@ void apply_kernelsu_rules()
         ksu_dontauditxperm(db, "toolbox", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "su", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "zygote", ALL, ALL, ALL);
+        ksu_dontauditxperm(db, "adbd", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "system_server", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "system_app", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "platform_app", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "priv_app", ALL, ALL, ALL);
+        ksu_dontauditxperm(db, "gmscore_app", ALL, ALL, ALL);
+        ksu_dontauditxperm(db, "gpuservice", ALL, ALL, ALL);
     }
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
     ksu_dontaudit(db, "app_zygote", "selinuxfs", ALL, ALL);
