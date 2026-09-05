@@ -213,7 +213,6 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, "zygote", "mlstrustedsubject");
     ksu_typeattribute(db, "system_server", "mlstrustedsubject");
     ksu_typeattribute(db, "system_app", "mlstrustedsubject");
-    ksu_typeattribute(db, "system_suspend", "mlstrustedsubject");
     ksu_typeattribute(db, "platform_app", "mlstrustedsubject");
     ksu_typeattribute(db, "priv_app", "mlstrustedsubject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
@@ -225,7 +224,6 @@ void apply_kernelsu_rules()
     ksu_permissive(db, "zygote");
     ksu_permissive(db, "system_server");
     ksu_permissive(db, "system_app");
-    ksu_permissive(db, "system_suspend");
     ksu_permissive(db, "platform_app");
     ksu_permissive(db, "priv_app");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
@@ -295,7 +293,6 @@ void apply_kernelsu_rules()
         ksu_dontauditxperm(db, "zygote", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "system_server", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "system_app", ALL, ALL, ALL);
-        ksu_dontauditxperm(db, "system_suspend", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "platform_app", ALL, ALL, ALL);
         ksu_dontauditxperm(db, "priv_app", ALL, ALL, ALL);
     }
