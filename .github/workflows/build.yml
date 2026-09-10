@@ -35,7 +35,7 @@ jobs:
       if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
-        git -apply susfs_patch_to_4.19.patch
+        git apply susfs_patch_to_4.19.patch
     - name: 5. 秘术：超神魔改赋能
       if: matrix.variant != 'normal'
       run: |
