@@ -32,7 +32,7 @@ jobs:
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
     - name: 4.5 应用SUSFS更改
-      if: matrix.variant != 'normal'
+      if: matrix.variant != 'ksu_susfs'
       run: |
         cd $GITHUB_WORKSPACE
         git apply --3way susfs_patch_to_4.19.patch || true 
