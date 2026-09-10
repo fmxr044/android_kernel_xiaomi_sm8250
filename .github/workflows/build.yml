@@ -31,23 +31,6 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
-    - name: 4.5 应用SUSFS更改
-      if: matrix.variant != 'ksu_susfs'
-      run: |
-        cd $GITHUB_WORKSPACE
-        git apply --3way susfs_patch_to_4.19.patch || true 
-        if git status --porcelain | grep -q 'M '; then
-          echo "Git 自动合并成功或部分成功！"
-        else
-          echo "Git 无法完美匹配，正在切换到模糊补丁模式..."
-          patch -p1 --fuzz=3 --ignore-whitespace -N < susfs_patch_to_4.19.patch
-        fi
-        if [ -f fs/Makefile.rej ] || [ -f fs/namespace.c.rej ] || [ -f fs/proc/task_mmu.c.rej ] || [ -f mm/memory.c.rej ]; then
-          echo "❌ 致命错误：部分关键位置冲突过大，模糊匹配也失败了！"
-          echo "请检查以下文件的拒绝块（.rej）："
-          find . -name "*.rej"
-          exit 1
-        fi
     - name: 5. 秘术：超神魔改赋能
       if: matrix.variant != 'normal'
       run: |
