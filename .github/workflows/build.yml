@@ -35,26 +35,18 @@ jobs:
       if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
-    
-    # 1. 尝试使用三方合并（3-way merge），如果只是行号偏移，Git 会自动修复制服
-        git apply --3way susfs_patch_to_4.19.patch || true
-    
-    # 2. 如果依然有文件冲突，改用专业的 patch 工具进行“模糊匹配”
-    # --fuzz=3 允许匹配行上下浮动3行，--ignore-whitespace 忽略空格和Tab带来的冲突
-    # -N 确保如果已经应用过，不会重复应用
+        git apply --3way susfs_patch_to_4.19.patch || true 
         if git status --porcelain | grep -q 'M '; then
-        echo "Git 自动合并成功或部分成功！"
+          echo "Git 自动合并成功或部分成功！"
         else
-        echo "Git 无法完美匹配，正在切换到模糊补丁模式..."
-        patch -p1 --fuzz=3 --ignore-whitespace -N < susfs_patch_to_4.19.patch
+          echo "Git 无法完美匹配，正在切换到模糊补丁模式..."
+          patch -p1 --fuzz=3 --ignore-whitespace -N < susfs_patch_to_4.19.patch
         fi
-
-    # 3. 检查是否有彻底无法合入的冲突文件（生成了 .rej 文件）
         if [ -f fs/Makefile.rej ] || [ -f fs/namespace.c.rej ] || [ -f fs/proc/task_mmu.c.rej ] || [ -f mm/memory.c.rej ]; then
-        echo "❌ 致命错误：部分关键位置冲突过大，模糊匹配也失败了！"
-        echo "请检查以下文件的拒绝块（.rej）："
-        find . -name "*.rej"
-        exit 1
+          echo "❌ 致命错误：部分关键位置冲突过大，模糊匹配也失败了！"
+          echo "请检查以下文件的拒绝块（.rej）："
+          find . -name "*.rej"
+          exit 1
         fi
     - name: 5. 秘术：超神魔改赋能
       if: matrix.variant != 'normal'
