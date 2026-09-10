@@ -59,6 +59,8 @@ jobs:
         echo "移除KSU配置"
         sed -i '/CONFIG_KSU/d' $DEFCONFIG_PATH
         sed -i '/CONFIG_KSU_MANUAL_HOOK/d' $DEFCONFIG_PATH
+        sed -i '/CONFIG_KSU_TOOLKIT_SUPPORT/d' $DEFCONFIG_PATH
+        sed -i '/CONFIG_KSU_SUSFS/d' $DEFCONFIG_PATH
         echo "在Makefile与Kconfig中移除KSU相关代码"
         sed -i '/obj-\$(CONFIG_KSU) += kernelsu\//d' drivers/Makefile
         sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
