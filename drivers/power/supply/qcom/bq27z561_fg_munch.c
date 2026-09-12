@@ -1054,7 +1054,7 @@ static int fg_read_system_soc(struct bq_fg_chip *bq)
 			}
 
 			//bq_dbg(PR_OEM, "avoid jump soc = %d last_soc = %d soc_change = %d state = %d ,delta_time = %d\n",
-									soc,bq->last_soc ,soc_changed,status,change_delta);
+									//soc,bq->last_soc ,soc_changed,status,change_delta);
 
 			if (status == POWER_SUPPLY_STATUS_CHARGING) {
 				if (soc > bq->last_soc) {
@@ -2432,7 +2432,7 @@ static const struct attribute_group fg_attr_group = {
 
 static int fg_dump_registers(struct bq_fg_chip *bq)
 {
-    return
+    return;
 	//int i;
 	//int ret;
 	//u16 val;
@@ -2668,7 +2668,7 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 			optimiz_soc[bq->fg_index] += soc_changed;
 			last_optimiz_time[bq->fg_index] = ktime_get();
 			//bq_dbg(PR_DEBUG, "optimiz_soc:%d, last_optimiz_time%ld\n",
-					optimiz_soc[bq->fg_index], last_optimiz_time[bq->fg_index]);
+					//optimiz_soc[bq->fg_index], last_optimiz_time[bq->fg_index]);
 			if (optimiz_soc[bq->fg_index] > 100)
 				optimiz_soc[bq->fg_index] = 100;
 			bq->ffc_smooth = true;
@@ -2744,7 +2744,7 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 				//unit_time, soc_changed, bq->update_now, bq->ffc_smooth);
 		//bq_dbg(PR_OEM, "raw_soc:%d batt_soc:%d,last_batt_soc:%d,system_soc:%d"
 				//" bq->fast_mode:%d",
-				raw_soc, batt_soc, last_batt_soc[bq->fg_index], system_soc[bq->fg_index], bq->fast_mode);
+				//raw_soc, batt_soc, last_batt_soc[bq->fg_index], system_soc[bq->fg_index], bq->fast_mode);
 	}
 	return system_soc[bq->fg_index];
 }
