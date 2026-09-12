@@ -1343,7 +1343,7 @@ reg[%d-%d-%d-%d-%d],step[%d-%d-%d-%d-%d-%d-%d-%d],pmconfig[%d-%d-%d,%d-%d-%d-%d]
 	return PM_ALGO_RET_OK;
 }
 
-static const unsigned char *pm_str[] = {
+static const unsigned char *pm_str[] __attribute__((unused)) = {
 	"PD_PM_STATE_ENTRY",	   "PD_PM_STATE_FC2_ENTRY",
 	"PD_PM_STATE_FC2_ENTRY_1", "PD_PM_STATE_FC2_ENTRY_2",
 	"PD_PM_STATE_FC2_ENTRY_3", "PD_PM_STATE_FC2_TUNE",
