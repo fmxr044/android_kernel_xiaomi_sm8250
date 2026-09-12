@@ -6,7 +6,7 @@ on:
       compile_variant:
         description: '选择要编译的内核变体 (默认同时编译)'
         required: true
-        default: 'both'
+        default: 'ksu'
         type: choice
         options:
           - both
@@ -14,7 +14,7 @@ on:
           - ksu
 
 jobs:
-  # 动态生成编译矩阵
+  
   matrix-generator:
     runs-on: ubuntu-latest
     outputs:
