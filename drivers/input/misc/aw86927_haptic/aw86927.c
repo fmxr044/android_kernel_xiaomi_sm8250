@@ -1875,7 +1875,7 @@ static void aw86927_calculate_cali_step(struct aw86927 *aw86927)
 {
 	char f0_cali_lra = 0;
 	int f0_cali_step = 0;
-	unsigned char reg_val = 0;
+	unsigned __maybe_unused char reg_val = 0;
 
 	aw_info("%s enter!\n", __func__);
 	f0_cali_step = 100000 * ((int)aw86927->f0 - (int)aw86927->info.f0_pre) /
