@@ -14,11 +14,11 @@ on:
           - ksu
 
 jobs:
-  # 动态计算需要编译的矩阵组合
+  # 动态生成编译矩阵
   matrix-generator:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      variants: ${{ steps.set-matrix.outputs.variants }}
     steps:
       - id: set-matrix
         run: |
@@ -28,14 +28,15 @@ jobs:
           else
             JSON='["'"$CHOICE"'"]'
           fi
-          echo "matrix={\"variant\":$JSON}" >> $GITHUB_OUTPUT
+          echo "variants=$JSON" >> $GITHUB_OUTPUT
 
   build-kernel:
     needs: matrix-generator
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs: matrix-generator.outputs.matrix) }}
+      matrix:
+        variant: ${{ fromJson(needs: matrix-generator.outputs.variants) }}
     name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
