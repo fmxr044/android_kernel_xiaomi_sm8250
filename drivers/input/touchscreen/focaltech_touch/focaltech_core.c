@@ -48,11 +48,11 @@
 #endif
 #include "focaltech_core.h"
 #undef FTS_INFO
-#define FTS_INFO(fmt, ...) do { } while (0)
+#define FTS_INFO(fmt, ...) do {} while (0)
 #undef FTS_DEBUG
-#define FTS_DEBUG(fmt, ...) do { } while (0)
+#define FTS_DEBUG(fmt, ...) do {} while (0)
 #undef FTS_ERROR
-#define FTS_ERROR(fmt, ...) do { } while (0)
+#define FTS_ERROR(fmt, ...) do {} while (0)
 /*****************************************************************************
 * Private constant and macro definitions using #define
 *****************************************************************************/
