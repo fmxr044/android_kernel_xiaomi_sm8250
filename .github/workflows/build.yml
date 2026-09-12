@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: ${{ fromJson(needs: matrix-generator.outputs.variants) }}
+        variant: ${{ fromJson(needs.matrix-generator.outputs.variants) }}
     name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
