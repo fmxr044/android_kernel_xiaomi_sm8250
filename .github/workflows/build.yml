@@ -18,7 +18,7 @@ jobs:
   matrix-generator:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps: set-matrix.outputs.matrix }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - id: set-matrix
         run: |
