@@ -171,12 +171,12 @@ enum bq_fg_device {
 	BQ28Z610,
 };
 
-static const unsigned char *device2str[] = {
-	"bq27z561_master",
-	"bq27z561_slave",
-	"bq27z561",
-	"bq28z610",
-};
+//static const unsigned char *device2str[] = {
+	//"bq27z561_master",
+	//"bq27z561_slave",
+	//"bq27z561",
+	//"bq28z610",
+//};
 
 struct cold_thermal {
 	int index;
