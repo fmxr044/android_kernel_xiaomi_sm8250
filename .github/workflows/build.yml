@@ -112,6 +112,7 @@ jobs:
         export CROSS_COMPILE=aarch64-linux-gnu-
         export LLVM=1 
         export LLVM_IAS=1
+        export KCFLAGS="-Wno-error"
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
         
