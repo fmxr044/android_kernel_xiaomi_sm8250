@@ -6,15 +6,13 @@ on:
       compile_variant:
         description: '选择要编译的内核变体 (默认同时编译)'
         required: true
-        default: 'ksu'
+        default: 'both'
         type: choice
         options:
           - both
           - normal
           - ksu
-
 jobs:
-  
   matrix-generator:
     runs-on: ubuntu-latest
     outputs:
@@ -29,39 +27,34 @@ jobs:
             JSON='["'"$CHOICE"'"]'
           fi
           echo "variants=$JSON" >> $GITHUB_OUTPUT
-
   build-kernel:
     needs: matrix-generator
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        variant: ${{ fromJson(needs.matrix-generator.outputs.variants) }}
+        variant: ${{ fromJson(needs: matrix-generator.outputs.variants) }}
     name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
       uses: actions/checkout@v4
       with:
         ref: master
-        
     - name: 2. 初始化编译环境
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
-        
     - name: 3. 检查/恢复 Clang 缓存
       id: cache-clang
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/clang
         key: aosp-clang-linux-x86
-        
     - name: 4. 集成RE-SUKISU
       if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
-        
     - name: 5. 秘术：超神魔改赋能
       if: matrix.variant != 'normal'
       run: |
@@ -77,7 +70,6 @@ jobs:
         else
           echo "未检测到特定标志，赋能失败！"
         fi
-        
     - name: 6. 打上若干补丁 + 移除 KSU 配置
       if: matrix.variant == 'normal'
       run: |
@@ -93,7 +85,6 @@ jobs:
         sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
         echo "关闭本地源码完整性校验"
         git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
-        
     - name: 7. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
@@ -112,10 +103,8 @@ jobs:
         export CROSS_COMPILE=aarch64-linux-gnu-
         export LLVM=1 
         export LLVM_IAS=1
-        export KCFLAGS="-Wno-error"
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
-        
     - name: 8. 上传 Image.gz
       uses: actions/upload-artifact@v4
       with:
