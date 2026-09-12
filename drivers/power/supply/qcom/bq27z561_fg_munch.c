@@ -293,13 +293,7 @@ struct bq_fg_chip {
 	int fg_index;
 };
 
-#define bq_dbg(reason, fmt, ...)			\
-	do {						\
-		//if (debug_mask & (reason))		\
-			//pr_info(fmt, ##__VA_ARGS__);	\
-		//else					\
-			//pr_debug(fmt, ##__VA_ARGS__);	\
-	} while (0)
+#define bq_dbg(reason, fmt, ...) do {} while (0)
 
 static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *chip,
 		int raw_soc, int soc, int temp, int curr);
