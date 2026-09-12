@@ -332,7 +332,7 @@ static int calc_delta_time(ktime_t time_last, int *delta_time)
 	if (*delta_time < 0)
 		*delta_time = 0;
 
-	bq_dbg(PR_DEBUG,  "now:%ld, last:%ld, delta:%d\n", time_now, time_last, *delta_time);
+	//bq_dbg(PR_DEBUG,  "now:%ld, last:%ld, delta:%d\n", time_now, time_last, *delta_time);
 
 	return 0;
 }
@@ -360,8 +360,8 @@ static int __fg_write_byte(struct i2c_client *client, u8 reg, u8 val)
 
 	ret = i2c_smbus_write_byte_data(client, reg, val);
 	if (ret < 0) {
-		bq_dbg(PR_REGISTER, "i2c write byte fail: can't write 0x%02X to reg 0x%02X\n",
-				val, reg);
+		//bq_dbg(PR_REGISTER, "i2c write byte fail: can't write 0x%02X to reg 0x%02X\n",
+				//val, reg);
 		return ret;
 	}
 
@@ -374,7 +374,7 @@ static int __fg_read_word(struct i2c_client *client, u8 reg, u16 *val)
 
 	ret = i2c_smbus_read_word_data(client, reg);
 	if (ret < 0) {
-		bq_dbg(PR_REGISTER, "i2c read word fail: can't read from reg 0x%02X\n", reg);
+		//bq_dbg(PR_REGISTER, "i2c read word fail: can't read from reg 0x%02X\n", reg);
 		return ret;
 	}
 
@@ -392,7 +392,7 @@ static int __fg_read_block(struct i2c_client *client, u8 reg, u8 *buf, u8 len)
 	for(i = 0; i < len; i++) {
 		ret = i2c_smbus_read_byte_data(client, reg + i);
 		if (ret < 0) {
-			bq_dbg(PR_REGISTER, "i2c read reg 0x%02X faild\n", reg + i);
+			//bq_dbg(PR_REGISTER, "i2c read reg 0x%02X faild\n", reg + i);
 			return ret;
 		}
 		buf[i] = ret;
@@ -411,7 +411,7 @@ static int __fg_write_block(struct i2c_client *client, u8 reg, u8 *buf, u8 len)
 	for(i = 0; i < len; i++) {
 		ret = i2c_smbus_write_byte_data(client, reg + i, buf[i]);
 		if (ret < 0) {
-			bq_dbg(PR_REGISTER, "i2c read reg 0x%02X faild\n", reg + i);
+			//bq_dbg(PR_REGISTER, "i2c read reg 0x%02X faild\n", reg + i);
 			return ret;
 		}
 	}
@@ -517,12 +517,12 @@ static void fg_print_buf(const char *msg, u8 *buf, u8 len)
 	int num;
 	u8 strbuf[128];
 
-	bq_dbg(PR_REGISTER, "%s buf: ", msg);
+	//bq_dbg(PR_REGISTER, "%s buf: ", msg);
 	for (i = 0; i < len; i++) {
 		num = sprintf(&strbuf[idx], "%02X ", buf[i]);
 		idx += num;
 	}
-	bq_dbg(PR_REGISTER, "%s\n", strbuf);
+	//bq_dbg(PR_REGISTER, "%s\n", strbuf);
 }
 
 #if 0
@@ -539,7 +539,7 @@ static int fg_check_init_completed(struct bq_fg_chip *bq)
 			return 0;
 		msleep(100);
 	}
-	bq_dbg(PR_OEM, "wait for FG INITCOMP timeout\n");
+	//bq_dbg(PR_OEM, "wait for FG INITCOMP timeout\n");
 	return ret;
 }
 #endif
@@ -552,7 +552,7 @@ static int fg_get_seal_state(struct bq_fg_chip *bq)
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_CTRL], &status);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "Failed to read control status, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "Failed to read control status, ret = %d\n", ret);
 		return ret;
 	}
 	status &= 0x6000;
@@ -575,7 +575,7 @@ static int fg_unseal_send_key(struct bq_fg_chip *bq, int key)
 	ret = fg_write_word(bq, bq->regs[BQ_FG_REG_ALT_MAC], key & 0xFFFF);
 
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "unable to write unseal key step 1, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "unable to write unseal key step 1, ret = %d\n", ret);
 		return ret;
 	}
 
@@ -583,7 +583,7 @@ static int fg_unseal_send_key(struct bq_fg_chip *bq, int key)
 
 	ret = fg_write_word(bq, bq->regs[BQ_FG_REG_ALT_MAC], (key >> 16) & 0xFFFF);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "unable to write unseal key step 2, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "unable to write unseal key step 2, ret = %d\n", ret);
 		return ret;
 	}
 
@@ -604,7 +604,7 @@ static int fg_unseal(struct bq_fg_chip *bq)
 			ret = fg_get_seal_state(bq);
 			if (bq->seal_state == SEAL_STATE_UNSEALED ||
 			    bq->seal_state == SEAL_STATE_FA) {
-				bq_dbg(PR_OEM, "FG is unsealed");
+				//bq_dbg(PR_OEM, "FG is unsealed");
 				return 0;
 			}
 		}
@@ -624,7 +624,7 @@ static int fg_unseal_full_access(struct bq_fg_chip *bq)
 		while (retry++ < 100) {
 			fg_get_seal_state(bq);
 			if (bq->seal_state == SEAL_STATE_FA) {
-				bq_dbg(PR_OEM, "FG is in full access.");
+				//bq_dbg(PR_OEM, "FG is in full access.");
 				return 0;
 			}
 			msleep(200);
@@ -643,14 +643,14 @@ static int fg_seal(struct bq_fg_chip *bq)
 	ret = fg_write_word(bq, bq->regs[BQ_FG_REG_ALT_MAC], FG_MAC_CMD_SEAL);
 
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "Failed to send seal command\n");
+		//bq_dbg(PR_OEM, "Failed to send seal command\n");
 		return ret;
 	}
 
 	while (retry++ < 100) {
 		fg_get_seal_state(bq);
 		if (bq->seal_state == SEAL_STATE_SEALED) {
-			bq_dbg(PR_OEM, "FG is sealed successfully");
+			//bq_dbg(PR_OEM, "FG is sealed successfully");
 			return 0;
 		}
 		msleep(200);
@@ -793,17 +793,17 @@ static int fg_set_fastcharge_mode(struct bq_fg_chip *bq, bool enable)
 
 	data[0] = enable;
 
-	bq_dbg(PR_OEM, "set fastcharge mode: enable: %d\n", enable);
+	//bq_dbg(PR_OEM, "set fastcharge mode: enable: %d\n", enable);
 	if (enable) {
 		ret = fg_mac_write_block(bq, FG_MAC_CMD_FASTCHARGE_EN, data, 2);
 		if (ret < 0) {
-			bq_dbg(PR_OEM, "could not write fastcharge = %d\n", ret);
+			//bq_dbg(PR_OEM, "could not write fastcharge = %d\n", ret);
 			return ret;
 		}
 	} else {
 		ret = fg_mac_write_block(bq, FG_MAC_CMD_FASTCHARGE_DIS, data, 2);
 		if (ret < 0) {
-			bq_dbg(PR_OEM, "could not write fastcharge = %d\n", ret);
+			//bq_dbg(PR_OEM, "could not write fastcharge = %d\n", ret);
 			return ret;
 		}
 	}
@@ -872,7 +872,7 @@ static int fg_get_manu_info(unsigned char val, int base, int step)
 	int index = 0;
 	int data = 0;
 
-	bq_dbg(PR_OEM, "val:%d, '0':%d, 'A':%d, 'a':%d\n", val, '0', 'A', 'a');
+	//bq_dbg(PR_OEM, "val:%d, '0':%d, 'A':%d, 'a':%d\n", val, '0', 'A', 'a');
 	if (val > '0' && val < '9')
 		index = val - '0';
 	if (val > 'A' && val < 'Z')
@@ -895,7 +895,7 @@ static int fg_get_manufacture_data(struct bq_fg_chip *bq)
 	for(i = 0; i < RETRY_COUNT; i++) {
 		ret = fg_mac_read_block(bq, FG_MAC_CMD_MANU_NAME, t_buf, 32);
 		if (ret < 0) {
-			bq_dbg(PR_OEM, "failed to get MANE NAME\n");
+			//bq_dbg(PR_OEM, "failed to get MANE NAME\n");
 			/* for draco p0 and p0.1 */
 			if (bq->ignore_digest_for_debug)
 				bq->old_hw = true;
@@ -908,7 +908,7 @@ static int fg_get_manufacture_data(struct bq_fg_chip *bq)
 	}
 
 	if (strncmp(t_buf, "MI", 2) != 0) {
-		bq_dbg(PR_OEM, "Can not get MI battery data\n");
+		//bq_dbg(PR_OEM, "Can not get MI battery data\n");
 		manu_info[TERMINATION].data = BQ27Z561_DEFUALT_TERM;
 		manu_info[FFC_TERMINATION].data = BQ27Z561_DEFUALT_FFC_TERM;
 		manu_info[RECHARGE_VOL].data = BQ27Z561_DEFUALT_RECHARGE_VOL;
@@ -937,7 +937,7 @@ static int fg_read_rsoc(struct bq_fg_chip *bq)
 
 	ret = regmap_read(bq->regmap, bq->regs[BQ_FG_REG_SOC], &soc);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read RSOC, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "could not read RSOC, ret = %d\n", ret);
 		if (bq->last_rsoc >= 0)
 			return bq->last_rsoc;
 		else
@@ -1001,7 +1001,7 @@ static int fg_read_system_soc(struct bq_fg_chip *bq)
 			soc_changed = min(1, delta_time);
 			if (soc_changed) {
 				soc = bq->last_soc + soc_changed;
-				bq_dbg(PR_OEM, "soc increase changed = %d\n", soc_changed);
+				//bq_dbg(PR_OEM, "soc increase changed = %d\n", soc_changed);
 			} else
 				soc = bq->last_soc;
 		} else
@@ -1022,7 +1022,7 @@ static int fg_read_system_soc(struct bq_fg_chip *bq)
 			}
 			soc_changed = min(1, delta_time);
 			if (soc_changed) {
-				bq_dbg(PR_OEM, "soc reduce changed = %d\n", soc_changed);
+				//bq_dbg(PR_OEM, "soc reduce changed = %d\n", soc_changed);
 				soc = bq->last_soc - soc_changed;
 			} else
 				soc = bq->last_soc;
@@ -1053,7 +1053,7 @@ static int fg_read_system_soc(struct bq_fg_chip *bq)
 				last_change_time = ktime_get();
 			}
 
-			bq_dbg(PR_OEM, "avoid jump soc = %d last_soc = %d soc_change = %d state = %d ,delta_time = %d\n",
+			//bq_dbg(PR_OEM, "avoid jump soc = %d last_soc = %d soc_change = %d state = %d ,delta_time = %d\n",
 									soc,bq->last_soc ,soc_changed,status,change_delta);
 
 			if (status == POWER_SUPPLY_STATUS_CHARGING) {
@@ -1090,7 +1090,7 @@ static int fg_read_system_soc(struct bq_fg_chip *bq)
 		} else {
 			soc = 1;
 			hold_flag = true;
-			bq_dbg(PR_OEM, "hold battery soc, vbat:[%d]\n", bq->batt_volt);
+			//bq_dbg(PR_OEM, "hold battery soc, vbat:[%d]\n", bq->batt_volt);
 		}
 	}
 
@@ -1112,7 +1112,7 @@ static int fg_read_temperature(struct bq_fg_chip *bq)
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_TEMP], &temp);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read temperature, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "could not read temperature, ret = %d\n", ret);
 		if (i2c_error_cnt[bq->fg_index]++ >= 3) {
 			i2c_error_cnt[bq->fg_index] = 3;
 			return BQ_I2C_FAILED_TEMP_HIGH;
@@ -1133,7 +1133,7 @@ static int fg_read_volt(struct bq_fg_chip *bq)
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_VOLT], &volt);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read voltage, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "could not read voltage, ret = %d\n", ret);
 		return ret;
 	}
 
@@ -1147,7 +1147,7 @@ static int fg_read_avg_current(struct bq_fg_chip *bq, int *curr)
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_AI], (u16 *)&avg_curr);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read current, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "could not read current, ret = %d\n", ret);
 		return ret;
 	}
 	*curr = -1 * avg_curr;
@@ -1162,7 +1162,7 @@ static int fg_read_current(struct bq_fg_chip *bq, int *curr)
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_CN], (u16 *)&avg_curr);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read current, ret = %d\n", ret);
+		//bq_dbg(PR_OEM, "could not read current, ret = %d\n", ret);
 		return ret;
 	}
 	*curr = -1 * avg_curr;
@@ -1176,13 +1176,13 @@ static int fg_read_fcc(struct bq_fg_chip *bq)
 	u16 fcc;
 
 	if (bq->regs[BQ_FG_REG_FCC] == INVALID_REG_ADDR) {
-		bq_dbg(PR_OEM, "FCC command not supported!\n");
+		//bq_dbg(PR_OEM, "FCC command not supported!\n");
 		return 0;
 	}
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_FCC], &fcc);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read FCC, ret=%d\n", ret);
+		//bq_dbg(PR_OEM, "could not read FCC, ret=%d\n", ret);
 		fcc = bq->last_fcc;
 		return fcc;
 	}
@@ -1198,14 +1198,14 @@ static int fg_read_rm(struct bq_fg_chip *bq)
 	u16 rm;
 
 	if (bq->regs[BQ_FG_REG_RM] == INVALID_REG_ADDR) {
-		bq_dbg(PR_OEM, "RemainingCapacity command not supported!\n");
+		//bq_dbg(PR_OEM, "RemainingCapacity command not supported!\n");
 		return 0;
 	}
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_RM], &rm);
 
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read DC, ret=%d\n", ret);
+		//bq_dbg(PR_OEM, "could not read DC, ret=%d\n", ret);
 		rm = bq->last_rm;
 		return rm;
 	}
@@ -1221,13 +1221,13 @@ static int fg_read_soh(struct bq_fg_chip *bq)
 	u16 soh;
 
 	if (bq->regs[BQ_FG_REG_SOH] == INVALID_REG_ADDR) {
-		bq_dbg(PR_OEM, "SOH command not supported!\n");
+		//bq_dbg(PR_OEM, "SOH command not supported!\n");
 		return 0;
 	}
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_SOH], &soh);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read DC, ret=%d\n", ret);
+		//bq_dbg(PR_OEM, "could not read DC, ret=%d\n", ret);
 		return ret;
 	}
 
@@ -1240,14 +1240,14 @@ static int fg_read_cyclecount(struct bq_fg_chip *bq)
 	u16 cc;
 
 	if (bq->regs[BQ_FG_REG_CC] == INVALID_REG_ADDR) {
-		bq_dbg(PR_OEM, "Cycle Count not supported!\n");
+		//bq_dbg(PR_OEM, "Cycle Count not supported!\n");
 		return -1;
 	}
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_CC], &cc);
 
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read Cycle Count, ret=%d\n", ret);
+		//bq_dbg(PR_OEM, "could not read Cycle Count, ret=%d\n", ret);
 		return ret;
 	}
 
@@ -1260,14 +1260,14 @@ static int fg_read_tte(struct bq_fg_chip *bq)
 	u16 tte;
 
 	if (bq->regs[BQ_FG_REG_TTE] == INVALID_REG_ADDR) {
-		bq_dbg(PR_OEM, "Time To Empty not supported!\n");
+		//bq_dbg(PR_OEM, "Time To Empty not supported!\n");
 		return -1;
 	}
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_TTE], &tte);
 
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read Time To Empty, ret=%d\n", ret);
+		//bq_dbg(PR_OEM, "could not read Time To Empty, ret=%d\n", ret);
 		return ret;
 	}
 
@@ -1283,14 +1283,14 @@ static int fg_read_ttf(struct bq_fg_chip *bq)
         u16 ttf;
 
         if (bq->regs[BQ_FG_REG_TTF] == INVALID_REG_ADDR) {
-                bq_dbg(PR_OEM, "Time To Empty not supported!\n");
+                //bq_dbg(PR_OEM, "Time To Empty not supported!\n");
                 return -1;
         }
 
         ret = fg_read_word(bq, bq->regs[BQ_FG_REG_TTF], &ttf);
 
         if (ret < 0) {
-                bq_dbg(PR_OEM, "could not read Time To Full, ret=%d\n", ret);
+                //bq_dbg(PR_OEM, "could not read Time To Full, ret=%d\n", ret);
                 return ret;
         }
 
@@ -1306,14 +1306,14 @@ static int fg_read_charging_current(struct bq_fg_chip *bq)
 	u16 cc;
 
 	if (bq->regs[BQ_FG_REG_CHG_CUR] == INVALID_REG_ADDR) {
-		bq_dbg(PR_OEM, " not supported!\n");
+		//bq_dbg(PR_OEM, " not supported!\n");
 		return -1;
 	}
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_CHG_CUR], &cc);
 
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read Time To Empty, ret=%d\n", ret);
+		//bq_dbg(PR_OEM, "could not read Time To Empty, ret=%d\n", ret);
 		return ret;
 	}
 
@@ -1329,14 +1329,14 @@ static int fg_read_charging_voltage(struct bq_fg_chip *bq)
 	u16 cv;
 
 	if (bq->regs[BQ_FG_REG_CHG_VOL] == INVALID_REG_ADDR) {
-		bq_dbg(PR_OEM, " not supported!\n");
+		//bq_dbg(PR_OEM, " not supported!\n");
 		return -1;
 	}
 
 	ret = fg_read_word(bq, bq->regs[BQ_FG_REG_CHG_VOL], &cv);
 
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "could not read Time To Empty, ret=%d\n", ret);
+		//bq_dbg(PR_OEM, "could not read Time To Empty, ret=%d\n", ret);
 		return ret;
 	}
 
@@ -1369,7 +1369,7 @@ static int fg_get_batt_capacity_level(struct bq_fg_chip *bq)
 	if (bq->batt_fc) {
 		return POWER_SUPPLY_CAPACITY_LEVEL_FULL;
 	} else if (bq->shutdown_soc) {
-		bq_dbg(PR_OEM, "soc0 CAPACITY_LEVEL_CRITICAL");
+		//bq_dbg(PR_OEM, "soc0 CAPACITY_LEVEL_CRITICAL");
 		return POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
 	} else if (bq->batt_rca && bq->batt_soc <= 15) {
 		return POWER_SUPPLY_CAPACITY_LEVEL_LOW;
@@ -1435,7 +1435,7 @@ static int fg_get_cold_thermal_level(struct bq_fg_chip *bq)
 	rc = power_supply_get_property(bq->batt_psy,
 		POWER_SUPPLY_PROP_STATUS, &pval);
 	if (rc < 0) {
-		bq_dbg(PR_OEM, "failed get batt staus\n");
+		//bq_dbg(PR_OEM, "failed get batt staus\n");
 		return -EINVAL;
 	}
 	status = pval.intval;
@@ -1443,7 +1443,7 @@ static int fg_get_cold_thermal_level(struct bq_fg_chip *bq)
 	rc = power_supply_get_property(bq->batt_psy,
 		POWER_SUPPLY_PROP_TEMP, &pval);
 	if (rc < 0) {
-		bq_dbg(PR_OEM, "failed get batt temp\n");
+		//bq_dbg(PR_OEM, "failed get batt temp\n");
 		return -EINVAL;
 	}
 	temp = pval.intval;
@@ -1451,7 +1451,7 @@ static int fg_get_cold_thermal_level(struct bq_fg_chip *bq)
 	rc = power_supply_get_property(bq->batt_psy,
 		POWER_SUPPLY_PROP_VOLTAGE_NOW, &pval);
 	if (rc < 0) {
-		bq_dbg(PR_OEM, "failed get batt temp\n");
+		//bq_dbg(PR_OEM, "failed get batt temp\n");
 		return -EINVAL;
 	}
 	volt = pval.intval;
@@ -1467,10 +1467,10 @@ static int fg_get_cold_thermal_level(struct bq_fg_chip *bq)
 		if (temp > bq->cold_thermal_seq[i].temp_l &&
 				temp <= bq->cold_thermal_seq[i].temp_h &&
 				curr > bq->cold_thermal_seq[i].curr_th) {
-			bq_dbg(PR_OEM, "cold thermal trigger status:%d, temp:%d, volt:%d\n",
-					status, temp, volt);
-			bq_dbg(PR_OEM, "curr:%d, bq->cold_thermal_seq[i].index:%d\n", curr,
-					bq->cold_thermal_seq[i].index);
+			//bq_dbg(PR_OEM, "cold thermal trigger status:%d, temp:%d, volt:%d\n",
+					//status, temp, volt);
+			//bq_dbg(PR_OEM, "curr:%d, bq->cold_thermal_seq[i].index:%d\n", curr,
+					//bq->cold_thermal_seq[i].index);
 			return bq->cold_thermal_seq[i].index;
 		}
 	}
@@ -1622,7 +1622,7 @@ static int fg_get_property(struct power_supply *psy, enum power_supply_property 
 						val->intval = 1;
 					else {
 						bq->shutdown_soc = true;
-						bq_dbg(PR_OEM, "soc0 shutdown now");
+						//bq_dbg(PR_OEM, "soc0 shutdown now");
 					}
 				}
 			} else {
@@ -1756,7 +1756,7 @@ static int fg_get_property(struct power_supply *psy, enum power_supply_property 
 			bq->charging_voltage = fg_read_charging_voltage(bq);
 		}
 		val->intval = bq->charging_voltage;
-		bq_dbg(PR_DEBUG, "fg_read_gauge_voltage_max: %d\n", val->intval);
+		//bq_dbg(PR_DEBUG, "fg_read_gauge_voltage_max: %d\n", val->intval);
 /*
 		if (val->intval == BQ_MAXIUM_VOLTAGE_FOR_CELL) {
 			if (bq->batt_volt > BQ_PACK_MAXIUM_VOLTAGE_FOR_PMIC_SAFETY) {
@@ -1953,7 +1953,7 @@ static int fg_psy_register(struct bq_fg_chip *bq)
 						&bq->fg_psy_d,
 						&fg_psy_cfg);
 	if (IS_ERR(bq->fg_psy)) {
-		bq_dbg(PR_OEM, "Failed to register fg_psy");
+		//bq_dbg(PR_OEM, "Failed to register fg_psy");
 		return PTR_ERR(bq->fg_psy);
 	}
 
@@ -2432,17 +2432,16 @@ static const struct attribute_group fg_attr_group = {
 
 static int fg_dump_registers(struct bq_fg_chip *bq)
 {
-	int i;
-	int ret;
-	u16 val;
-
-	for (i = 0; i < ARRAY_SIZE(fg_dump_regs); i++) {
-		ret = fg_read_word(bq, fg_dump_regs[i], &val);
-		if (!ret)
-			bq_dbg(PR_REGISTER, "Reg[%02X] = 0x%04X\n", fg_dump_regs[i], val);
-	}
-
-	return ret;
+    return
+	//int i;
+	//int ret;
+	//u16 val;
+	//for (i = 0; i < ARRAY_SIZE(fg_dump_regs); i++) {
+		//ret = fg_read_word(bq, fg_dump_regs[i], &val);
+		//if (!ret)
+			//bq_dbg(PR_REGISTER, "Reg[%02X] = 0x%04X\n", fg_dump_regs[i], val);
+	//}
+	//return ret;
 }
 
 static int fg_get_lifetime_data(struct bq_fg_chip *bq)
@@ -2498,11 +2497,11 @@ static void fg_update_status(struct bq_fg_chip *bq)
 	bq->batt_tte = fg_read_tte(bq);
 	bq->batt_ttf = fg_read_ttf(bq);
 	mutex_unlock(&bq->data_lock);
-#ifndef CONFIG_DUAL_FUEL_GAUGE_BQ27Z561
-	bq_dbg(PR_OEM, "SOC:%d-%d,Volt:%d,Cur:%d,Temp:%d,RM:%d,FC:%d,FAST:%d",
-			bq->batt_soc, bq->raw_soc, bq->batt_volt, bq->batt_curr,
-			bq->batt_temp, bq->batt_rm, bq->batt_fcc, bq->fast_mode);
-#endif
+//#ifndef CONFIG_DUAL_FUEL_GAUGE_BQ27Z561
+	//bq_dbg(PR_OEM, "SOC:%d-%d,Volt:%d,Cur:%d,Temp:%d,RM:%d,FC:%d,FAST:%d",
+			//bq->batt_soc, bq->raw_soc, bq->batt_volt, bq->batt_curr,
+			//bq->batt_temp, bq->batt_rm, bq->batt_fcc, bq->fast_mode);
+//#endif
 
 	if ((last_soc[bq->fg_index] != bq->batt_soc) || (last_temp[bq->fg_index] != bq->batt_temp)
 			|| (last_st[bq->fg_index] != bq->batt_st)) {
@@ -2551,16 +2550,16 @@ static int fg_update_charge_full(struct bq_fg_chip *bq)
 		POWER_SUPPLY_PROP_HEALTH, &prop);
 	bq->health = prop.intval;
 #ifndef CONFIG_DUAL_FUEL_GAUGE_BQ27Z561
-	bq_dbg(PR_OEM, "raw:%d,done:%d,full:%d,health:%d\n",
-			bq->raw_soc, bq->charge_done, bq->charge_full, bq->health);
+	//bq_dbg(PR_OEM, "raw:%d,done:%d,full:%d,health:%d\n",
+			//bq->raw_soc, bq->charge_done, bq->charge_full, bq->health);
 #endif
 	if (bq->charge_done && !bq->charge_full) {
 		if (bq->raw_soc >= BQ_REPORT_FULL_SOC) {
-			bq_dbg(PR_OEM, "Setting charge_full to true\n");
+			//bq_dbg(PR_OEM, "Setting charge_full to true\n");
 			bq->charge_full = true;
 			bq->cell_ov_check = 0;
 		} else {
-			bq_dbg(PR_OEM, "charging is done raw soc:%d\n", bq->raw_soc);
+			//bq_dbg(PR_OEM, "charging is done raw soc:%d\n", bq->raw_soc);
 		}
 	} else if (bq->raw_soc <= BQ_CHARGE_FULL_SOC && !bq->charge_done && bq->charge_full) {
 
@@ -2643,7 +2642,7 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 		rc = power_supply_get_property(bq->batt_psy,
 				POWER_SUPPLY_PROP_STATUS, &pval);
 		if (rc < 0) {
-			bq_dbg(PR_OEM, "failed get batt staus\n");
+			//bq_dbg(PR_OEM, "failed get batt staus\n");
 			return -EINVAL;
 		}
 		status = pval.intval;
@@ -2668,7 +2667,7 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 			last_raw_soc[bq->fg_index] = raw_soc;
 			optimiz_soc[bq->fg_index] += soc_changed;
 			last_optimiz_time[bq->fg_index] = ktime_get();
-			bq_dbg(PR_DEBUG, "optimiz_soc:%d, last_optimiz_time%ld\n",
+			//bq_dbg(PR_DEBUG, "optimiz_soc:%d, last_optimiz_time%ld\n",
 					optimiz_soc[bq->fg_index], last_optimiz_time[bq->fg_index]);
 			if (optimiz_soc[bq->fg_index] > 100)
 				optimiz_soc[bq->fg_index] = 100;
@@ -2739,12 +2738,12 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 	delta_time = change_delta / FG_LOG_TIME;
 	if (abs(delta_time - last_log_time) >= 1) {
 		last_log_time = delta_time;
-		bq_dbg(PR_OEM, "batt_ma_avg:%d, batt_ma:%d, cold_smooth:%d, optimiz_soc:%d",
-				batt_ma_avg, batt_ma, cold_smooth[bq->fg_index], optimiz_soc[bq->fg_index]);
-		bq_dbg(PR_OEM, "unit_time:%d soc_changed:%d, bq->update_now:%d, bq->ffc_smooth",
-				unit_time, soc_changed, bq->update_now, bq->ffc_smooth);
-		bq_dbg(PR_OEM, "raw_soc:%d batt_soc:%d,last_batt_soc:%d,system_soc:%d"
-				" bq->fast_mode:%d",
+		//bq_dbg(PR_OEM, "batt_ma_avg:%d, batt_ma:%d, cold_smooth:%d, optimiz_soc:%d",
+				//batt_ma_avg, batt_ma, cold_smooth[bq->fg_index], optimiz_soc[bq->fg_index]);
+		//bq_dbg(PR_OEM, "unit_time:%d soc_changed:%d, bq->update_now:%d, bq->ffc_smooth",
+				//unit_time, soc_changed, bq->update_now, bq->ffc_smooth);
+		//bq_dbg(PR_OEM, "raw_soc:%d batt_soc:%d,last_batt_soc:%d,system_soc:%d"
+				//" bq->fast_mode:%d",
 				raw_soc, batt_soc, last_batt_soc[bq->fg_index], system_soc[bq->fg_index], bq->fast_mode);
 	}
 	return system_soc[bq->fg_index];
@@ -2806,14 +2805,14 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 	ret = of_property_read_u32(node, "bq,charge-full-design",
 			&bq->batt_dc);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "failed to get bq,charge-full-designe\n");
+		//bq_dbg(PR_OEM, "failed to get bq,charge-full-designe\n");
 		bq->batt_dc = DEFUALT_FULL_DESIGN;
 		return ret;
 	}
 	ret = of_property_read_u32(node, "bq,recharge-voltage",
 			&bq->batt_recharge_vol);
 	if (ret < 0) {
-		bq_dbg(PR_OEM, "failed to get bq,recharge-voltage\n");
+		//bq_dbg(PR_OEM, "failed to get bq,recharge-voltage\n");
 		bq->batt_recharge_vol = -EINVAL;
 		return ret;
 	}
@@ -2832,7 +2831,7 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 			bq->dec_rate_len =
 				(size / sizeof(*bq->dec_rate_seq));
 			if (bq->dec_rate_len % 2) {
-				bq_dbg(PR_OEM, "invalid soc decimal rate seq\n");
+				//bq_dbg(PR_OEM, "invalid soc decimal rate seq\n");
 				return -EINVAL;
 			}
 			of_property_read_u32_array(node,
@@ -2840,7 +2839,7 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 					bq->dec_rate_seq,
 					bq->dec_rate_len);
 		} else {
-			bq_dbg(PR_OEM, "error allocating memory for dec_rate_seq\n");
+			//bq_dbg(PR_OEM, "error allocating memory for dec_rate_seq\n");
 		}
 	}
 	size = 0;
@@ -2852,7 +2851,7 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 			bq->cold_thermal_len =
 				(size / sizeof(int));
 			if (bq->cold_thermal_len % 4) {
-				bq_dbg(PR_OEM, "invalid cold thermal seq\n");
+				//bq_dbg(PR_OEM, "invalid cold thermal seq\n");
 				return -EINVAL;
 			}
 			of_property_read_u32_array(node,
@@ -2861,7 +2860,7 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 					bq->cold_thermal_len);
 			bq->cold_thermal_len = bq->cold_thermal_len / 4;
 		} else {
-			bq_dbg(PR_OEM, "error allocating memory for cold thermal seq\n");
+			//bq_dbg(PR_OEM, "error allocating memory for cold thermal seq\n");
 		}
 	}
 	return 0;
@@ -2918,7 +2917,7 @@ static int bq_fg_probe(struct i2c_client *client,
 	if (bq->chip == BQ27Z561 || bq->chip == BQ27Z561_MASTER || bq->chip == BQ27Z561_SLAVE) {
 		regs = bq27z561_regs;
 	} else {
-		bq_dbg(PR_OEM, "unexpected fuel gauge: %d\n", bq->chip);
+		//bq_dbg(PR_OEM, "unexpected fuel gauge: %d\n", bq->chip);
 		regs = bq27z561_regs;
 	}
 	if(bq->chip == BQ27Z561_SLAVE){
@@ -2941,11 +2940,11 @@ static int bq_fg_probe(struct i2c_client *client,
 	fg_update_status(bq);
 	ret = sysfs_create_group(&bq->dev->kobj, &fg_attr_group);
 	if (ret)
-		bq_dbg(PR_OEM, "Failed to register sysfs, err:%d\n", ret);
+		//bq_dbg(PR_OEM, "Failed to register sysfs, err:%d\n", ret);
 	INIT_DELAYED_WORK(&bq->monitor_work, fg_monitor_workfunc);
 	schedule_delayed_work(&bq->monitor_work,10 * HZ);
-	bq_dbg(PR_OEM, "bq fuel gauge probe successfully, %s\n",
-			device2str[bq->chip]);
+	//bq_dbg(PR_OEM, "bq fuel gauge probe successfully, %s\n",
+			//device2str[bq->chip]);
 	return 0;
 }
 static int bq_fg_suspend(struct device *dev)
@@ -2966,8 +2965,8 @@ static int bq_fg_resume(struct device *dev)
 	bq->skip_reads = false;
 	calc_suspend_time(&bq->suspend_time, &delta_time);
 	if (delta_time > BQ_RESUME_UPDATE_TIME) {
-		bq_dbg(PR_OEM, "suspend more than %d, update soc now\n",
-				BQ_RESUME_UPDATE_TIME);
+		//bq_dbg(PR_OEM, "suspend more than %d, update soc now\n",
+				//BQ_RESUME_UPDATE_TIME);
 		bq->update_now = true;
 	}
 	schedule_delayed_work(&bq->monitor_work, HZ);
@@ -2984,7 +2983,7 @@ static int bq_fg_remove(struct i2c_client *client)
 }
 static void bq_fg_shutdown(struct i2c_client *client)
 {
-	bq_dbg(PR_OEM, "bq fuel gauge driver shutdown!\n");
+	//bq_dbg(PR_OEM, "bq fuel gauge driver shutdown!\n");
 }
 static struct of_device_id bq_fg_match_table[] = {
 	{.compatible = "ti,bq27z561_master",},
