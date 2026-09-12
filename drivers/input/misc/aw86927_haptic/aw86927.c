@@ -43,10 +43,6 @@
 #define aw_info(fmt, ...) do {} while (0)
 #undef aw_dbg
 #define aw_dbg(fmt, ...) do {} while (0)
-#undef pr_info
-#define pr_info(fmt, ...) do {} while (0)
-#undef pr_err
-#define pr_err(fmt, ...) do {} while (0)
 #define AW86927_BROADCAST_ADDR (0x00)
 #define AW86927_LEFT_CHIP_ADDR (0x5A)
 #define AW86927_RIGHT_CHIP_ADDR (0x5B)
