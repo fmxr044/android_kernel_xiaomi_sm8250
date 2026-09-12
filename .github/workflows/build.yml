@@ -4,14 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       compile_variant:
-        description: '选择要编译的内核变体 (默认同时编译)'
+        description: 'Select Variant (DEF= with ksu)'
         required: true
-        default: 'both'
+        default: 'ksu'
         type: choice
         options:
           - both
           - normal
           - ksu
+      ignore_warnings:
+        description: 'ignore all warnings?'
+        required: true
+        default: false
+        type: boolean
 jobs:
   matrix-generator:
     runs-on: ubuntu-latest
@@ -88,9 +93,6 @@ jobs:
     - name: 7. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
-        if [ -f "${{ github.workspace }}/clang/bin/clang" ]; then
-          ${{ github.workspace }}/clang/bin/clang --version
-        fi
         export KBUILD_BUILD_USER="kleaf"
         export KBUILD_BUILD_HOST="build-host"
         export LOCALVERSION=""
@@ -103,7 +105,11 @@ jobs:
         export CROSS_COMPILE=aarch64-linux-gnu-
         export LLVM=1 
         export LLVM_IAS=1
-        export KCFLAGS="-Wno-error"
+        if [ "${{ github.event.inputs.ignore_warnings }}" = "true" ]; then
+          export KCFLAGS="-w"
+        else
+          export KCFLAGS=""
+        fi
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
     - name: 8. 上传 Image.gz
