@@ -31,6 +31,11 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+    - name: 4.5 集成RE-SUKISU
+      if: matrix.variant != 'normal'
+      run: |
+        cd $GITHUB_WORKSPACE
+        git apply diff_full.patch
     - name: 5. 秘术：超神魔改赋能
       if: matrix.variant != 'normal'
       run: |
