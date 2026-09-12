@@ -2432,7 +2432,7 @@ static const struct attribute_group fg_attr_group = {
 
 static int fg_dump_registers(struct bq_fg_chip *bq)
 {
-    return;
+    return 0;
 	//int i;
 	//int ret;
 	//u16 val;
