@@ -1003,7 +1003,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	bool is_fastcharge_mode = false;
 	bool unsupport_pps_status = false;
 	static int curr_fcc_limit, curr_ibus_limit;
-	int capacity = 0;
+	int capacity __maybe_unused = 0;
 	static int ibus_limit;
 	is_fastcharge_mode = pd_get_fastcharge_mode_enabled(pdpm);
 	if (is_fastcharge_mode) {
