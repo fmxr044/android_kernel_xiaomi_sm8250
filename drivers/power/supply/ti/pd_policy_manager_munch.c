@@ -2,6 +2,10 @@
 #define pr_fmt(fmt) "[USBPD-PM]: %s: " fmt, __func__
 
 #include <linux/module.h>
+#undef pr_err
+#define pr_err(fmt, ...) do {} while (0)
+#undef pr_info
+#define pr_info(fmt, ...) do {} while (0)
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/power_supply.h>
