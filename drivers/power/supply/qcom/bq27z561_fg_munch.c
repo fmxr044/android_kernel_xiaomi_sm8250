@@ -171,7 +171,7 @@ enum bq_fg_device {
 	BQ28Z610,
 };
 
-static const unsigned char *device2str[] = {
+static __maybe_unused const unsigned char *device2str[] = {
 	"bq27z561_master",
 	"bq27z561_slave",
 	"bq27z561",
