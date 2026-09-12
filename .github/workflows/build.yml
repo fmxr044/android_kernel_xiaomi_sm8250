@@ -42,7 +42,7 @@ jobs:
     name: 编译内核 (${{ matrix.variant }})
     steps:
     - name: 1. 检出云端内核源码
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         ref: master   
     - name: 2. 初始化编译环境
@@ -51,7 +51,7 @@ jobs:
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev    
     - name: 3. 检查/恢复 Clang 缓存
       id: cache-clang
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ github.workspace }}/clang
         key: aosp-clang-linux-x86  
@@ -113,7 +113,7 @@ jobs:
         make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
     - name: 8. 上传 Image.gz
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: Munch-Image-${{ matrix.variant }}
         path: out/arch/arm64/boot/Image.gz
