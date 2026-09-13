@@ -39,12 +39,7 @@
 #include "ringbuffer.h"
 #include "aw86927.h"
 #include "aw_config.h"
-#undef aw_info
-#define aw_info(fmt, ...) do {} while (0)
-#undef aw_dbg
-#define aw_dbg(fmt, ...) do {} while (0)
-#undef aw_err
-#define aw_err(fmt, ...) do {} while (0)
+
 #define AW86927_BROADCAST_ADDR (0x00)
 #define AW86927_LEFT_CHIP_ADDR (0x5A)
 #define AW86927_RIGHT_CHIP_ADDR (0x5B)
@@ -1873,7 +1868,7 @@ static void aw86927_calculate_cali_step(struct aw86927 *aw86927)
 {
 	char f0_cali_lra = 0;
 	int f0_cali_step = 0;
-	unsigned char __maybe_unused reg_val = 0;
+	unsigned char reg_val = 0;
 
 	aw_info("%s enter!\n", __func__);
 	f0_cali_step = 100000 * ((int)aw86927->f0 - (int)aw86927->info.f0_pre) /
