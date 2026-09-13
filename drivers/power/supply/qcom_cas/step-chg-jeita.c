@@ -20,13 +20,6 @@
 #define JEITA_VOTER		"JEITA_VOTER"
 #define CC_MODE_VOTER		"CC_MODE_VOTER"
 
-#undef pr_err
-#define pr_err(fmt, args...) do {} while (0)
-#undef pr_debug
-#define pr_debug(fmt, args...) do {} while (0)
-#undef pr_info
-#define pr_info(fmt, args...) do {} while (0)
-
 #define is_between(left, right, value) \
 		(((left) >= (right) && (left) >= (value) \
 			&& (value) >= (right)) \
