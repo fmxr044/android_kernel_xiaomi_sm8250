@@ -39,6 +39,12 @@
 #define pr_info(fmt, args...) printk(KERN_INFO "[TFA9874] " pr_fmt(fmt), ##args)
 #define pr_err(fmt, args...) printk(KERN_ERR "[tfa9874] " pr_fmt(fmt), ##args)
 
+#undef pr_info
+#define pr_info(fmt, args...) do {} while (0)
+#undef pr_debug
+#define pr_debug(fmt, args...) do {} while (0)
+#undef pr_err
+#define pr_err(fmt, args...) do {} while (0)
 /* required for enum tfa9912_irq */
 #include "../inc/tfa98xx_tfafieldnames.h"
 

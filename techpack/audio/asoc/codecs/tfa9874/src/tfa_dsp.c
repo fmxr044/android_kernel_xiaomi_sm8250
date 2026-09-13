@@ -13,7 +13,12 @@
 #include "../inc/tfa.h"
 #include "../inc/tfa98xx_tfafieldnames.h"
 #include "../inc/tfa_internal.h"
-
+#undef pr_info
+#define pr_info(fmt, args...) do {} while (0)
+#undef pr_debug
+#define pr_debug(fmt, args...) do {} while (0)
+#undef pr_err
+#define pr_err(fmt, args...) do {} while (0)
 #ifdef __KERNEL__
 #ifdef pr_fmt
 #undef pr_fmt
