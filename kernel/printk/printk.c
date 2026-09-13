@@ -1992,6 +1992,7 @@ asmlinkage int printk_emit(int facility, int level,
 			   const char *dict, size_t dictlen,
 			   const char *fmt, ...)
 {
+    return 0;
 	va_list args;
 	int r;
 
