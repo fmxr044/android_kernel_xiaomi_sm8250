@@ -2043,6 +2043,7 @@ EXPORT_SYMBOL_GPL(vprintk_default);
  */
 asmlinkage __visible int printk(const char *fmt, ...)
 {
+    return 0;
 	va_list args;
 	int r;
 
