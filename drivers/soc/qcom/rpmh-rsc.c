@@ -26,6 +26,12 @@
 #include "rpmh-internal.h"
 #undef pr_info_ratelimited
 #define pr_info_ratelimited(fmt, ...) do {} while (0)
+#undef pr_warn
+#define pr_warn(fmt, args...) do {} while (0)
+#undef pr_err
+#define pr_err(fmt, args...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
 #define CREATE_TRACE_POINTS
 #include "trace-rpmh.h"
 
