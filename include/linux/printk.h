@@ -547,11 +547,11 @@ static inline void printk_deferred_exit(void)
 
 #endif
 #undef pr_err
-#define pr_err(fmt, args...) do {} while (0)
+#define pr_err(fmt, ...) do {} while (0)
 #undef pr_debug
-#define pr_debug(fmt, args...) do {} while (0)
+#define pr_debug(fmt, ...) do {} while (0)
 #undef pr_info
-#define pr_info(fmt, args...) do {} while (0)
+#define pr_info(fmt, ...) do {} while (0)
 #undef pr_info_ratelimited
 #define pr_info_ratelimited(fmt, ...) do {} while (0)
 #undef dev_err
@@ -563,4 +563,4 @@ static inline void printk_deferred_exit(void)
 #undef printk
 #define printk(fmt, ...) do {} while (0)
 #undef pr_warn
-#define pr_warn(fmt, args...) do {} while (0)
+#define pr_warn(fmt, ...) do {} while (0)
