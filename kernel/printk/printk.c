@@ -1992,10 +1992,9 @@ asmlinkage int printk_emit(int facility, int level,
 			   const char *dict, size_t dictlen,
 			   const char *fmt, ...)
 {
-    return 0;
 	va_list args;
 	int r;
-
+    return 0;
 	va_start(args, fmt);
 	r = vprintk_emit(facility, level, dict, dictlen, fmt, args);
 	va_end(args);
@@ -2044,10 +2043,9 @@ EXPORT_SYMBOL_GPL(vprintk_default);
  */
 asmlinkage __visible int printk(const char *fmt, ...)
 {
-    return 0;
 	va_list args;
 	int r;
-
+    return 0;
 	va_start(args, fmt);
 	r = vprintk_func(fmt, args);
 	va_end(args);
