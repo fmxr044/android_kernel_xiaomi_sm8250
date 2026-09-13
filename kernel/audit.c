@@ -1811,6 +1811,7 @@ static inline void audit_get_stamp(struct audit_context *ctx,
 struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 				     int type)
 {
+    return NULL;
 	struct audit_buffer *ab;
 	struct timespec64 t;
 	unsigned int serial;
