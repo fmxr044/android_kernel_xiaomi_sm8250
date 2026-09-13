@@ -669,7 +669,7 @@ static void print_tcs_info(struct rsc_drv *drv, int tcs_id, unsigned long *accl)
 	const struct tcs_request *req = get_req_from_tcs(drv, tcs_id);
 	unsigned long cmds_enabled;
 	u32 addr, data, msgid, sts, irq_sts;
-	bool in_use = test_bit(tcs_id, drv->tcs_in_use);
+	bool __maybe_unused in_use = test_bit(tcs_id, drv->tcs_in_use);
 	int i;
 
 	if (!tcs_grp || !req)
