@@ -55,8 +55,6 @@
 #define pr_debug(fmt, args...) do {} while (0)
 #undef pr_err
 #define pr_err(fmt, args...) do {} while (0)
-#undef printk
-#define printk(fmt, ...) do {} while (0)
 #undef CONFIG_OF
 
 #define CRUS_TX_CONFIG "crus_sp_tx%d.bin"
