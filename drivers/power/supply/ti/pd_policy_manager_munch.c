@@ -2,10 +2,6 @@
 #define pr_fmt(fmt) "[USBPD-PM]: %s: " fmt, __func__
 
 #include <linux/module.h>
-#undef pr_err
-#define pr_err(fmt, ...) do {} while (0)
-#undef pr_info
-#define pr_info(fmt, ...) do {} while (0)
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/power_supply.h>
@@ -1003,7 +999,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	bool is_fastcharge_mode = false;
 	bool unsupport_pps_status = false;
 	static int curr_fcc_limit, curr_ibus_limit;
-	int capacity __maybe_unused = 0;
+	int capacity = 0;
 	static int ibus_limit;
 	is_fastcharge_mode = pd_get_fastcharge_mode_enabled(pdpm);
 	if (is_fastcharge_mode) {
@@ -1343,7 +1339,7 @@ reg[%d-%d-%d-%d-%d],step[%d-%d-%d-%d-%d-%d-%d-%d],pmconfig[%d-%d-%d,%d-%d-%d-%d]
 	return PM_ALGO_RET_OK;
 }
 
-static const unsigned char *pm_str[] __attribute__((unused)) = {
+static const unsigned char *pm_str[] = {
 	"PD_PM_STATE_ENTRY",	   "PD_PM_STATE_FC2_ENTRY",
 	"PD_PM_STATE_FC2_ENTRY_1", "PD_PM_STATE_FC2_ENTRY_2",
 	"PD_PM_STATE_FC2_ENTRY_3", "PD_PM_STATE_FC2_TUNE",
