@@ -3056,7 +3056,7 @@ static int tfa98xx_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 	struct tfa98xx *tfa98xx = snd_soc_component_get_drvdata(dai->component);
-	struct snd_soc_component *codec = dai->component;
+	struct snd_soc_component __maybe_unused *codec = dai->component;
 #else
 	struct tfa98xx *tfa98xx = snd_soc_codec_get_drvdata(dai->codec);
 	struct snd_soc_codec *codec = dai->codec;
