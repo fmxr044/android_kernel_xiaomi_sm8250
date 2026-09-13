@@ -102,7 +102,7 @@ enum fbsp_state {
 	MAX_FBSP_STATE
 };
 
-static char fbsp_state[MAX_FBSP_STATE][50] = {
+static char fbsp_state[MAX_FBSP_STATE][50] __maybe_unused = {
 	[FBSP_INCORRECT_OP_MODE] = "incorrect operation mode",
 	[FBSP_INACTIVE] = "port not started",
 	[FBSP_WARMUP] = "waiting for warmup",
