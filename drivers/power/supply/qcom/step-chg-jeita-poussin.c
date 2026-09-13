@@ -25,13 +25,6 @@ int cv_fv_state = 0;
 		|| ((left) <= (right) && (left) <= (value) \
 			&& (value) <= (right)))
 
-#undef pr_err
-#define pr_err(fmt, args...) do {} while (0)
-#undef pr_debug
-#define pr_debug(fmt, args...) do {} while (0)
-#undef pr_info
-#define pr_info(fmt, args...) do {} while (0)
-
 struct step_chg_cfg {
 	struct step_chg_jeita_param	param;
 	struct range_data		fcc_cfg[MAX_STEP_CHG_ENTRIES];
