@@ -14,7 +14,7 @@ jobs:
         echo "latest ver: $LATEST_VER"
     - name: 2. try get clang on cache storage
       id: cache-clang
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ${{ github.workspace }}/clang
         key: aosp-clang-linux-x86
