@@ -54,6 +54,8 @@ static int apr_err_count = 0;
 #define pr_debug(fmt, args...) do {} while (0)
 #undef pr_err
 #define pr_err(fmt, args...) do {} while (0)
+#undef printk
+#define printk(fmt, ...) do {} while (0)
 #define WAKELOCK_TIMEOUT	5000
 #define AFE_CLK_TOKEN	1024
 

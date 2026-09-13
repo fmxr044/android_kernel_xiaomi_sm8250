@@ -49,15 +49,15 @@
 #include <dsp/q6common.h>
 #include <dsp/apr_audio-v2.h>
 #include <dsp/msm-cirrus-playback.h>
-
-#undef CONFIG_OF
-
 #undef pr_info
-#undef pr_err
+#define pr_info(fmt, args...) do {} while (0)
 #undef pr_debug
-#define pr_debug(fmt, args...) printk(KERN_INFO "[CSPL] " pr_fmt(fmt), ##args)
-#define pr_info(fmt, args...) printk(KERN_INFO "[CSPL] " pr_fmt(fmt), ##args)
-#define pr_err(fmt, args...) printk(KERN_ERR "[CSPL] " pr_fmt(fmt), ##args)
+#define pr_debug(fmt, args...) do {} while (0)
+#undef pr_err
+#define pr_err(fmt, args...) do {} while (0)
+#undef printk
+#define printk(fmt, ...) do {} while (0)
+#undef CONFIG_OF
 
 #define CRUS_TX_CONFIG "crus_sp_tx%d.bin"
 #define CRUS_RX_CONFIG "crus_sp_rx%d.bin"
