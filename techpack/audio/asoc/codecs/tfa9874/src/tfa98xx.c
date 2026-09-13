@@ -37,6 +37,15 @@
 #define pr_debug(fmt, args...) do {} while (0)
 #undef pr_err
 #define pr_err(fmt, args...) do {} while (0)
+#undef pr_warn
+#define pr_warn(fmt, args...) do {} while (0)
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
+
 /* required for enum tfa9912_irq */
 #include "../inc/tfa98xx_tfafieldnames.h"
 
