@@ -333,7 +333,7 @@ int tfa987x_irq_handle(struct tfa_device *tfa)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 	uint16_t value, offset;
-	const char *irq_msg[tfa9873_irq_max] = {
+	const char *irq_msg[tfa9873_irq_max] __maybe_unused = {
 		"POR detected",	    "DCDC current is too high",
 		"OTP is triggered", "OCP is triggered",
 		"UVP is triggered", "Alarm state",
