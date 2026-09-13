@@ -63,6 +63,14 @@
 #undef DS2_ADM_COPP_TOPOLOGY_ID
 #define DS2_ADM_COPP_TOPOLOGY_ID 0xFFFFFFFF
 #endif
+#undef pr_info
+#define pr_info(fmt, args...) do {} while (0)
+#undef pr_debug
+#define pr_debug(fmt, args...) do {} while (0)
+#undef pr_warn
+#define pr_warn(fmt, args...) do {} while (0)
+#undef pr_err
+#define pr_err(fmt, args...) do {} while (0)
 
 static struct mutex routing_lock;
 
