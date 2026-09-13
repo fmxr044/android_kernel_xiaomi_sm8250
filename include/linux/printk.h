@@ -544,23 +544,37 @@ static inline void printk_deferred_exit(void)
 {
 }
 #endif
-
 #endif
+
+#ifdef pr_err
 #undef pr_err
+#endif
 #define pr_err(fmt, ...) do {} while (0)
+
+#ifdef pr_debug
 #undef pr_debug
+#endif
 #define pr_debug(fmt, ...) do {} while (0)
+
+#ifdef pr_info
 #undef pr_info
+#endif
 #define pr_info(fmt, ...) do {} while (0)
+
+#ifdef pr_info_ratelimited
 #undef pr_info_ratelimited
+#endif
 #define pr_info_ratelimited(fmt, ...) do {} while (0)
-#undef dev_err
-#define dev_err(dev, fmt, ...) do {} while (0)
-#undef dev_dbg
-#define dev_dbg(dev, fmt, ...) do {} while (0)
-#undef dev_info
-#define dev_info(dev, fmt, ...) do {} while (0)
-#undef printk
-#define printk(fmt, ...) do {} while (0)
+
+
+//#undef dev_err
+//#define dev_err(dev, fmt, ...) do {} while (0)
+//#undef dev_dbg
+//#define dev_dbg(dev, fmt, ...) do {} while (0)
+//#undef dev_info
+//#define dev_info(dev, fmt, ...) do {} while (0)
+
+#ifdef pr_warn
 #undef pr_warn
+#endif
 #define pr_warn(fmt, ...) do {} while (0)
