@@ -48,12 +48,7 @@
 #include <linux/input/tp_common.h>
 #endif
 #include "focaltech_core.h"
-#undef FTS_INFO
-#define FTS_INFO(fmt, ...) do {} while (0)
-#undef FTS_DEBUG
-#define FTS_DEBUG(fmt, ...) do {} while (0)
-#undef FTS_ERROR
-#define FTS_ERROR(fmt, ...) do {} while (0)
+
 /*****************************************************************************
 * Private constant and macro definitions using #define
 *****************************************************************************/
@@ -721,8 +716,8 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 			      (buf[FTS_TOUCH_Y_L_POS + base] << 4) +
 			      ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		/*fw report 16x, dts report 10x*/
-		events[i].x = events[i].x * 10 / 16;
-		events[i].y = events[i].y * 10 / 16;
+		events[i].x = (events[i].x * 10 + 8) / 16;
+		events[i].y = (events[i].y * 10 + 8) / 16;
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
 		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
@@ -1571,25 +1566,8 @@ static void fts_power_supply_work(struct work_struct *work)
 #endif
 	pm_stay_awake(ts_data->dev);
 	mutex_lock(&ts_data->power_supply_lock);
-	charger_mode = !!power_supply_is_system_supplied();
-	if (charger_mode != ts_data->charger_mode) {
-		ts_data->charger_mode = charger_mode;
-		FTS_INFO("%s %d\n", __func__, charger_mode);
-		if (charger_mode) {
-			FTS_INFO("%s USB is exist\n", __func__);
-			ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 1);
-			if (ret < 0)
-				FTS_ERROR("set power supply exist fail, ret=%d",
-					  ret);
-		} else {
-			FTS_INFO("%s USB is not exist\n", __func__);
-			ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-			if (ret < 0)
-				FTS_ERROR(
-					"set power supply not exist fail, ret=%d",
-					ret);
-		}
-	}
+	ts_data->charger_mode = charger_mode;
+	ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	mutex_unlock(&ts_data->power_supply_lock);
 	pm_relax(ts_data->dev);
 }
@@ -1955,6 +1933,15 @@ static int fts_ts_resume(struct device *dev)
 	} else {
 		fts_irq_enable();
 	}
+	
+	if (ts_data) {
+		u8 lineage_game_cmd[7] = { 0xC1, 0x01, 30, 0x00, 0x00, 0x01, 0x00 };
+		int force_ret = fts_write(lineage_game_cmd, sizeof(lineage_game_cmd));
+			ts_data->gamemode_enabled = true;
+			ts_data->is_expert_mode = true;
+		force_ret = fts_write_reg(0x8D, 0);
+		fts_write_reg(0xBC, 0);
+	}
 
 	ts_data->poweroff_on_sleep = false;
 	ts_data->suspended = false;
@@ -2175,27 +2162,17 @@ static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 				     bool is_expert_mode)
 {
-	// ======= 【终极物理硬改：纯手工伪造官方满血电竞电调指令流】 =======
-	pr_err("[MUNCH_TOUCH_PATCH] RESET IN PROGRESS! COALESCING HARDCODED 360Hz ULTRA COMMAND MATRIX...\n");
-
-	cmd[0] = 0xC1; // 固件写入引导头
-	cmd[1] = 0x01; // 强行将 Game_Mode 状态写死为 1 (开启)
-	cmd[2] = 30;   // 强行将硬件扫描频率写死为 30 (彻底锁定物理 360Hz/480Hz 高速时钟)
-	
-	// 以下 4 个字节，是官方在专家模式拉满、死区归零时，从最完美的出厂设备树中提取出的十六进制物理控制字：
-	cmd[3] = 0x00; // 强制强锁边缘容差为最小，扩大物理可触控面积
-	cmd[4] = 0x00; // 强制抬起阈值降到最低，实现最极致的抬手响应
-	cmd[5] = 0x01; // 强制将物理死区、抗抖动过滤阈值（Jitter Filter）完全降到 0 的极限位置！
-	cmd[6] = 0x00; // 强制将轨迹平滑阻尼降到最低，手指动一像素，准星就划过一像素
-	
-	// 每次调用该函数，强行纠正驱动状态，形成全时段双重死锁
+	cmd[0] = 0xC1;
+	cmd[1] = 0x01;
+	cmd[2] = 30;
+	cmd[3] = 0x00;
+	cmd[4] = 0x00;
+	cmd[5] = 0x01;
+	cmd[6] = 0x00;
 	if (ts_data) {
 		ts_data->gamemode_enabled = true;
 		ts_data->is_expert_mode = true;
 	}
-
-	pr_err("[MUNCH_TOUCH_PATCH] COMMAND MATRIX COMPLETELY RENDERED: C1,01,1E,00,00,01,00 FORCED THROUGH SPI!\n");
-	// ===================================================================
 }
 
 static void fts_restore_mode_value(int mode, int value_type)
@@ -2536,28 +2513,15 @@ static int fts_ts_probe(struct spi_device *spi)
 	tp_common_set_double_tap_ops(&double_tap_ops);
 #endif
 if (ts_data) {
-		// 1. 打印最高日志级别的显眼标志，方便你开机后在 dmesg 中一眼定位
-		pr_err("==================================================\n");
-		pr_err("[KERNEL_PATCH] ENGAGING 360Hz AUTO-ACTIVATION ENGINE!\n");
-		pr_err("==================================================\n");
-
-		// 2. 强锁驱动核心布尔旗标。为防止某些内核版本变量名有差异，在此将两个最可能的标志一并锁死为 true
 		ts_data->gamemode_enabled = true;
 		ts_data->is_expert_mode = true;
-
-		// 3. 在小米控制矩阵中，越过类原生系统层，硬编码强行将全套高性能射击游戏特性的运行值灌满
-		// 对应的精确数字：0=游戏模式, 1=高灵敏度, 4=瞄准灵敏度, 5=点击稳定度, 6=专家模式, 9=物理报点率
 		xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][SET_CUR_VALUE] = 1;
 		xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][SET_CUR_VALUE] = 1;
-		xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][SET_CUR_VALUE] = 1; // 瞄准灵敏度拉满
-		xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE] = 1;   // 点击稳定度拉满
-		xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE] = 1;     // 专家模式拉满
-		xiaomi_touch_interfaces.touch_mode[Touch_Report_Rate][SET_CUR_VALUE] = 1;     // SPI总线报点率最高档
-
-		// 4. 核心物理动作：绕过所有系统广播，由内核在开机第 1.8 秒直接向物理屏幕芯片强刷 360Hz 寄存器配置
+		xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][SET_CUR_VALUE] = 1;
+		xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE] = 1;
+		xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE] = 1;
+		xiaomi_touch_interfaces.touch_mode[Touch_Report_Rate][SET_CUR_VALUE] = 1;
 		fts_update_touchmode_data(ts_data);
-		
-		pr_err("[KERNEL_PATCH] SPI PHYSICAL REGISTERS FORCED AT MAXIMUM 360Hz!\n");
 	}
 	FTS_INFO("Touch Screen(SPI BUS) driver prboe successfully");
 	return 0;
