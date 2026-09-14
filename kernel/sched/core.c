@@ -45,8 +45,6 @@ const_debug unsigned int sysctl_sched_features =
 	0;
 #undef SCHED_FEAT
 #endif
-#undef printk_ratelimit
-#define printk_ratelimit(dev, fmt, ...) do {} while (0)
 #undef printk_deferred
 #define printk_deferred(dev, fmt, ...) do {} while (0)
 /*
