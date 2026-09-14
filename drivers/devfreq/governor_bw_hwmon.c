@@ -541,7 +541,7 @@ static int start_monitor(struct devfreq *df, bool init)
 {
 	struct hwmon_node *node = df->data;
 	struct bw_hwmon *hw = node->hw;
-	struct device *dev = df->dev.parent;
+	struct device *dev __maybe_unused = df->dev.parent;
 	unsigned long mbps;
 	int ret;
 
