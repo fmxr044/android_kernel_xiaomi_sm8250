@@ -265,7 +265,7 @@ static int start_monitoring(struct devfreq *df)
 {
 	int ret;
 	struct mrps_stats mrps;
-	struct device *dev = df->dev.parent;
+	struct device *dev __maybe_unused = df->dev.parent;
 	struct cache_hwmon_node *node;
 	struct cache_hwmon *hw;
 
