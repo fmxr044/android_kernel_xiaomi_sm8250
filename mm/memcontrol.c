@@ -73,7 +73,11 @@
 #include <linux/uaccess.h>
 
 #include <trace/events/vmscan.h>
-
+#undef WARCE_ONCE
+#define WARN_ONCE(condition, format, ...) ({ \
+	int __ret_warn_on = !!(condition); \
+	__ret_warn_on; \
+})
 struct cgroup_subsys memory_cgrp_subsys __read_mostly;
 EXPORT_SYMBOL(memory_cgrp_subsys);
 
