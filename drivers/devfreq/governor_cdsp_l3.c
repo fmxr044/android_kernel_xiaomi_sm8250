@@ -17,7 +17,10 @@
 #include <linux/soc/qcom/cdsprm.h>
 
 #include "governor.h"
-
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
 struct cdspl3 {
 	struct device_node *of_node;
 	struct devfreq *df;
