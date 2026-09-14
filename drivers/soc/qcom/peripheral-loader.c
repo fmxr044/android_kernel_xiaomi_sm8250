@@ -37,12 +37,14 @@
 #include <trace/events/trace_msm_pil_event.h>
 
 #include "peripheral-loader.h"
-
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
 #define pil_err(desc, fmt, ...)						\
 	dev_err(desc->dev, "%s: " fmt, desc->name, ##__VA_ARGS__)
 #define pil_info(desc, fmt, ...)					\
 	dev_info(desc->dev, "%s: " fmt, desc->name, ##__VA_ARGS__)
-
 #if defined(CONFIG_ARM)
 #define pil_memset_io(d, c, count) memset(d, c, count)
 #else
