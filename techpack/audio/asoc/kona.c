@@ -107,6 +107,14 @@
 #if defined(CONFIG_MACH_XIAOMI_MUNCH)
 #define TFA98xx_RECEIVER_NAME "tfa98xx.1-0034"
 #define TFA98xx_SPEAKER_NAME "tfa98xx.1-0035"
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_warn
+#define dev_err(dev, fmt, ...) do {} while (0)
 static struct snd_soc_dai_link_component tfa98xx_codec_components[]=
 {
 	{
