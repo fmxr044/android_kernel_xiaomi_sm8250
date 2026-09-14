@@ -48,6 +48,15 @@
 #include "xhci.h"
 
 #include "../pd/ps5169.h"
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
+#undef dev_vdbg
+#define dev_vdbg(dev, fmt, ...) do {} while (0)
+
 
 static bool bc12_compliance;
 module_param(bc12_compliance, bool, 0644);
