@@ -945,7 +945,7 @@ int devfreq_add_governor(struct devfreq_governor *governor)
 
 	list_for_each_entry(devfreq, &devfreq_list, node) {
 		int ret = 0;
-		struct device *dev = devfreq->dev.parent;
+		struct device *dev __maybe_unused = devfreq->dev.parent;
 
 		if (!strncmp(devfreq->governor_name, governor->name,
 			     DEVFREQ_NAME_LEN)) {
@@ -1007,7 +1007,7 @@ int devfreq_remove_governor(struct devfreq_governor *governor)
 	}
 	list_for_each_entry(devfreq, &devfreq_list, node) {
 		int ret;
-		struct device *dev = devfreq->dev.parent;
+		struct device *dev __maybe_unused = devfreq->dev.parent;
 
 		if (!strncmp(devfreq->governor_name, governor->name,
 			     DEVFREQ_NAME_LEN)) {
