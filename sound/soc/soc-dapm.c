@@ -1019,7 +1019,7 @@ static int dapm_new_mixer(struct snd_soc_dapm_widget *w)
 /* create new dapm mux control */
 static int dapm_new_mux(struct snd_soc_dapm_widget *w)
 {
-	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_dapm_context *dapm __maybe_unused = w->dapm;
 	enum snd_soc_dapm_direction dir;
 	struct snd_soc_dapm_path *path;
 	const char *type;
