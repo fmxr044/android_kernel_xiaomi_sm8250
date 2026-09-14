@@ -23,7 +23,12 @@
 #include <trace/events/power.h>
 #include "governor.h"
 #include "governor_cache_hwmon.h"
-
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
 struct cache_hwmon_node {
 	unsigned int cycles_per_low_req;
 	unsigned int cycles_per_med_req;
