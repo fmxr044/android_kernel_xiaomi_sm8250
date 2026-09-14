@@ -23,12 +23,7 @@
 #include <linux/pmic-voter.h>
 #include "usbpd.h"
 #include "ps5169.h"
-#undef usbpd_err
-#define usbpd_err(dev, fmt, ...) do {} while (0)
-#undef usbpd_dbg
-#define usbpd_dbg(dev, fmt, ...) do {} while (0)
-#undef usbpd_warn
-#define usbpd_warn(dev, fmt, ...) do {} while (0)
+
 
 enum usbpd_state {
 	PE_UNKNOWN,
@@ -201,29 +196,14 @@ enum vdm_state {
 };
 
 static void *usbpd_ipc_log;
-#define usbpd_dbg(dev, fmt, ...) do { \
-	ipc_log_string(usbpd_ipc_log, "%s: %s: " fmt, dev_name(dev), __func__, \
-			##__VA_ARGS__); \
-	dev_dbg(dev, fmt, ##__VA_ARGS__); \
-	} while (0)
-
-#define usbpd_info(dev, fmt, ...) do { \
-	ipc_log_string(usbpd_ipc_log, "%s: %s: " fmt, dev_name(dev), __func__, \
-			##__VA_ARGS__); \
-	dev_info(dev, fmt, ##__VA_ARGS__); \
-	} while (0)
-
-#define usbpd_warn(dev, fmt, ...) do { \
-	ipc_log_string(usbpd_ipc_log, "%s: %s: " fmt, dev_name(dev), __func__, \
-			##__VA_ARGS__); \
-	dev_warn(dev, fmt, ##__VA_ARGS__); \
-	} while (0)
-
-#define usbpd_err(dev, fmt, ...) do { \
-	ipc_log_string(usbpd_ipc_log, "%s: %s: " fmt, dev_name(dev), __func__, \
-			##__VA_ARGS__); \
-	dev_err(dev, fmt, ##__VA_ARGS__); \
-	} while (0)
+#undef usbpd_err
+#define usbpd_err(dev, fmt, ...) do {} while (0)
+#undef usbpd_dbg
+#define usbpd_dbg(dev, fmt, ...) do {} while (0)
+#undef usbpd_warn
+#define usbpd_warn(dev, fmt, ...) do {} while (0)
+#undef usbpd_info
+#define usbpd_info(dev, fmt, ...) do {} while (0)
 
 #define NUM_LOG_PAGES		10
 
