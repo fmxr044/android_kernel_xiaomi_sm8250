@@ -112,9 +112,9 @@
 #undef dev_err
 #define dev_err(dev, fmt, ...) do {} while (0)
 #undef dev_dbg
-#define dev_info(dev, fmt, ...) do {} while (0)
+#define dev_dbg(dev, fmt, ...) do {} while (0)
 #undef dev_warn
-#define dev_err(dev, fmt, ...) do {} while (0)
+#define dev_warn(dev, fmt, ...) do {} while (0)
 static struct snd_soc_dai_link_component tfa98xx_codec_components[]=
 {
 	{
