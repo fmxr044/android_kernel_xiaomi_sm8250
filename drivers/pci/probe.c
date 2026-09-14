@@ -22,7 +22,20 @@
 
 #define CARDBUS_LATENCY_TIMER	176	/* secondary latency timer */
 #define CARDBUS_RESERVE_BUSNR	3
-
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
+#undef pci_info
+#define pci_info(dev, fmt, ...) do {} while (0)
+#undef pci_warn
+#define pci_warn(dev, fmt, ...) do {} while (0)
+#undef pci_dbg
+#define pci_dbg(dev, fmt, ...) do {} while (0)
+#undef pci_err
+#define pci_err(dev, fmt, ...) do {} while (0)
 static struct resource busn_resource = {
 	.name	= "PCI busn",
 	.start	= 0,
