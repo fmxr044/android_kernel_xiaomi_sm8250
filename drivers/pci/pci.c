@@ -34,7 +34,14 @@
 #include <asm/dma.h>
 #include <linux/aer.h>
 #include "pci.h"
-
+#undef pci_info
+#define pci_info(dev, fmt, ...) do {} while (0)
+#undef pci_err
+#define pci_err(dev, fmt, ...) do {} while (0)
+#undef pci_dbg
+#define pci_dbg(dev, fmt, ...) do {} while (0)
+#undef pci_warn
+#define pci_warn(dev, fmt, ...) do {} while (0)
 DEFINE_MUTEX(pci_slot_mutex);
 
 const char *pci_power_names[] = {
