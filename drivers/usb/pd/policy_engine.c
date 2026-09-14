@@ -23,6 +23,12 @@
 #include <linux/pmic-voter.h>
 #include "usbpd.h"
 #include "ps5169.h"
+#undef usbpd_err
+#define usbpd_err(dev, fmt, ...) do {} while (0)
+#undef usbpd_dbg
+#define usbpd_dbg(dev, fmt, ...) do {} while (0)
+#undef usbpd_warn
+#define usbpd_warn(dev, fmt, ...) do {} while (0)
 
 enum usbpd_state {
 	PE_UNKNOWN,
