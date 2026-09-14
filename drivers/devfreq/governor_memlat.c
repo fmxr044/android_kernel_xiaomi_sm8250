@@ -149,7 +149,7 @@ static int start_monitor(struct devfreq *df)
 {
 	struct memlat_node *node = df->data;
 	struct memlat_hwmon *hw = node->hw;
-	struct device *dev = df->dev.parent;
+	struct device *dev __maybe_unused = df->dev.parent;
 	int ret;
 
 	ret = hw->start_hwmon(hw);
@@ -183,7 +183,7 @@ static void stop_monitor(struct devfreq *df)
 static int gov_start(struct devfreq *df)
 {
 	int ret = 0;
-	struct device *dev = df->dev.parent;
+	struct device *dev __maybe_unused = df->dev.parent;
 	struct memlat_node *node;
 	struct memlat_hwmon *hw;
 
