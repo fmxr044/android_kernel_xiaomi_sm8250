@@ -269,7 +269,7 @@ static int irq_setup(struct fpc1020_data *fpc1020, bool enable)
 {
 	int rc = 0;
 
-	struct device *dev = fpc1020->dev;
+	struct device *dev __maybe_unused = fpc1020->dev;
 	if (enable) {
 		dev_info(dev, "fpc %s --->: enter, for enable irq!\n",
 			 __func__);
@@ -303,7 +303,7 @@ static int vreg_setup(struct fpc1020_data *fpc1020, const char *name,
 	size_t i;
 	int rc = 0;
 	int gpio = 0;
-	struct device *dev = fpc1020->dev;
+	struct device *dev __maybe_unused = fpc1020->dev;
 
 	if (enable) {
 		dev_info(dev, "fpc %s --->: enter, for power on at %s.\n",
@@ -413,7 +413,7 @@ static int select_pin_ctl(struct fpc1020_data *fpc1020, const char *name)
 {
 	size_t i;
 	int rc;
-	struct device *dev = fpc1020->dev;
+	struct device *dev __maybe_unused = fpc1020->dev;
 	dev_dbg(dev, "fpc %s --->: enter! \n", __func__);
 
 	for (i = 0; i < ARRAY_SIZE(pctl_names); i++) {
@@ -486,7 +486,7 @@ static int hw_reset(struct fpc1020_data *fpc1020)
 {
 	int irq_gpio;
 	int rc;
-	struct device *dev = fpc1020->dev;
+	struct device *dev __maybe_unused = fpc1020->dev;
 
 	dev_dbg(dev, "fpc %s --->: enter! \n", __func__);
 
@@ -747,7 +747,7 @@ static ssize_t irq_get(struct device *dev, struct device_attribute *attr,
 static ssize_t irq_ack(struct device *dev, struct device_attribute *attr,
 		       const char *buf, size_t count)
 {
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
+	struct fpc1020_data *fpc1020 __maybe_unused = dev_get_drvdata(dev);
 
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 
