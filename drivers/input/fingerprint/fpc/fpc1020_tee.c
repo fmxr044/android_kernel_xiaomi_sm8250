@@ -70,7 +70,12 @@
 #define START_IRQS_RECEIVED_CNT "start_irqs_received_counter"
 
 #define HWMON_CONPONENT_NAME "fingerprint"
-
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
 static const char *const pctl_names[] = {
 	"fpc1020_reset_reset",
 	"fpc1020_reset_active",
