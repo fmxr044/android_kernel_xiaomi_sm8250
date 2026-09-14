@@ -21,7 +21,10 @@
 #include <linux/cache.h>
 #include <linux/slab.h>
 #include "pci.h"
-
+#undef pci_info
+#define pci_info(dev, fmt, ...) do {} while (0)
+#undef pci_err
+#define pci_err(dev, fmt, ...) do {} while (0)
 static void pci_std_update_resource(struct pci_dev *dev, int resno)
 {
 	struct pci_bus_region region;
