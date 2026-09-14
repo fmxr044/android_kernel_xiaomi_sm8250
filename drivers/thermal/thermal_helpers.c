@@ -21,7 +21,10 @@
 #include <trace/events/thermal.h>
 
 #include "thermal_core.h"
-
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
 int get_tz_trend(struct thermal_zone_device *tz, int trip)
 {
 	enum thermal_trend trend;
