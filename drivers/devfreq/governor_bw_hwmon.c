@@ -25,11 +25,11 @@
 #include "governor.h"
 #include "governor_bw_hwmon.h"
 #undef dev_info
-#define dev_info(dev, fmt, ...) do {} while (0)
+#define dev_info(...) do {} while (0)
 #undef dev_dbg
-#define dev_dbg(dev, fmt, ...) do {} while (0)
+#define dev_dbg(...) do {} while (0)
 #undef dev_err
-#define dev_err(dev, fmt, ...) do {} while (0)
+#define dev_err(...) do {} while (0)
 #define NUM_MBPS_ZONES		10
 struct hwmon_node {
 	unsigned int guard_band_mbps;
