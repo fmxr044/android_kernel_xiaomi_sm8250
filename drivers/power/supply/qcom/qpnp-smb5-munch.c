@@ -25,7 +25,7 @@
 #include "step-chg-jeita.h"
 #include "schgm-flash.h"
 #undef pr_err_ratelimited
-#define pr_err_ratelimited(fmt, ...) do {} while (0)
+#define pr_err_ratelimited(...) do {} while (0)
 static struct smb_params smb5_pmi632_params = {
 	.fcc			= {
 		.name   = "fast charge current",
