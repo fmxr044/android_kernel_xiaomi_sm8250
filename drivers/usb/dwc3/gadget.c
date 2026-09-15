@@ -27,7 +27,14 @@
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
-
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
+#undef dev_warn
+#define dev_warn(dev, fmt, ...) do {} while (0)
 #define DWC3_ALIGN_FRAME(d)	(((d)->frame_number + (d)->interval) \
 					& ~((d)->interval - 1))
 
