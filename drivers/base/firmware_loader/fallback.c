@@ -13,11 +13,11 @@
 #include "fallback.h"
 #include "firmware.h"
 #undef dev_dbg
-#define dev_dbg(dev, fmt, ...) do {} while (0)
+#define dev_dbg(...) do {} while (0)
 #undef dev_err
-#define dev_err(dev, fmt, ...) do {} while (0)
+#define dev_err(...) do {} while (0)
 #undef dev_warn
-#define dev_warn(fmt, args...) do {} while (0)
+#define dev_warn(...) do {} while (0)
 
 /*
  * firmware fallback mechanism
