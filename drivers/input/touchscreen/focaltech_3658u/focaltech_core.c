@@ -707,34 +707,40 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 			FTS_ERROR("ID(%d) beyond max_touch_number", pointid);
 			return -EINVAL;
 		}
-        		/*fw report 16x, dts report 10x*/
-		/* === POCO F4 纯手打狙：极致精度、微步破防扰动算法开始 === */
-		{
-			// 采用局部静态变量常驻内存，安全解耦，绝对不卡 Logo
-			static int agg_res_x = 0;
-			static int agg_res_y = 0;
 
-			events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
+		data->touch_point++;
+		events[i].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) +
+			      (buf[FTS_TOUCH_X_L_POS + base] << 4) +
+			      ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+		events[i].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) +
+			      (buf[FTS_TOUCH_Y_L_POS + base] << 4) +
+			      ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+		/*fw report 16x, dts report 10x*/
+		events[i].x = events[i].x * 10 / 16;
+		events[i].y = events[i].y * 10 / 16;
+		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
+		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
+		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+		// events[i].p =  buf[FTS_TOUCH_PRE_POS + base] & 0x03;
+		
+		/* === START === */
+		if (events[i].id < FTS_MAX_POINTS_SUPPORT) {
+			static int agg_res_x[FTS_MAX_POINTS_SUPPORT] = {0};
+			static int agg_res_y[FTS_MAX_POINTS_SUPPORT] = {0};
 
-			// 利用原厂现有的 EVENT_DOWN 宏，判定手指在屏幕上
 			if (EVENT_DOWN(events[i].flag)) {
-				// 1. 强行放大 10 倍基准，并完美合并上一次遗留的残差微动
-				int total_x = events[i].x * 10 + agg_res_x;
-				int total_y = events[i].y * 10 + agg_res_y;
+				int total_x = events[i].x * 10 + agg_res_x[events[i].id];
+				int total_y = events[i].y * 10 + agg_res_y[events[i].id];
 
-				// 2. 采用纯整除基准，彻底干掉原厂四舍五入带来的“准心磁吸/粘性”
 				int final_x = total_x / 16;
 				int final_y = total_y / 16;
-
-				// 3. 计算本次未能输出的绝对硬件微步余数
 				int rem_x = total_x % 16;
 				int rem_y = total_y % 16;
 
-				// 4. 激进扰动核心：只要触控芯片感知到手指有微米级发力（余数变动）
-				// 且此时因为整除导致计算出的坐标卡死没变，驱动强行向移动方向输送 1 个像素！
+				// 检测到触控时强推 1 像素，完全打死系统死板过滤
 				if (rem_x != 0 && final_x == ((events[i].x * 10) / 16)) {
 					final_x += (rem_x > 0) ? 1 : -1;
-					rem_x -= (rem_x > 0) ? 16 : -16; // 补偿残差池，防止坐标多重跳变
+					rem_x -= (rem_x > 0) ? 16 : -16;
 				}
 				if (rem_y != 0 && final_y == ((events[i].y * 10) / 16)) {
 					final_y += (rem_y > 0) ? 1 : -1;
@@ -743,38 +749,17 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 
 				events[i].x = final_x;
 				events[i].y = final_y;
-
-				// 滚动保存残差池
-				agg_res_x = rem_x;
-				agg_res_y = rem_y;
+				agg_res_x[events[i].id] = rem_x;
+				agg_res_y[events[i].id] = rem_y;
 			} else {
-				// 手指一旦抬起（UP/CANCEL），瞬间清空池子，绝不影响下一次按下
+				// 手指抬起后尝试直接清空池子，防止残差污染下一次点击与滑动
 				events[i].x = (events[i].x * 10) / 16;
 				events[i].y = (events[i].y * 10) / 16;
-				agg_res_x = 0;
-				agg_res_y = 0;
+				agg_res_x[events[i].id] = 0;
+				agg_res_y[events[i].id] = 0;
 			}
 		}
-		/* === POCO F4 纯手打狙：极致精度、微步破防扰动算法结束 === */
-
-		// 核心：将原本下面这一行原厂获取 flag 的代码注释掉，因为我们在上面已经提前安全处理了
-		// events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
-
-		//data->touch_point++;
-		//events[i].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) +
-			      //(buf[FTS_TOUCH_X_L_POS + base] << 4) +
-			      //((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		//events[i].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) +
-			      //(buf[FTS_TOUCH_Y_L_POS + base] << 4) +
-			      //((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		/*fw report 16x, dts report 10x*/
-		//{
-		//events[i].x = events[i].x * 10) / 16;
-		//events[i].y = events[i].y * 10) / 16;
-		//events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
-		//events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
-		//events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		//// events[i].p =  buf[FTS_TOUCH_PRE_POS + base] & 0x03;
+		/* === END === */
 
 		if (EVENT_DOWN(events[i].flag) && (data->point_num == 0)) {
 			FTS_INFO("abnormal touch data from fw");
