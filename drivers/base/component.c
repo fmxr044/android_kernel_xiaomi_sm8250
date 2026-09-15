@@ -15,7 +15,12 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/debugfs.h>
-
+#undef dev_info
+#define dev_info(...) do {} while (0)
+#undef dev_err
+#define dev_err(...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(...) do {} while (0)
 struct component;
 
 struct component_match_array {
