@@ -46,7 +46,7 @@ const_debug unsigned int sysctl_sched_features =
 #undef SCHED_FEAT
 #endif
 #undef printk_deferred
-#define printk_deferred(dev, fmt, ...) do {} while (0)
+#define printk_deferred(...) do {} while (0)
 /*
  * Number of tasks to iterate in a single balance run.
  * Limited because this is done with IRQs disabled.
