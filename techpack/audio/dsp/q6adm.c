@@ -22,11 +22,11 @@
 #include <ipc/apr.h>
 #include "adsp_err.h"
 #undef pr_info
-#define pr_info(fmt, args...) do {} while (0)
+#define pr_info(...) do {} while (0)
 #undef pr_debug
-#define pr_debug(fmt, args...) do {} while (0)
+#define pr_debug(...) do {} while (0)
 #undef pr_err
-#define pr_err(fmt, args...) do {} while (0)
+#define pr_err(...) do {} while (0)
 #define TIMEOUT_MS 1000
 
 #define RESET_COPP_ID 99
