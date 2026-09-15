@@ -42,6 +42,8 @@
 #define pci_dbg(dev, fmt, ...) do {} while (0)
 #undef pci_warn
 #define pci_warn(dev, fmt, ...) do {} while (0)
+#undef pci_printk
+#define pci_printk(dev, fmt, ...) do {} while (0)
 DEFINE_MUTEX(pci_slot_mutex);
 
 const char *pci_power_names[] = {
