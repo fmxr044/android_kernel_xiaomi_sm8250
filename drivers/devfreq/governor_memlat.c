@@ -26,11 +26,11 @@
 
 #include <trace/events/power.h>
 #undef dev_info
-#define dev_info(dev, fmt, ...) do {} while (0)
+#define dev_info(...) do {} while (0)
 #undef dev_dbg
-#define dev_dbg(dev, fmt, ...) do {} while (0)
+#define dev_dbg(...) do {} while (0)
 #undef dev_err
-#define dev_err(dev, fmt, ...) do {} while (0)
+#define dev_err(...) do {} while (0)
 struct memlat_node {
 	unsigned int ratio_ceil;
 	unsigned int stall_floor;
