@@ -14,7 +14,14 @@
 #include <linux/of_address.h>
 #include <linux/of_pci.h>
 #include "pci.h"
-
+#undef dev_info
+#define dev_info(...) do {} while (0)
+#undef dev_err
+#define dev_err(...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(...) do {} while (0)
+#undef dev_warn
+#define dev_warn(...) do {} while (0)
 void pci_set_of_node(struct pci_dev *dev)
 {
 	if (!dev->bus->dev.of_node)
