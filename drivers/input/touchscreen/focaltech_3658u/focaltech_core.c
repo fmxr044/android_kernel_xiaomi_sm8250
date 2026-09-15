@@ -717,13 +717,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
 		// events[i].p =  buf[FTS_TOUCH_PRE_POS + base] & 0x03;
 		
-				/* === START === 专为类原生优化的抗过滤高精度报点 === */
+				//触控魔改  非萌新人
 		if (events[i].id < FTS_MAX_POINTS_SUPPORT) {
 			static int last_raw_x[FTS_MAX_POINTS_SUPPORT] = {0};
 			static int last_raw_y[FTS_MAX_POINTS_SUPPORT] = {0};
 
 			if (EVENT_DOWN(events[i].flag)) {
-				// 1. 提取未经缩放的硬件原始绝对坐标
+				// 提取未经缩放的原始坐标
 				int raw_x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) +
 							(buf[FTS_TOUCH_X_L_POS + base] << 4) +
 							((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
@@ -731,42 +731,34 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 							(buf[FTS_TOUCH_Y_L_POS + base] << 4) +
 							((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 
-				// 2. 执行标准 DTS 分辨率映射 (fw 16x -> dts 10x)
+				// 执行标准 DTS 分辨率映射 (fw 16x -> dts 10x)
 				int mapped_x = (raw_x * 10) / 16;
 				int mapped_y = (raw_y * 10) / 16;
-
-				// 3. 类原生破死区核心：检测硬件是否有极其微小的物理位移
+				// 类原生突破死区核心：检测是否存在极其微小的物理位移
 				// 如果物理坐标未变，但系统可能处于死板过滤状态，且这属于连续触控阶段
 				if (last_raw_x[events[i].id] != 0 && 
 					raw_x == last_raw_x[events[i].id] && 
 					raw_y == last_raw_y[events[i].id]) {
-					
-					// 仅在坐标末尾注入 1 像素的极微小交替伪抖动 (+1 / -1)
-					// 这能欺骗类原生的 InputReader，使其坚信手指在微动，从而不进入静止过滤死区
+					// 坐标末尾注入 1 像素的极微小交替伪抖动 (+1 / -1)
+					// 欺骗 <inputreader> 使其认为手指在微动，从而不进入静止过滤死区
 					static bool jitter_flip = false;
 					jitter_flip = !jitter_flip;
-					
 					events[i].x = mapped_x + (jitter_flip ? 1 : 0);
 					events[i].y = mapped_y + (jitter_flip ? 0 : 1);
 				} else {
-					// 如果物理坐标本身就在动，则直接信任标准映射值，绝不叠加残差
+					// <假设>物理坐标本身就在动，直接信任标准映射值不叠加残差
 					events[i].x = mapped_x;
 					events[i].y = mapped_y;
 				}
-
-				// 保存本次硬件原始坐标作为下一次对比的基准
+				// 保存原始坐标作为下次对比基准
 				last_raw_x[events[i].id] = raw_x;
 				last_raw_y[events[i].id] = raw_y;
-
 			} else {
-				// 手指抬起，必须彻底清空历史状态，防止污染下一次点击
-				//events[i].x = (events[i].x * 10) / 16;
-				//events[i].y = (events[i].y * 10) / 16;
+				// 手指抬起时立即清空历史状态防止污染下次点击
 				last_raw_x[events[i].id] = 0;
 				last_raw_y[events[i].id] = 0;
 			}
 		}
-		/* === END === */
 		if (EVENT_DOWN(events[i].flag) && (data->point_num == 0)) {
 			FTS_INFO("abnormal touch data from fw");
 			return -EIO;
@@ -2104,60 +2096,55 @@ static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 {
 	struct fts_ts_platform_data *pdata __maybe_unused = ts_data->pdata;
 
-	/* Touch Game Mode Switch */
 	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_DEF_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_MAX_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_MIN_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_MIN_VALUE] = 1;//原0
 	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][SET_CUR_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_CUR_VALUE] = 1;
 
-	/* Acitve Mode */
 	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_MAX_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_MIN_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_MIN_VALUE] = 1;//原0
 	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_DEF_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][SET_CUR_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_CUR_VALUE] = 1;
 
-	/* the value represents the position in the touch range array defined by DTS */
 	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MAX_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MIN_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MIN_VALUE] = 5;//原1
 	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_DEF_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_CUR_VALUE] = 5;
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MAX_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MIN_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MIN_VALUE] = 5;//原1
 	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_DEF_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_CUR_VALUE] = 5;
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MAX_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MIN_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MIN_VALUE] = 5;//原1
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_DEF_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][SET_CUR_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_CUR_VALUE] = 5;
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MAX_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MIN_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MIN_VALUE] = 5;//原1
 	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_DEF_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_CUR_VALUE] = 5;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_MAX_VALUE] = EXPERT_ARRAY_SIZE;
+	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_MAX_VALUE] = 3;//原>通过EXPERT_ARRAY_SIZE定义获取
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_MIN_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_DEF_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_CUR_VALUE] = 1;
 
-	/* edge filter orientation*/
-	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MAX_VALUE] = 3;
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MAX_VALUE] = 0;//原3
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MIN_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] = 0;
 
-	/* edge filter area*/
-	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MAX_VALUE] = 3;
+	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MAX_VALUE] = 0;//原3
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MIN_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_DEF_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][SET_CUR_VALUE] = 0;
