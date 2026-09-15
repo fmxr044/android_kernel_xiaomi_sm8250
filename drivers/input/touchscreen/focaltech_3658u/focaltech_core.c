@@ -676,15 +676,12 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 	int max_touch_num = data->pdata->max_touch_number;
 	u8 *buf = data->point_buf;
-
 	ret = fts_read_touchdata(data);
 	if (ret) {
 		return ret;
 	}
-
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	data->touch_point = 0;
-
 	if ((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
 	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF)) {
 		FTS_DEBUG("touch buff is 0xff, need recovery state");
@@ -692,12 +689,10 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		fts_tp_state_recovery(data);
 		return -EIO;
 	}
-
 	if (data->point_num > max_touch_num) {
 		FTS_INFO("invalid point_num(%d)", data->point_num);
 		return -EIO;
 	}
-
 	for (i = 0; i < max_touch_num; i++) {
 		base = FTS_ONE_TCH_LEN * i;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
@@ -707,7 +702,6 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 			FTS_ERROR("ID(%d) beyond max_touch_number", pointid);
 			return -EINVAL;
 		}
-
 		data->touch_point++;
 		events[i].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) +
 			      (buf[FTS_TOUCH_X_L_POS + base] << 4) +
@@ -716,62 +710,72 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 			      (buf[FTS_TOUCH_Y_L_POS + base] << 4) +
 			      ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		/*fw report 16x, dts report 10x*/
-		events[i].x = events[i].x * 10 / 16;
-		events[i].y = events[i].y * 10 / 16;
+		//events[i].x = events[i].x * 10 / 16;
+		//events[i].y = events[i].y * 10 / 16;
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
 		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
 		// events[i].p =  buf[FTS_TOUCH_PRE_POS + base] & 0x03;
 		
-		/* === START === */
+				/* === START === 专为类原生优化的抗过滤高精度报点 === */
 		if (events[i].id < FTS_MAX_POINTS_SUPPORT) {
-			static int agg_res_x[FTS_MAX_POINTS_SUPPORT] = {0};
-			static int agg_res_y[FTS_MAX_POINTS_SUPPORT] = {0};
+			static int last_raw_x[FTS_MAX_POINTS_SUPPORT] = {0};
+			static int last_raw_y[FTS_MAX_POINTS_SUPPORT] = {0};
 
 			if (EVENT_DOWN(events[i].flag)) {
-				int total_x = events[i].x * 10 + agg_res_x[events[i].id];
-				int total_y = events[i].y * 10 + agg_res_y[events[i].id];
+				// 1. 提取未经缩放的硬件原始绝对坐标
+				int raw_x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) +
+							(buf[FTS_TOUCH_X_L_POS + base] << 4) +
+							((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+				int raw_y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) +
+							(buf[FTS_TOUCH_Y_L_POS + base] << 4) +
+							((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 
-				int final_x = total_x / 16;
-				int final_y = total_y / 16;
-				int rem_x = total_x % 16;
-				int rem_y = total_y % 16;
+				// 2. 执行标准 DTS 分辨率映射 (fw 16x -> dts 10x)
+				int mapped_x = (raw_x * 10) / 16;
+				int mapped_y = (raw_y * 10) / 16;
 
-				// 检测到触控时强推 1 像素，完全打死系统死板过滤
-				if (rem_x != 0 && final_x == ((events[i].x * 10) / 16)) {
-					final_x += (rem_x > 0) ? 1 : -1;
-					rem_x -= (rem_x > 0) ? 16 : -16;
+				// 3. 类原生破死区核心：检测硬件是否有极其微小的物理位移
+				// 如果物理坐标未变，但系统可能处于死板过滤状态，且这属于连续触控阶段
+				if (last_raw_x[events[i].id] != 0 && 
+					raw_x == last_raw_x[events[i].id] && 
+					raw_y == last_raw_y[events[i].id]) {
+					
+					// 仅在坐标末尾注入 1 像素的极微小交替伪抖动 (+1 / -1)
+					// 这能欺骗类原生的 InputReader，使其坚信手指在微动，从而不进入静止过滤死区
+					static bool jitter_flip = false;
+					jitter_flip = !jitter_flip;
+					
+					events[i].x = mapped_x + (jitter_flip ? 1 : 0);
+					events[i].y = mapped_y + (jitter_flip ? 0 : 1);
+				} else {
+					// 如果物理坐标本身就在动，则直接信任标准映射值，绝不叠加残差
+					events[i].x = mapped_x;
+					events[i].y = mapped_y;
 				}
-				if (rem_y != 0 && final_y == ((events[i].y * 10) / 16)) {
-					final_y += (rem_y > 0) ? 1 : -1;
-					rem_y -= (rem_y > 0) ? 16 : -16;
-				}
 
-				events[i].x = final_x;
-				events[i].y = final_y;
-				agg_res_x[events[i].id] = rem_x;
-				agg_res_y[events[i].id] = rem_y;
+				// 保存本次硬件原始坐标作为下一次对比的基准
+				last_raw_x[events[i].id] = raw_x;
+				last_raw_y[events[i].id] = raw_y;
+
 			} else {
-				// 手指抬起后尝试直接清空池子，防止残差污染下一次点击与滑动
-				events[i].x = (events[i].x * 10) / 16;
-				events[i].y = (events[i].y * 10) / 16;
-				agg_res_x[events[i].id] = 0;
-				agg_res_y[events[i].id] = 0;
+				// 手指抬起，必须彻底清空历史状态，防止污染下一次点击
+				//events[i].x = (events[i].x * 10) / 16;
+				//events[i].y = (events[i].y * 10) / 16;
+				last_raw_x[events[i].id] = 0;
+				last_raw_y[events[i].id] = 0;
 			}
 		}
 		/* === END === */
-
 		if (EVENT_DOWN(events[i].flag) && (data->point_num == 0)) {
 			FTS_INFO("abnormal touch data from fw");
 			return -EIO;
 		}
 	}
-
 	if (data->touch_point == 0) {
 		FTS_INFO("no touch point information");
 		return -EIO;
 	}
-
 	return 0;
 }
 
