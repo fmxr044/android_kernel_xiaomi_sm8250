@@ -20,9 +20,9 @@
 #include "power_supply.h"
 
 #undef dev_err_ratelimited
-#define dev_err_ratelimited(dev, fmt, ...) do {} while (0)
+#define dev_err_ratelimited(...) do {} while (0)
 #undef dev_dbg_ratelimited
-#define dev_dbg_ratelimited(dev, fmt, ...) do {} while (0)
+#define dev_dbg_ratelimited(...) do {} while (0)
 /*
  * This is because the name "current" breaks the device attr macro.
  * The "current" word resolves to "(get_current())" so instead of
