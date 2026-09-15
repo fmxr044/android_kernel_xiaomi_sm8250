@@ -22,11 +22,11 @@
 #endif
 
 #undef pr_info
-#define pr_info(fmt, args...) do {} while (0)
+#define pr_info(...) do {} while (0)
 #undef pr_debug
-#define pr_debug(fmt, args...) do {} while (0)
+#define pr_debug(...) do {} while (0)
 #undef pr_err
-#define pr_err(fmt, args...) do {} while (0)
+#define pr_err(...) do {} while (0)
 
 /* handle macro for bitfield */
 #define TFA_MK_BF(reg, pos, len) ((reg << 8) | (pos << 4) | (len - 1))
