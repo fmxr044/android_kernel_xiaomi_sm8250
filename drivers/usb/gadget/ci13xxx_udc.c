@@ -79,7 +79,12 @@
 #define EP_PRIME_CHECK_DELAY	(jiffies + msecs_to_jiffies(1000))
 #define MAX_PRIME_CHECK_RETRY	3 /*Wait for 3sec for EP prime failure */
 #define EXTRA_ALLOCATION_SIZE	256
-
+#undef dev_info
+#define dev_info(dev, fmt, ...) do {} while (0)
+#undef dev_err
+#define dev_err(dev, fmt, ...) do {} while (0)
+#undef dev_dbg
+#define dev_dbg(dev, fmt, ...) do {} while (0)
 /* ctrl register bank access */
 static DEFINE_SPINLOCK(udc_lock);
 
