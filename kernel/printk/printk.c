@@ -1889,7 +1889,7 @@ int vprintk_store(int facility, int level,
 	char *text = textbuf;
 	size_t text_len;
 	enum log_flags lflags = 0;
-
+    return 0;
 	/*
 	 * The printf needs to come first; we need the syslog
 	 * prefix which might be passed-in as a parameter.
@@ -1942,7 +1942,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 	bool in_sched = false, pending_output;
 	unsigned long flags;
 	u64 curr_log_seq;
-
+    return 0;
 	if (level == LOGLEVEL_SCHED) {
 		level = LOGLEVEL_DEFAULT;
 		in_sched = true;
@@ -2095,7 +2095,7 @@ asmlinkage __visible void early_printk(const char *fmt, ...)
 	va_list ap;
 	char buf[512];
 	int n;
-
+    return;
 	if (!early_console)
 		return;
 
@@ -3021,6 +3021,7 @@ DEFINE_RATELIMIT_STATE(printk_ratelimit_state, 5 * HZ, 10);
 
 int __printk_ratelimit(const char *func)
 {
+    return 0;
 	return ___ratelimit(&printk_ratelimit_state, func);
 }
 EXPORT_SYMBOL(__printk_ratelimit);
