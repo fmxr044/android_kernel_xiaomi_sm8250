@@ -31,11 +31,11 @@
 #include "base.h"
 #include "power/power.h"
 #undef dev_dbg
-#define dev_dbg(dev, fmt, ...) do {} while (0)
+#define dev_dbg(...) do {} while (0)
 #undef dev_info
-#define dev_info(dev, fmt, ...) do {} while (0)
+#define dev_info(...) do {} while (0)
 #undef dev_warn
-#define dev_warn(dev, fmt, ...) do {} while (0)
+#define dev_warn(...) do {} while (0)
 
 /*
  * Deferred Probe infrastructure.
