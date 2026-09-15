@@ -25,17 +25,17 @@
 #include <linux/acpi.h>
 #include "pci.h"
 #undef dev_info
-#define dev_info(dev, fmt, ...) do {} while (0)
+#define dev_info(...) do {} while (0)
 #undef pci_info
-#define pci_info(dev, fmt, ...) do {} while (0)
+#define pci_info(...) do {} while (0)
 #undef pci_warn
-#define pci_warn(dev, fmt, ...) do {} while (0)
+#define pci_warn(...) do {} while (0)
 #undef pci_dbg
-#define pci_dbg(dev, fmt, ...) do {} while (0)
+#define pci_dbg(...) do {} while (0)
 #undef pci_err
-#define pci_err(dev, fmt, ...) do {} while (0)
+#define pci_err(...) do {} while (0)
 #undef pci_printk
-#define pci_printk(dev, fmt, ...) do {} while (0)
+#define pci_printk(...) do {} while (0)
 unsigned int pci_flags;
 
 struct pci_dev_resource {
