@@ -50,11 +50,11 @@
 #include <dsp/apr_audio-v2.h>
 #include <dsp/msm-cirrus-playback.h>
 #undef pr_info
-#define pr_info(fmt, args...) do {} while (0)
+#define pr_info(...) do {} while (0)
 #undef pr_debug
-#define pr_debug(fmt, args...) do {} while (0)
+#define pr_debug(...) do {} while (0)
 #undef pr_err
-#define pr_err(fmt, args...) do {} while (0)
+#define pr_err(...) do {} while (0)
 #undef CONFIG_OF
 
 #define CRUS_TX_CONFIG "crus_sp_tx%d.bin"
