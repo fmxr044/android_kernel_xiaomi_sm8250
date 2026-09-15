@@ -15,7 +15,10 @@
 #include <linux/cpumask.h>
 
 #include "internals.h"
-
+#undef pr_warn_ratelimited
+#define pr_warn_ratelimited(...) do {} while (0)
+#undef pr_info_ratelimited
+#define pr_info_ratelimited(...) do {} while (0)
 /* For !GENERIC_IRQ_EFFECTIVE_AFF_MASK this looks at general affinity mask */
 static inline bool irq_needs_fixup(struct irq_data *d)
 {
