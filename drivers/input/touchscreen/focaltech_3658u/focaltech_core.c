@@ -2098,7 +2098,7 @@ static char fts_touch_vendor_read(void)
 
 static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 {
-	struct fts_ts_platform_data *pdata = ts_data->pdata;
+	struct fts_ts_platform_data *pdata __maybe_unused = ts_data->pdata;
 
 	/* Touch Game Mode Switch */
 	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_DEF_VALUE] = 1;
