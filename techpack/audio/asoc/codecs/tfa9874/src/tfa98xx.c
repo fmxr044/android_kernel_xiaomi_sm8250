@@ -32,19 +32,19 @@
 #include "../inc/tfa_dsp_fw.h"
 
 #undef pr_info
-#define pr_info(fmt, args...) do {} while (0)
+#define pr_info(...) do {} while (0)
 #undef pr_debug
-#define pr_debug(fmt, args...) do {} while (0)
+#define pr_debug(...) do {} while (0)
 #undef pr_err
-#define pr_err(fmt, args...) do {} while (0)
+#define pr_err(...) do {} while (0)
 #undef pr_warn
-#define pr_warn(fmt, args...) do {} while (0)
+#define pr_warn(...) do {} while (0)
 #undef dev_info
-#define dev_info(dev, fmt, ...) do {} while (0)
+#define dev_info(...) do {} while (0)
 #undef dev_dbg
-#define dev_dbg(dev, fmt, ...) do {} while (0)
+#define dev_dbg(...) do {} while (0)
 #undef dev_err
-#define dev_err(dev, fmt, ...) do {} while (0)
+#define dev_err(...) do {} while (0)
 
 /* required for enum tfa9912_irq */
 #include "../inc/tfa98xx_tfafieldnames.h"
