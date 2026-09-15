@@ -3046,7 +3046,7 @@ int pci_bus_insert_busn_res(struct pci_bus *b, int bus, int bus_max)
 int pci_bus_update_busn_res_end(struct pci_bus *b, int bus_max)
 {
 	struct resource *res = &b->busn_res;
-	struct resource old_res = *res;
+	struct resource old_res __maybe_unused = *res;
 	resource_size_t size;
 	int ret;
 
