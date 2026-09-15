@@ -38,6 +38,8 @@
 #define pci_err(dev, fmt, ...) do {} while (0)
 #undef pci_printk
 #define pci_printk(dev, fmt, ...) do {} while (0)
+#undef dev_printk
+#define dev_printk(dev, fmt, ...) do {} while (0)
 static struct resource busn_resource = {
 	.name	= "PCI busn",
 	.start	= 0,
