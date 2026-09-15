@@ -33,9 +33,9 @@
 #define MIN(a,b)	((a < b) ? a : b)
 
 #undef dev_err
-#define dev_err(dev, fmt, ...) do {} while (0)
+#define dev_err(...) do {} while (0)
 #undef dev_warn
-#define dev_warn(dev, fmt, ...) do {} while (0)
+#define dev_warn(...) do {} while (0)
 
 static struct class *devfreq_class;
 
