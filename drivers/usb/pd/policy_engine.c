@@ -197,13 +197,13 @@ enum vdm_state {
 
 static void *usbpd_ipc_log;
 #undef usbpd_err
-#define usbpd_err(dev, fmt, ...) do {} while (0)
+#define usbpd_err(...) do {} while (0)
 #undef usbpd_dbg
-#define usbpd_dbg(dev, fmt, ...) do {} while (0)
+#define usbpd_dbg(...) do {} while (0)
 #undef usbpd_warn
-#define usbpd_warn(dev, fmt, ...) do {} while (0)
+#define usbpd_warn(...) do {} while (0)
 #undef usbpd_info
-#define usbpd_info(dev, fmt, ...) do {} while (0)
+#define usbpd_info(...) do {} while (0)
 
 #define NUM_LOG_PAGES		10
 
