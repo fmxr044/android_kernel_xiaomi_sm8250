@@ -152,9 +152,9 @@ static int binder_set_stop_on_user_error(const char *val,
 module_param_call(stop_on_user_error, binder_set_stop_on_user_error,
 	param_get_int, &binder_stop_on_user_error, 0644);
 
-#define binder_debug(mask, x...) do {} while (0)
+#define binder_debug(...) do {} while (0)
 
-#define binder_user_error(x...) do {} while (0)
+#define binder_user_error(...) do {} while (0)
 
 #define to_flat_binder_object(hdr) \
 	container_of(hdr, struct flat_binder_object, hdr)
