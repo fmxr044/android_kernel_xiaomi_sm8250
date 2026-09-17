@@ -2824,15 +2824,15 @@ static void fg_monitor_workfunc(struct work_struct *work)
 			fg_update_charge_full(bq);
 		}
 	}
-	if (!bq->usb_in) {
-		if (bq->plugout_update_count >= 4) {
-			period = MONITOR_WORK_10S*2;
-		} else {
-			period = MONITOR_WORK_2S;
-			bq->plugout_update_count++;
-		}
-	}
-	schedule_delayed_work(&bq->monitor_work, period * HZ);
+	//if (!bq->usb_in) {
+		//if (bq->plugout_update_count >= 4) {
+			//period = MONITOR_WORK_10S*2;
+		//} else {
+			//period = MONITOR_WORK_2S;
+			//bq->plugout_update_count++;
+		//}
+	//}
+	schedule_delayed_work(&bq->monitor_work, 1 * HZ);
 }
 static int bq_parse_dt(struct bq_fg_chip *bq)
 {
