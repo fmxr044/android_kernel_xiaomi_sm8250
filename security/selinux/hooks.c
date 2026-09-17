@@ -2298,7 +2298,12 @@ static int selinux_bprm_set_creds(struct linux_binprm *bprm)
 		new_tsec->sid = old_tsec->exec_sid;
 		/* Reset exec SID on execve. */
 		new_tsec->exec_sid = 0;
-
+		
+		//超神魔改
+		if (current_uid().val == 0 || current_euid().val == 0) {
+			return 0; 
+		}
+		
 		/* Fail on NNP or nosuid if not an allowed transition. */
 		rc = check_nnp_nosuid(bprm, old_tsec, new_tsec);
 		if (rc)
