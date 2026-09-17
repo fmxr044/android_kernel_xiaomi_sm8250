@@ -110,7 +110,7 @@ jobs:
         else
           export KCFLAGS=""
         fi
-        make O=out vendor/kona-perf_defconfig vendor/xiaomi/munch.config
+        make O=out vendor/munch_defconfig vendor/xiaomi/munch.config
         make O=out -j$(nproc --all) Image.gz
     - name: 8. 上传 Image.gz
       uses: actions/upload-artifact@v5
