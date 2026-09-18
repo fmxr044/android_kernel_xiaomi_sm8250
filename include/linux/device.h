@@ -1806,5 +1806,5 @@ device_initcall(__driver##_init);
 #define dev_dbg_ratelimited(dev, fmt, ...)    ((void)0)
 
 // 4.19 特有的高通探测报错函数，直接干掉
-#undef dev_err_probe
-#define dev_err_probe(dev, err, fmt, ...) (err) 
+//#undef dev_err_probe
+//#define dev_err_probe(dev, err, fmt, ...) (err) 
