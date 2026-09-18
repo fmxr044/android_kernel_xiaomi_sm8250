@@ -546,3 +546,65 @@ static inline void printk_deferred_exit(void)
 #endif
 
 #endif
+
+// ========================================================
+// 极致游戏人优化：物理抹除内核核心层 pr_* 通用日志开销
+// ========================================================
+#undef pr_emerg
+#undef pr_alert
+#undef pr_crit
+#undef pr_err
+#undef pr_warning
+#undef pr_warn
+#undef pr_notice
+#undef pr_info
+#undef pr_cont
+#undef pr_debug
+
+#define pr_emerg(fmt, ...)        do {} while (0)
+#define pr_alert(fmt, ...)        do {} while (0)
+#define pr_crit(fmt, ...)         do {} while (0)
+#define pr_err(fmt, ...)          do {} while (0)
+#define pr_warning(fmt, ...)      do {} while (0)
+#define pr_warn(fmt, ...)         do {} while (0)
+#define pr_notice(fmt, ...)       do {} while (0)
+#define pr_info(fmt, ...)         do {} while (0)
+#define pr_cont(fmt, ...)         do {} while (0)
+#define pr_debug(fmt, ...)        do {} while (0)
+
+/* 顺便将单次打印（_once）和限速打印（_ratelimited）一并彻底切断 */
+#undef pr_emerg_once
+#undef pr_alert_once
+#undef pr_crit_once
+#undef pr_err_once
+#undef pr_warn_once
+#undef pr_notice_once
+#undef pr_info_once
+#undef pr_debug_once
+
+#define pr_emerg_once(fmt, ...)        do {} while (0)
+#define pr_alert_once(fmt, ...)        do {} while (0)
+#define pr_crit_once(fmt, ...)         do {} while (0)
+#define pr_err_once(fmt, ...)          do {} while (0)
+#define pr_warn_once(fmt, ...)         do {} while (0)
+#define pr_notice_once(fmt, ...)       do {} while (0)
+#define pr_info_once(fmt, ...)         do {} while (0)
+#define pr_debug_once(fmt, ...)        do {} while (0)
+
+#undef pr_emerg_ratelimited
+#undef pr_alert_ratelimited
+#undef pr_crit_ratelimited
+#undef pr_err_ratelimited
+#undef pr_warn_ratelimited
+#undef pr_notice_ratelimited
+#undef pr_info_ratelimited
+#undef pr_debug_ratelimited
+
+#define pr_emerg_ratelimited(fmt, ...)  do {} while (0)
+#define pr_alert_ratelimited(fmt, ...)  do {} while (0)
+#define pr_crit_ratelimited(fmt, ...)   do {} while (0)
+#define pr_err_ratelimited(fmt, ...)    do {} while (0)
+#define pr_warn_ratelimited(fmt, ...)   do {} while (0)
+#define pr_notice_ratelimited(fmt, ...) do {} while (0)
+#define pr_info_ratelimited(fmt, ...)   do {} while (0)
+#define pr_debug_ratelimited(fmt, ...)  do {} while (0)
