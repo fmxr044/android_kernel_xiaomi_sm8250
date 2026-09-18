@@ -717,7 +717,7 @@ static void vs_block_client_opened(struct vs_client_block_state *state)
 static int vs_block_client_ack_read(struct vs_client_block_state *state,
 		void *tag, struct vs_pbuf pbuf, struct vs_mbuf *mbuf)
 {
-	struct block_client *client __maybe_unused = state_to_block_client(state);
+	struct block_client *client = state_to_block_client(state);
 	struct bio *bio = tag;
 	struct bio_vec *bvec;
 	int err = 0;
