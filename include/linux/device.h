@@ -1748,9 +1748,6 @@ device_initcall(__driver##_init);
 #endif /* _DEVICE_H_ */
 
 
-// ========================================================
-// 极致游戏人优化 V3.0 (终极版)：全参数黑洞，降维打击所有 Werror
-// ========================================================
 #undef dev_emerg
 #undef dev_crit
 #undef dev_alert
@@ -1761,46 +1758,53 @@ device_initcall(__driver##_init);
 #undef dev_dbg
 #undef dev_vdbg
 
-/* 
- * 核心原理解析：
- * 1. 使用了 GCC/Clang 扩展的语句块表达式 ({ ... }) 配合 (void)0; 确保整个宏在运行时开销绝对为 0。
- * 2. 内部强行将驱动传入的第一个参数（无论写成什么形式的 dev 表达式）
- *    和后面所有的可变参数（__VA_ARGS__），一并塞进一个大统一的 (void) 逗号表达式中。
- * 3. 这样编译器在语法检查时，会认为所有传入的变量和指针都在这一行被读取了，警告直接消散；
- *    但在汇编优化阶段，这行死代码会被彻底蒸发，不留任何二进制痕迹。
- */
-#define _DEV_LOG_SHUTUP(dev, ...)  ((void)({ (void)(dev); (void)(0, ##__VA_ARGS__); 0; }))
+#define dev_emerg(dev, fmt, ...)  do {} while (0)
+#define dev_crit(dev, fmt, ...)   do {} while (0)
+#define dev_alert(dev, fmt, ...)  do {} while (0)
+#define dev_err(dev, fmt, ...)    do {} while (0)
+#define dev_warn(dev, fmt, ...)   do {} while (0)
+#define dev_notice(dev, fmt, ...) do {} while (0)
+#define dev_info(dev, fmt, ...)   do {} while (0)
+#define dev_dbg(dev, fmt, ...)    do {} while (0)
+#define dev_vdbg(dev, fmt, ...)   do {} while (0)
 
-#define dev_emerg(dev, fmt, ...)  _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_crit(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_alert(dev, fmt, ...)  _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_err(dev, fmt, ...)    _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_warn(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_notice(dev, fmt, ...) _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_info(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_dbg(dev, fmt, ...)    _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_vdbg(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
+// 顺便把单次打印（_once）和限速打印（_ratelimited）一并物理抹除
+#undef dev_emerg_once
+#undef dev_alert_once
+#undef dev_crit_once
+#undef dev_err_once
+#undef dev_warn_once
+#undef dev_notice_once
+#undef dev_info_once
+#undef dev_dbg_once
 
-/* 同样升级所有 _once 和 _ratelimited 系列，做到滴水不漏 */
-#define dev_emerg_once(dev, fmt, ...)  _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_alert_once(dev, fmt, ...)  _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_crit_once(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_err_once(dev, fmt, ...)    _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_warn_once(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_notice_once(dev, fmt, ...) _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_info_once(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_dbg_once(dev, fmt, ...)    _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
+#define dev_emerg_once(dev, fmt, ...)  do {} while (0)
+#define dev_alert_once(dev, fmt, ...)  do {} while (0)
+#define dev_crit_once(dev, fmt, ...)   do {} while (0)
+#define dev_err_once(dev, fmt, ...)    do {} while (0)
+#define dev_warn_once(dev, fmt, ...)   do {} while (0)
+#define dev_notice_once(dev, fmt, ...) do {} while (0)
+#define dev_info_once(dev, fmt, ...)   do {} while (0)
+#define dev_dbg_once(dev, fmt, ...)    do {} while (0)
 
-#define dev_emerg_ratelimited(dev, fmt, ...)  _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_alert_ratelimited(dev, fmt, ...)  _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_crit_ratelimited(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_err_ratelimited(dev, fmt, ...)    _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_warn_ratelimited(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_notice_ratelimited(dev, fmt, ...) _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_info_ratelimited(dev, fmt, ...)   _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
-#define dev_dbg_ratelimited(dev, fmt, ...)    _DEV_LOG_SHUTUP(dev, ##__VA_ARGS__)
+#undef dev_emerg_ratelimited
+#undef dev_alert_ratelimited
+#undef dev_crit_ratelimited
+#undef dev_err_ratelimited
+#undef dev_warn_ratelimited
+#undef dev_notice_ratelimited
+#undef dev_info_ratelimited
+#undef dev_dbg_ratelimited
 
-/* 保留 dev_err_probe 的白名单防御机制 */
+#define dev_emerg_ratelimited(dev, fmt, ...)  do {} while (0)
+#define dev_alert_ratelimited(dev, fmt, ...)  do {} while (0)
+#define dev_crit_ratelimited(dev, fmt, ...)   do {} while (0)
+#define dev_err_ratelimited(dev, fmt, ...)    do {} while (0)
+#define dev_warn_ratelimited(dev, fmt, ...)   do {} while (0)
+#define dev_notice_ratelimited(dev, fmt, ...) do {} while (0)
+#define dev_info_ratelimited(dev, fmt, ...)   do {} while (0)
+#define dev_dbg_ratelimited(dev, fmt, ...)    do {} while (0)
+
+// 4.19 特有的高通探测报错函数，直接干掉
 //#undef dev_err_probe
-//static inline int __zero_leak_err_probe(int err) { return err; }
-//#define dev_err_probe(dev, err, fmt, ...) __zero_leak_err_probe(err)
+//#define dev_err_probe(dev, err, fmt, ...) (err) 
