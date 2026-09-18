@@ -2200,7 +2200,7 @@ static int send_adm_cal_block(int port_id, int copp_idx,
 	}
 
 	topology = atomic_read(&this_adm.copp.topology[port_idx][copp_idx]);
-	if (perf_mode == LEGACY_PCM_MODE &&
+	if (perf_mode == ULTRA_LOW_LATENCY_PCM_MODE &&
 	    topology == DS2_ADM_COPP_TOPOLOGY_ID) {
 		pr_err("%s: perf_mode %d, topology 0x%x\n", __func__, perf_mode,
 		       topology);
@@ -3232,7 +3232,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 	}
 
 	if (this_adm.copp.adm_delay[port_idx][copp_idx] &&
-		perf_mode == LEGACY_PCM_MODE) {
+		perf_mode == ULTRA_LOW_LATENCY_PCM_MODE) {
 		atomic_set(&this_adm.copp.adm_delay_stat[port_idx][copp_idx],
 			   1);
 		this_adm.copp.adm_delay[port_idx][copp_idx] = 0;
@@ -3244,7 +3244,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		pr_debug("%s: open ADM: port_idx: %d, copp_idx: %d\n", __func__,
 			 port_idx, copp_idx);
 		if ((topology == SRS_TRUMEDIA_TOPOLOGY_ID) &&
-		      perf_mode == LEGACY_PCM_MODE) {
+		      perf_mode == ULTRA_LOW_LATENCY_PCM_MODE) {
 			int res;
 
 			atomic_set(&this_adm.mem_map_index, ADM_SRS_TRUMEDIA);
@@ -3945,7 +3945,7 @@ int adm_close(int port_id, int perf_mode, int copp_idx)
 
 	port_channel_map[port_idx].set_channel_map = false;
 	if (this_adm.copp.adm_delay[port_idx][copp_idx] && perf_mode
-		== LEGACY_PCM_MODE) {
+		== ULTRA_LOW_LATENCY_PCM_MODE) {
 		atomic_set(&this_adm.copp.adm_delay_stat[port_idx][copp_idx],
 			   1);
 		this_adm.copp.adm_delay[port_idx][copp_idx] = 0;
