@@ -599,6 +599,9 @@ static inline void printk_deferred_exit(void)
 #define pr_notice_ratelimited(...) do {} while (0)
 #define pr_info_ratelimited(...)   do {} while (0)
 #define pr_debug_ratelimited(...)  do {} while (0)
+#ifdef BUILD_PRINTK_C
+//NOP
+#else
 #undef printk
 //#undef printk_deferred
 #undef vprintk
@@ -607,3 +610,4 @@ static inline void printk_deferred_exit(void)
 //#define printk_deferred(...)       do {} while (0)
 #define vprintk(...)               do {} while (0)
 //#define printk_ratelimit(...)      do {} while (0)
+#endif
