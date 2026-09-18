@@ -626,7 +626,7 @@ static void q6asm_session_free(struct audio_client *ac)
 	spin_lock_irqsave(&(session[session_id].session_lock), flags);
 	session[ac->session].ac = NULL;
 	ac->session = 0;
-	ac->perf_mode = LEGACY_PCM_MODE;
+	ac->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
 	ac->fptr_cache_ops = NULL;
 	ac->cb = NULL;
 	ac->priv = NULL;
@@ -1354,7 +1354,7 @@ struct audio_client *q6asm_audio_client_alloc(app_cb cb, void *priv)
 	ac->path_delay = UINT_MAX;
 	ac->priv = priv;
 	ac->io_mode = SYNC_IO_MODE;
-	ac->perf_mode = LEGACY_PCM_MODE;
+	ac->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
 	ac->fptr_cache_ops = NULL;
 	/* DSP expects stream id from 1 */
 	ac->stream_id = 1;
@@ -3552,7 +3552,7 @@ static int __q6asm_open_write(struct audio_client *ac, uint32_t format,
 	rc = q6asm_get_asm_topology_apptype(&cal_info);
 	open.postprocopo_id = cal_info.topology_id;
 
-	if (ac->perf_mode != LEGACY_PCM_MODE)
+	if (ac->perf_mode != ULTRA_LOW_LATENCY_PCM_MODE)
 		open.postprocopo_id = ASM_STREAM_POSTPROCOPO_ID_NONE;
 
 	pr_debug("%s: perf_mode %d asm_topology 0x%x bps %d\n", __func__,
