@@ -547,9 +547,6 @@ static inline void printk_deferred_exit(void)
 
 #endif
 
-// ========================================================
-// 极致游戏人优化：物理抹除内核核心层 pr_* 通用日志开销
-// ========================================================
 #undef pr_emerg
 #undef pr_alert
 #undef pr_crit
@@ -560,19 +557,6 @@ static inline void printk_deferred_exit(void)
 #undef pr_info
 #undef pr_cont
 #undef pr_debug
-
-#define pr_emerg(fmt, ...)        do {} while (0)
-#define pr_alert(fmt, ...)        do {} while (0)
-#define pr_crit(fmt, ...)         do {} while (0)
-#define pr_err(fmt, ...)          do {} while (0)
-#define pr_warning(fmt, ...)      do {} while (0)
-#define pr_warn(fmt, ...)         do {} while (0)
-#define pr_notice(fmt, ...)       do {} while (0)
-#define pr_info(fmt, ...)         do {} while (0)
-#define pr_cont(fmt, ...)         do {} while (0)
-#define pr_debug(fmt, ...)        do {} while (0)
-
-/* 顺便将单次打印（_once）和限速打印（_ratelimited）一并彻底切断 */
 #undef pr_emerg_once
 #undef pr_alert_once
 #undef pr_crit_once
@@ -581,16 +565,6 @@ static inline void printk_deferred_exit(void)
 #undef pr_notice_once
 #undef pr_info_once
 #undef pr_debug_once
-
-#define pr_emerg_once(fmt, ...)        do {} while (0)
-#define pr_alert_once(fmt, ...)        do {} while (0)
-#define pr_crit_once(fmt, ...)         do {} while (0)
-#define pr_err_once(fmt, ...)          do {} while (0)
-#define pr_warn_once(fmt, ...)         do {} while (0)
-#define pr_notice_once(fmt, ...)       do {} while (0)
-#define pr_info_once(fmt, ...)         do {} while (0)
-#define pr_debug_once(fmt, ...)        do {} while (0)
-
 #undef pr_emerg_ratelimited
 #undef pr_alert_ratelimited
 #undef pr_crit_ratelimited
@@ -599,12 +573,37 @@ static inline void printk_deferred_exit(void)
 #undef pr_notice_ratelimited
 #undef pr_info_ratelimited
 #undef pr_debug_ratelimited
-
-#define pr_emerg_ratelimited(fmt, ...)  do {} while (0)
-#define pr_alert_ratelimited(fmt, ...)  do {} while (0)
-#define pr_crit_ratelimited(fmt, ...)   do {} while (0)
-#define pr_err_ratelimited(fmt, ...)    do {} while (0)
-#define pr_warn_ratelimited(fmt, ...)   do {} while (0)
-#define pr_notice_ratelimited(fmt, ...) do {} while (0)
-#define pr_info_ratelimited(fmt, ...)   do {} while (0)
-#define pr_debug_ratelimited(fmt, ...)  do {} while (0)
+#define pr_emerg(...)              do {} while (0)
+#define pr_alert(...)              do {} while (0)
+#define pr_crit(...)               do {} while (0)
+#define pr_err(...)                do {} while (0)
+#define pr_warning(...)            do {} while (0)
+#define pr_warn(...)               do {} while (0)
+#define pr_notice(...)             do {} while (0)
+#define pr_info(...)               do {} while (0)
+#define pr_cont(...)               do {} while (0)
+#define pr_debug(...)              do {} while (0)
+#define pr_emerg_once(...)         do {} while (0)
+#define pr_alert_once(...)         do {} while (0)
+#define pr_crit_once(...)          do {} while (0)
+#define pr_err_once(...)           do {} while (0)
+#define pr_warn_once(...)          do {} while (0)
+#define pr_notice_once(...)        do {} while (0)
+#define pr_info_once(...)          do {} while (0)
+#define pr_debug_once(...)         do {} while (0)
+#define pr_emerg_ratelimited(...)  do {} while (0)
+#define pr_alert_ratelimited(...)  do {} while (0)
+#define pr_crit_ratelimited(...)   do {} while (0)
+#define pr_err_ratelimited(...)    do {} while (0)
+#define pr_warn_ratelimited(...)   do {} while (0)
+#define pr_notice_ratelimited(...) do {} while (0)
+#define pr_info_ratelimited(...)   do {} while (0)
+#define pr_debug_ratelimited(...)  do {} while (0)
+#undef printk
+#undef printk_deferred
+#undef vprintk
+#undef printk_ratelimit
+#define printk(...)                do {} while (0)
+#define printk_deferred(...)       do {} while (0)
+#define vprintk(...)               do {} while (0)
+#define printk_ratelimit(...)      do {} while (0)
