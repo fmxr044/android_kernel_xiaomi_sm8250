@@ -234,7 +234,7 @@ static int q6asm_dai_prepare(struct snd_pcm_substream *substream)
 	}
 
 	prtd->session_id = q6asm_get_session_id(prtd->audio_client);
-	ret = q6routing_stream_open(soc_prtd->dai_link->id, LEGACY_PCM_MODE,
+	ret = q6routing_stream_open(soc_prtd->dai_link->id, ULTRA_LOW_LATENCY_PCM_MODE,
 			      prtd->session_id, substream->stream);
 	if (ret) {
 		pr_err("%s: stream reg failed ret:%d\n", __func__, ret);
@@ -319,7 +319,7 @@ static int q6asm_dai_open(struct snd_pcm_substream *substream)
 	prtd->substream = substream;
 	prtd->audio_client = q6asm_audio_client_alloc(dev,
 				(q6asm_cb)event_handler, prtd, stream_id,
-				LEGACY_PCM_MODE);
+				ULTRA_LOW_LATENCY_PCM_MODE);
 	if (IS_ERR(prtd->audio_client)) {
 		pr_info("%s: Could not allocate memory\n", __func__);
 		ret = PTR_ERR(prtd->audio_client);
