@@ -1746,3 +1746,65 @@ static int __init __driver##_init(void) \
 device_initcall(__driver##_init);
 
 #endif /* _DEVICE_H_ */
+
+
+#undef dev_emerg
+#undef dev_crit
+#undef dev_alert
+#undef dev_err
+#undef dev_warn
+#undef dev_notice
+#undef dev_info
+#undef dev_dbg
+#undef dev_vdbg
+
+#define dev_emerg(dev, fmt, ...)  ((void)0)
+#define dev_crit(dev, fmt, ...)   ((void)0)
+#define dev_alert(dev, fmt, ...)  ((void)0)
+#define dev_err(dev, fmt, ...)    ((void)0)
+#define dev_warn(dev, fmt, ...)   ((void)0)
+#define dev_notice(dev, fmt, ...) ((void)0)
+#define dev_info(dev, fmt, ...)   ((void)0)
+#define dev_dbg(dev, fmt, ...)    ((void)0)
+#define dev_vdbg(dev, fmt, ...)   ((void)0)
+
+// 顺便把单次打印（_once）和限速打印（_ratelimited）一并物理抹除
+#undef dev_emerg_once
+#undef dev_alert_once
+#undef dev_crit_once
+#undef dev_err_once
+#undef dev_warn_once
+#undef dev_notice_once
+#undef dev_info_once
+#undef dev_dbg_once
+
+#define dev_emerg_once(dev, fmt, ...)  ((void)0)
+#define dev_alert_once(dev, fmt, ...)  ((void)0)
+#define dev_crit_once(dev, fmt, ...)   ((void)0)
+#define dev_err_once(dev, fmt, ...)    ((void)0)
+#define dev_warn_once(dev, fmt, ...)   ((void)0)
+#define dev_notice_once(dev, fmt, ...) ((void)0)
+#define dev_info_once(dev, fmt, ...)   ((void)0)
+#define dev_dbg_once(dev, fmt, ...)    ((void)0)
+
+#undef dev_emerg_ratelimited
+#undef dev_alert_ratelimited
+#undef dev_crit_ratelimited
+#undef dev_err_ratelimited
+#undef dev_warn_ratelimited
+#undef dev_notice_ratelimited
+#undef dev_info_ratelimited
+#undef dev_dbg_ratelimited
+
+#define dev_emerg_ratelimited(dev, fmt, ...)  ((void)0)
+#define dev_alert_ratelimited(dev, fmt, ...)  ((void)0)
+#define dev_crit_ratelimited(dev, fmt, ...)   ((void)0)
+#define dev_err_ratelimited(dev, fmt, ...)    ((void)0)
+#define dev_warn_ratelimited(dev, fmt, ...)   ((void)0)
+#define dev_notice_ratelimited(dev, fmt, ...) ((void)0)
+#define dev_info_ratelimited(dev, fmt, ...)   ((void)0)
+#define dev_dbg_ratelimited(dev, fmt, ...)    ((void)0)
+
+// 4.19 特有的高通探测报错函数，直接干掉
+#undef dev_err_probe
+#define dev_err_probe(dev, err, fmt, ...) (err) 
