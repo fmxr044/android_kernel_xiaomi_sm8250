@@ -111,7 +111,7 @@ vs_serial_server_req_open(struct vs_server_serial_state *_state)
 static vs_server_response_type_t
 vs_serial_server_req_close(struct vs_server_serial_state *_state)
 {
-	struct vtty_port *port __maybe_unused = server_state_to_port(_state);
+	struct vtty_port *port = server_state_to_port(_state);
 
 	dev_dbg(&port->service->dev, "req_close\n");
 
