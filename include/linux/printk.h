@@ -600,10 +600,10 @@ static inline void printk_deferred_exit(void)
 #define pr_info_ratelimited(...)   do {} while (0)
 #define pr_debug_ratelimited(...)  do {} while (0)
 #undef printk
-#undef printk_deferred
+//#undef printk_deferred
 #undef vprintk
-#undef printk_ratelimit
+//#undef printk_ratelimit
 #define printk(...)                do {} while (0)
-#define printk_deferred(...)       do {} while (0)
+//#define printk_deferred(...)       do {} while (0)
 #define vprintk(...)               do {} while (0)
-#define printk_ratelimit(...)      do {} while (0)
+//#define printk_ratelimit(...)      do {} while (0)
