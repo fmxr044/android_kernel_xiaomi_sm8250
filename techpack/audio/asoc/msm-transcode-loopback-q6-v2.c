@@ -566,7 +566,7 @@ static int msm_transcode_loopback_set_params(struct snd_compr_stream *cstream,
 		if (trans->source.codec_format != FORMAT_LINEAR_PCM)
 			msm_pcm_routing_reg_phy_compr_stream(
 					soc_pcm_tx->dai_link->id,
-					LEGACY_PCM_MODE,
+					ULTRA_LOW_LATENCY_PCM_MODE,
 					trans->session_id,
 					SNDRV_PCM_STREAM_CAPTURE,
 					COMPRESSED_PASSTHROUGH_GEN);
@@ -689,16 +689,16 @@ static int msm_transcode_loopback_set_metadata(struct snd_compr_stream *cstream,
 	{
 		switch (metadata->value[0]) {
 		case SNDRV_COMPRESS_LEGACY_LATENCY_MODE:
-			pdata->perf_mode[rtd->dai_link->id] = LEGACY_PCM_MODE;
+			pdata->perf_mode[rtd->dai_link->id] = ULTRA_LOW_LATENCY_PCM_MODE;
 			break;
 		case SNDRV_COMPRESS_LOW_LATENCY_MODE:
 			pdata->perf_mode[rtd->dai_link->id] =
-					LOW_LATENCY_PCM_MODE;
+					ULTRA_LOW_LATENCY_PCM_MODE;
 			break;
 		default:
 			pr_debug("%s: Unsupported latency mode %d, default to Legacy\n",
 					__func__, metadata->value[0]);
-			pdata->perf_mode[rtd->dai_link->id] = LEGACY_PCM_MODE;
+			pdata->perf_mode[rtd->dai_link->id] = ULTRA_LOW_LATENCY_PCM_MODE;
 			break;
 		}
 		break;
@@ -1709,7 +1709,7 @@ static int msm_transcode_loopback_probe(struct snd_soc_component *component)
 
 	for (i = 0; i < MSM_FRONTEND_DAI_MAX; i++) {
 		pdata->audio_effects[i] = NULL;
-		pdata->perf_mode[i] = LOW_LATENCY_PCM_MODE;
+		pdata->perf_mode[i] = ULTRA_LOW_LATENCY_PCM_MODE;
 	}
 
 	snd_soc_component_set_drvdata(component, pdata);
