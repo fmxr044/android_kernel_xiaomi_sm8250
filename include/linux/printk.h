@@ -603,11 +603,15 @@ static inline void printk_deferred_exit(void)
 //NOP
 #else
 #undef printk
-//#undef printk_deferred
+#undef printk_deferred
 #undef vprintk
-//#undef printk_ratelimit
-#define printk(...)                do {} while (0)
-//#define printk_deferred(...)       do {} while (0)
-#define vprintk(...)               do {} while (0)
-//#define printk_ratelimit(...)      do {} while (0)
+#undef printk_ratelimit
+#undef vprintk_emit
+#undef printk_emit
+#define printk(...)                ({ 0; })
+#define printk_deferred(...)       ({ 0; })
+#define vprintk(...)               ({ 0; })
+#define printk_ratelimit(...)      ({ 0; })
+#define vprintk_emit(...)          ((int)0)
+#define printk_emit(...)           ({ 0; })
 #endif
