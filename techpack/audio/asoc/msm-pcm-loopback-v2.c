@@ -1512,9 +1512,9 @@ static int msm_pcm_probe(struct platform_device *pdev)
 
 	if (of_property_read_bool(pdev->dev.of_node,
 				"qcom,msm-pcm-loopback-low-latency"))
-		pdata->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
+		pdata->perf_mode = LOW_LATENCY_PCM_MODE;
 	else
-		pdata->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
+		pdata->perf_mode = LEGACY_PCM_MODE;
 
 	dev_set_drvdata(&pdev->dev, pdata);
 

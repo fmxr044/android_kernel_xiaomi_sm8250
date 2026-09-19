@@ -513,10 +513,10 @@ static int msm_pcm_capture_prepare(struct snd_pcm_substream *substream)
 			bits_per_sample = 32;
 
 		/* ULL mode is not supported in capture path */
-		if (pdata->perf_mode == ULTRA_LOW_LATENCY_PCM_MODE)
-			prtd->audio_client->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
+		if (pdata->perf_mode == LEGACY_PCM_MODE)
+			prtd->audio_client->perf_mode = LEGACY_PCM_MODE;
 		else
-			prtd->audio_client->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
+			prtd->audio_client->perf_mode = LOW_LATENCY_PCM_MODE;
 
 		pr_debug("%s Opening %d-ch PCM read stream, perf_mode %d\n",
 				__func__, params_channels(params),
@@ -782,7 +782,7 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 
 	/* Vote to update the Rx thread priority to RT Thread for playback */
 	if ((substream->stream == SNDRV_PCM_STREAM_PLAYBACK) &&
-	    (pdata->perf_mode == ULTRA_LOW_LATENCY_PCM_MODE))
+	    (pdata->perf_mode == LOW_LATENCY_PCM_MODE))
 		apr_start_rx_rt(prtd->audio_client->apr);
 
 	return 0;
@@ -919,7 +919,7 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 		 * RT Thread for Low-Latency use case.
 		 */
 		if (pdata) {
-			if (pdata->perf_mode == ULTRA_LOW_LATENCY_PCM_MODE)
+			if (pdata->perf_mode == LOW_LATENCY_PCM_MODE)
 				apr_end_rx_rt(prtd->audio_client->apr);
 		}
 		/* determine timeout length */
@@ -2911,7 +2911,7 @@ static int msm_pcm_probe(struct platform_device *pdev)
 	if (of_property_read_bool(pdev->dev.of_node,
 				"qcom,msm-pcm-low-latency")) {
 
-		pdata->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
+		pdata->perf_mode = LOW_LATENCY_PCM_MODE;
 		rc = of_property_read_string(pdev->dev.of_node,
 			"qcom,latency-level", &latency_level);
 		if (!rc) {
@@ -2922,7 +2922,7 @@ static int msm_pcm_probe(struct platform_device *pdev)
 					ULL_POST_PROCESSING_PCM_MODE;
 		}
 	} else {
-		pdata->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
+		pdata->perf_mode = LEGACY_PCM_MODE;
 	}
 	mutex_init(&pdata->lock);
 	dev_set_drvdata(&pdev->dev, pdata);
