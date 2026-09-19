@@ -1811,15 +1811,16 @@ static inline void audit_get_stamp(struct audit_context *ctx,
 struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 				     int type)
 {
-	struct audit_buffer *ab;
-	struct timespec64 t;
-	unsigned int serial;
+    return NULL;
+	//struct audit_buffer *ab;
+	//struct timespec64 t;
+	//unsigned int serial;
 
-	if (audit_initialized != AUDIT_INITIALIZED)
-		return NULL;
+	//if (audit_initialized != AUDIT_INITIALIZED)
+		//return NULL;
 
-	if (unlikely(!audit_filter(type, AUDIT_FILTER_EXCLUDE)))
-		return NULL;
+	//if (unlikely(!audit_filter(type, AUDIT_FILTER_EXCLUDE)))
+		//return NULL;
 
 	/* NOTE: don't ever fail/sleep on these two conditions:
 	 * 1. auditd generated record - since we need auditd to drain the
@@ -1830,46 +1831,46 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 	 *    while holding the mutex, although we do penalize the sender
 	 *    later in audit_receive() when it is safe to block
 	 */
-	if (!(auditd_test_task(current) || audit_ctl_owner_current())) {
-		long stime = audit_backlog_wait_time;
+	//if (!(auditd_test_task(current) || audit_ctl_owner_current())) {
+		//long stime = audit_backlog_wait_time;
 
-		while (audit_backlog_limit &&
-		       (skb_queue_len(&audit_queue) > audit_backlog_limit)) {
+		//while (audit_backlog_limit &&
+		       //(skb_queue_len(&audit_queue) > audit_backlog_limit)) {
 			/* wake kauditd to try and flush the queue */
-			wake_up_interruptible(&kauditd_wait);
+			//wake_up_interruptible(&kauditd_wait);
 
 			/* sleep if we are allowed and we haven't exhausted our
 			 * backlog wait limit */
-			if (gfpflags_allow_blocking(gfp_mask) && (stime > 0)) {
-				DECLARE_WAITQUEUE(wait, current);
+			//if (gfpflags_allow_blocking(gfp_mask) && (stime > 0)) {
+				//DECLARE_WAITQUEUE(wait, current);
 
-				add_wait_queue_exclusive(&audit_backlog_wait,
-							 &wait);
-				set_current_state(TASK_UNINTERRUPTIBLE);
-				stime = schedule_timeout(stime);
-				remove_wait_queue(&audit_backlog_wait, &wait);
-			} else {
-				if (audit_rate_check() && printk_ratelimit())
-					pr_warn("audit_backlog=%d > audit_backlog_limit=%d\n",
-						skb_queue_len(&audit_queue),
-						audit_backlog_limit);
-				audit_log_lost("backlog limit exceeded");
-				return NULL;
-			}
-		}
-	}
+				//add_wait_queue_exclusive(&audit_backlog_wait,
+							 //&wait);
+				//set_current_state(TASK_UNINTERRUPTIBLE);
+				//stime = schedule_timeout(stime);
+				//remove_wait_queue(&audit_backlog_wait, &wait);
+			//} else {
+				//if (audit_rate_check() && printk_ratelimit())
+					//pr_warn("audit_backlog=%d > audit_backlog_limit=%d\n",
+						//skb_queue_len(&audit_queue),
+						//audit_backlog_limit);
+				//audit_log_lost("backlog limit exceeded");
+				//return NULL;
+			//}
+		//}
+	//}
 
-	ab = audit_buffer_alloc(ctx, gfp_mask, type);
-	if (!ab) {
-		audit_log_lost("out of memory in audit_log_start");
-		return NULL;
-	}
+	//ab = audit_buffer_alloc(ctx, gfp_mask, type);
+	//if (!ab) {
+		//audit_log_lost("out of memory in audit_log_start");
+		//return NULL;
+	//}
 
-	audit_get_stamp(ab->ctx, &t, &serial);
-	audit_log_format(ab, "audit(%llu.%03lu:%u): ",
-			 (unsigned long long)t.tv_sec, t.tv_nsec/1000000, serial);
+	//audit_get_stamp(ab->ctx, &t, &serial);
+	//audit_log_format(ab, "audit(%llu.%03lu:%u): ",
+			 //(unsigned long long)t.tv_sec, t.tv_nsec/1000000, serial);
 
-	return ab;
+	//return ab;
 }
 
 /**
