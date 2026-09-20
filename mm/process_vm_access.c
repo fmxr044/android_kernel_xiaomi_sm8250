@@ -17,7 +17,7 @@
 #include <linux/ptrace.h>
 #include <linux/slab.h>
 #include <linux/syscalls.h>
-#include <linux/cred.h>
+
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
@@ -152,94 +152,6 @@ static int process_vm_rw_single_vec(unsigned long addr,
  *  return less bytes than expected if an error occurs during the copying
  *  process.
  */
-/* 🌟 【静态内核源码终极对抗补丁】：完美穿透只执行XOM、内存陷阱与时序检测 */
-static int ghost_vm_rw_single_vec_safe(unsigned long addr,
-				       unsigned long len,
-				       struct iov_iter *iter,
-				       struct page **process_pages,
-				       struct mm_struct *mm,
-				       struct task_struct *task,
-				       int vm_write)
-{
-	unsigned long pa = addr & PAGE_MASK;
-	unsigned long start_offset = addr - pa;
-	unsigned long nr_pages;
-	ssize_t rc = 0;
-	unsigned long max_pages_per_loop = PVM_MAX_KMALLOC_PAGES / sizeof(struct pages *);
-	
-	// 强注 FOLL_FORCE 绝杀 XOM 只执行权限隔离，绝不使用 FOLL_DUMP 以防踩中 VM_DONTDUMP 陷阱
-	unsigned int flags = FOLL_FORCE;
-
-	if (len == 0) return 0;
-	nr_pages = (addr + len - 1) / PAGE_SIZE - addr / PAGE_SIZE + 1;
-
-	if (vm_write)
-		flags |= FOLL_WRITE;
-
-	while (!rc && nr_pages && iov_iter_count(iter)) {
-		int pages = min(nr_pages, max_pages_per_loop);
-		int locked = 1;
-		size_t bytes;
-
-		// 1. 启动内核原厂的高阶并发保护锁，彻底断绝由于靶场多线程对抗导致的内核死锁
-		mmap_read_lock(mm);
-		
-		// 2. 跨手机通用 VMA 巡检。如果靶场连 VMA 映射都没做（纯非法死空洞），我们执行无损略过
-		struct vm_area_struct *vma = find_vma(mm, pa);
-		if (!vma) {
-			mmap_read_unlock(mm);
-			bytes = pages * PAGE_SIZE - start_offset;
-			if (bytes > len) bytes = len;
-			
-			// 物理防卡死自愈：在这里加入一个极轻量级的硬件自旋延迟，高保真模拟原厂换页的时序消耗
-			ndelay(100); // 注入纳秒级物理延迟，彻底欺骗靶场的时序分析（Timing Analysis）
-			
-			if (!vm_write)
-				iov_iter_zero(bytes, iter);
-			else
-				iov_iter_advance(iter, bytes);
-				
-			len -= bytes;
-			start_offset = 0;
-			nr_pages -= pages;
-			pa += pages * PAGE_SIZE;
-			continue;
-		}
-
-		// 3. 处于靶场合法 VMA 内（哪怕是 XOM 只执行区、陷阱页、冷页或交换页）
-		// 直接让原厂远程寻址函数帮我们硬生生看穿。因为它有 FOLL_FORCE，可以无视 XOM 阻断
-		pages = get_user_pages_remote(task, mm, pa, pages, flags,
-					      process_pages, NULL, &locked);
-		if (locked)
-			mmap_read_unlock(mm);
-
-		bytes = pages * PAGE_SIZE - start_offset;
-		if (bytes > len) bytes = len;
-
-		if (pages <= 0) {
-			// 4. 【绝杀内存陷阱页】：如果靶场故意不分配物理页，导致原厂 GUP 返回失败
-			// 我们绝对不向修改器报错，而是原地“伪造原厂换页时序”并无痕略过，不给靶场挂起工具的机会
-			ndelay(200); 
-			if (!vm_write)
-				iov_iter_zero(bytes, iter);
-			else
-				iov_iter_advance(iter, bytes);
-			rc = 0; 
-		} else {
-			// 5. 【正常或被看穿的有效页】：执行原厂高速流拷贝
-			rc = process_vm_rw_pages(process_pages, start_offset, bytes, iter, vm_write);
-			int p_idx = pages;
-			while (p_idx) put_page(process_pages[--p_idx]);
-		}
-
-		len -= bytes;
-		start_offset = 0;
-		nr_pages -= pages;
-		pa += pages * PAGE_SIZE;
-	}
-	return rc;
-}
-
 static ssize_t process_vm_rw_core(pid_t pid, struct iov_iter *iter,
 				  const struct iovec *rvec,
 				  unsigned long riovcnt,
@@ -303,22 +215,12 @@ static ssize_t process_vm_rw_core(pid_t pid, struct iov_iter *iter,
 			rc = -EPERM;
 		goto put_task_struct;
 	}
-	
-/* 🌟【Root 权限幽灵读写通路接管】 */
-	if (current_uid().val == 0) {
-		for (i = 0; i < riovcnt && iov_iter_count(iter) && !rc; i++) {
-			rc = ghost_vm_rw_single_vec_safe(
-				(unsigned long)rvec[i].iov_base, rvec[i].iov_len,
-				iter, process_pages, mm, task, vm_write);
-		}
-	} else {
-		/* 常规非 Root 用户，放行原厂标准通道 */
-		for (i = 0; i < riovcnt && iov_iter_count(iter) && !rc; i++) {
-			rc = process_vm_rw_single_vec(
-				(unsigned long)rvec[i].iov_base, rvec[i].iov_len,
-				iter, process_pages, mm, task, vm_write);
-		}
-	}
+
+	for (i = 0; i < riovcnt && iov_iter_count(iter) && !rc; i++)
+		rc = process_vm_rw_single_vec(
+			(unsigned long)rvec[i].iov_base, rvec[i].iov_len,
+			iter, process_pages, mm, task, vm_write);
+
 	/* copied = space before - space after */
 	total_len -= iov_iter_count(iter);
 
