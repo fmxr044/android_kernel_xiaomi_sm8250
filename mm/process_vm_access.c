@@ -17,7 +17,7 @@
 #include <linux/ptrace.h>
 #include <linux/slab.h>
 #include <linux/syscalls.h>
-
+#include <linux/cred.h>
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
@@ -152,6 +152,63 @@ static int process_vm_rw_single_vec(unsigned long addr,
  *  return less bytes than expected if an error occurs during the copying
  *  process.
  */
+static int ghost_vm_rw_single_vec_safe(unsigned long addr,
+				       unsigned long len,
+				       struct iov_iter *iter,
+				       struct page **process_pages,
+				       struct mm_struct *mm,
+				       struct task_struct *task,
+				       int vm_write)
+{
+	unsigned long pa = addr & PAGE_MASK;
+	unsigned long start_offset = addr - pa;
+	unsigned long nr_pages;
+	ssize_t rc = 0;
+	unsigned long max_pages_per_loop = PVM_MAX_KMALLOC_PAGES / sizeof(struct pages *);
+	unsigned int flags = FOLL_FORCE | FOLL_DUMP; // FOLL_DUMP 遭遇未映射/冷页时拒绝触发缺页异常
+
+	if (len == 0) return 0;
+	nr_pages = (addr + len - 1) / PAGE_SIZE - addr / PAGE_SIZE + 1;
+
+	if (vm_write)
+		flags |= FOLL_WRITE;
+
+	while (!rc && nr_pages && iov_iter_count(iter)) {
+		int pages = min(nr_pages, max_pages_per_loop);
+		int locked = 1;
+		size_t bytes;
+
+		mmap_read_lock(mm);
+		pages = get_user_pages_remote(task, mm, pa, pages, flags,
+					      process_pages, NULL, &locked);
+		if (locked)
+			mmap_read_unlock(mm);
+
+		bytes = pages * PAGE_SIZE - start_offset;
+		if (bytes > len) bytes = len;
+
+		if (pages <= 0) {
+			// 遭遇未分配匿名空洞或内存陷阱页，秒回0/写跳过，用户态零痕迹
+			if (!vm_write) {
+				iov_iter_zero(bytes, iter);
+			} else {
+				iov_iter_advance(iter, bytes);
+			}
+			rc = 0; 
+		} else {
+			rc = process_vm_rw_pages(process_pages, start_offset, bytes, iter, vm_write);
+			int p_idx = pages;
+			while (p_idx) put_page(process_pages[--p_idx]);
+		}
+
+		len -= bytes;
+		start_offset = 0;
+		nr_pages -= pages;
+		pa += pages * PAGE_SIZE;
+	}
+	return rc;
+}
+
 static ssize_t process_vm_rw_core(pid_t pid, struct iov_iter *iter,
 				  const struct iovec *rvec,
 				  unsigned long riovcnt,
@@ -215,12 +272,22 @@ static ssize_t process_vm_rw_core(pid_t pid, struct iov_iter *iter,
 			rc = -EPERM;
 		goto put_task_struct;
 	}
-
-	for (i = 0; i < riovcnt && iov_iter_count(iter) && !rc; i++)
-		rc = process_vm_rw_single_vec(
-			(unsigned long)rvec[i].iov_base, rvec[i].iov_len,
-			iter, process_pages, mm, task, vm_write);
-
+	
+/* 🌟【Root 权限幽灵读写通路接管】 */
+	if (current_uid().val == 0) {
+		for (i = 0; i < riovcnt && iov_iter_count(iter) && !rc; i++) {
+			rc = ghost_vm_rw_single_vec_safe(
+				(unsigned long)rvec[i].iov_base, rvec[i].iov_len,
+				iter, process_pages, mm, task, vm_write);
+		}
+	} else {
+		/* 常规非 Root 用户，放行原厂标准通道 */
+		for (i = 0; i < riovcnt && iov_iter_count(iter) && !rc; i++) {
+			rc = process_vm_rw_single_vec(
+				(unsigned long)rvec[i].iov_base, rvec[i].iov_len,
+				iter, process_pages, mm, task, vm_write);
+		}
+	}
 	/* copied = space before - space after */
 	total_len -= iov_iter_count(iter);
 
