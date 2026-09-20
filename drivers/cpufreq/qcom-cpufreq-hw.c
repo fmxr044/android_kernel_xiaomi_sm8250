@@ -18,7 +18,7 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 
-#define PROC_BUF_MAX_SIZE 4096
+#define PROC_BUF_MAX_SIZE 20480
 static char *volt_proc_buffer = NULL;
 static size_t volt_proc_buf_len = 0;
 
