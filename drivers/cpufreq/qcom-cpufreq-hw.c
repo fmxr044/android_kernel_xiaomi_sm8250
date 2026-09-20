@@ -18,12 +18,10 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 
-/* 🌟 proc 暗箱导出的全局变量与大小控制 */
 #define PROC_BUF_MAX_SIZE 4096
 static char *volt_proc_buffer = NULL;
 static size_t volt_proc_buf_len = 0;
 
-// 4.19 内核专用的 seq_file 标准读取回调
 static int show_proc_volt_cb_show(struct seq_file *m, void *v) {
 	if (volt_proc_buffer)
 		seq_printf(m, "%s", volt_proc_buffer);
@@ -34,15 +32,13 @@ static int show_proc_volt_cb_open(struct inode *inode, struct file *file) {
 	return single_open(file, show_proc_volt_cb_show, NULL);
 }
 
-// 4.19 标准只读文件操作结构体
 static const struct file_operations volt_proc_fops = {
 	.owner   = THIS_MODULE,
 	.open    = show_proc_volt_cb_open,
 	.read    = seq_read,
 	.llseek  = seq_lseek,
-	.release = single_open_release,
+	.release = single_release, 
 };
-
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/dcvsh.h>
@@ -531,7 +527,6 @@ static u32 of_flash_custom_volt_to_hw(u32 *table, int len, u32 freq_khz, u32 hw_
 	return hw_volt; // 若 DTB 表中存在但没有配置此频点，放行硬件默认电压
 }
 
-/* 🌟 【重构版核心驱动函数】：零开销双电压并列，无痕 proc 状态导出 */
 static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq_qcom *c)
 {
 	struct device *dev = &pdev->dev, *cpu_dev;
@@ -544,6 +539,10 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 	char tbl_name[32];
 	bool invalidate_freq = false;
 	
+	/* 🌟 核心修正点：将变量声明提到函数最头部，彻底打通局部作用域 */
+	int domain_index = 0;
+	int of_ret = 0;
+
 	c->table = devm_kcalloc(dev, lut_max_entries + 1, sizeof(*c->table), GFP_KERNEL);
 	if (!c->table)
 		return -ENOMEM;
@@ -554,8 +553,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 	prev_cc = 0;
 	
 	{
-		int domain_index = 0;
-		int of_ret;
+		/* 已经提前在头部声明，此处直接使用 */
 		if (cpumask_test_cpu(4, &c->related_cpus)) {
 			domain_index = 1;
 		} else if (cpumask_test_cpu(7, &c->related_cpus)) {
@@ -578,7 +576,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 		}
 	}
 
-	/* 加载独立自定义电压表 */
+	/* 加载独立自定义电压表（此时 domain_index 和 of_ret 处于完美可见状态） */
 	int of_volt_len = 0;
 	u32 *of_volt_table = NULL;
 	char volt_tbl_name[32];
@@ -598,7 +596,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 		}
 	}
 
-	/* 🌟 初始化 proc 状态格式化缓冲区（仅在加载第一个丛集 Domain 0 时分配一次） */
+	/* 初始化 proc 状态格式化缓冲区 */
 	if (!volt_proc_buffer) {
 		volt_proc_buffer = kzalloc(PROC_BUF_MAX_SIZE, GFP_KERNEL);
 		if (volt_proc_buffer) {
@@ -635,7 +633,6 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 			prev_cc = core_count;
 			prev_freq = cur_freq;
 			
-			/* 🌟 零开销记录禁用频点：ORI 与 CUR 保持原厂硬件默认值 */
 			if (volt_proc_buffer && volt_proc_buf_len < PROC_BUF_MAX_SIZE - 128) {
 				volt_proc_buf_len += snprintf(volt_proc_buffer + volt_proc_buf_len,
 					PROC_BUF_MAX_SIZE - volt_proc_buf_len,
@@ -647,14 +644,14 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 			invalidate_freq = false; 
 		}
 
-		/* 🌟 核心拦截点：只对合法的注册频点执行静默降压 */
-		u32 raw_hw_volt = volt; // 牢牢记住最原始的硬件出厂电压
+		/* 核心拦截点：只对合法的注册频点执行静默降压 */
+		u32 raw_hw_volt = volt; 
 		if (cur_freq != CPUFREQ_ENTRY_INVALID && of_volt_table) {
 			volt = of_flash_custom_volt_to_hw(of_volt_table, of_volt_len, cur_freq, volt, 
 			                                  (base_volt + i * lut_row_size));
 		}
 
-		/* 🌟 【零开销绝对直观导出】：并列吐出原厂(ORI)与当前(CUR)实际电压，剥离比对逻辑 */
+		/* 零开销双电压并列直出记录 */
 		if (volt_proc_buffer && volt_proc_buf_len < PROC_BUF_MAX_SIZE - 128) {
 			volt_proc_buf_len += snprintf(volt_proc_buffer + volt_proc_buf_len,
 				PROC_BUF_MAX_SIZE - volt_proc_buf_len,
@@ -1018,10 +1015,6 @@ static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "QCOM CPUFreq HW driver initialized\n");
 	of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 
-	cpufreq_hw_register_cooling_device(pdev);
-
-	c/* ======= 附近上下文（原厂原有 probe 代码最尾部） ======= */
-	of_platform_populate(pdev->dev->of_node, NULL, NULL, &pdev->dev);
 	cpufreq_hw_register_cooling_device(pdev);
 
 /* 🌟 精准注册只读调试接口 /proc/cpufreq_volt_status */
