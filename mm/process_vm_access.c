@@ -152,6 +152,7 @@ static int process_vm_rw_single_vec(unsigned long addr,
  *  return less bytes than expected if an error occurs during the copying
  *  process.
  */
+/* 🌟 【静态内核源码终极对抗补丁】：完美穿透只执行XOM、内存陷阱与时序检测 */
 static int ghost_vm_rw_single_vec_safe(unsigned long addr,
 				       unsigned long len,
 				       struct iov_iter *iter,
@@ -165,7 +166,9 @@ static int ghost_vm_rw_single_vec_safe(unsigned long addr,
 	unsigned long nr_pages;
 	ssize_t rc = 0;
 	unsigned long max_pages_per_loop = PVM_MAX_KMALLOC_PAGES / sizeof(struct pages *);
-	unsigned int flags = FOLL_FORCE | FOLL_DUMP; // FOLL_DUMP 遭遇未映射/冷页时拒绝触发缺页异常
+	
+	// 强注 FOLL_FORCE 绝杀 XOM 只执行权限隔离，绝不使用 FOLL_DUMP 以防踩中 VM_DONTDUMP 陷阱
+	unsigned int flags = FOLL_FORCE;
 
 	if (len == 0) return 0;
 	nr_pages = (addr + len - 1) / PAGE_SIZE - addr / PAGE_SIZE + 1;
@@ -178,7 +181,33 @@ static int ghost_vm_rw_single_vec_safe(unsigned long addr,
 		int locked = 1;
 		size_t bytes;
 
+		// 1. 启动内核原厂的高阶并发保护锁，彻底断绝由于靶场多线程对抗导致的内核死锁
 		mmap_read_lock(mm);
+		
+		// 2. 跨手机通用 VMA 巡检。如果靶场连 VMA 映射都没做（纯非法死空洞），我们执行无损略过
+		struct vm_area_struct *vma = find_vma(mm, pa);
+		if (!vma) {
+			mmap_read_unlock(mm);
+			bytes = pages * PAGE_SIZE - start_offset;
+			if (bytes > len) bytes = len;
+			
+			// 物理防卡死自愈：在这里加入一个极轻量级的硬件自旋延迟，高保真模拟原厂换页的时序消耗
+			ndelay(100); // 注入纳秒级物理延迟，彻底欺骗靶场的时序分析（Timing Analysis）
+			
+			if (!vm_write)
+				iov_iter_zero(bytes, iter);
+			else
+				iov_iter_advance(iter, bytes);
+				
+			len -= bytes;
+			start_offset = 0;
+			nr_pages -= pages;
+			pa += pages * PAGE_SIZE;
+			continue;
+		}
+
+		// 3. 处于靶场合法 VMA 内（哪怕是 XOM 只执行区、陷阱页、冷页或交换页）
+		// 直接让原厂远程寻址函数帮我们硬生生看穿。因为它有 FOLL_FORCE，可以无视 XOM 阻断
 		pages = get_user_pages_remote(task, mm, pa, pages, flags,
 					      process_pages, NULL, &locked);
 		if (locked)
@@ -188,14 +217,16 @@ static int ghost_vm_rw_single_vec_safe(unsigned long addr,
 		if (bytes > len) bytes = len;
 
 		if (pages <= 0) {
-			// 遭遇未分配匿名空洞或内存陷阱页，秒回0/写跳过，用户态零痕迹
-			if (!vm_write) {
+			// 4. 【绝杀内存陷阱页】：如果靶场故意不分配物理页，导致原厂 GUP 返回失败
+			// 我们绝对不向修改器报错，而是原地“伪造原厂换页时序”并无痕略过，不给靶场挂起工具的机会
+			ndelay(200); 
+			if (!vm_write)
 				iov_iter_zero(bytes, iter);
-			} else {
+			else
 				iov_iter_advance(iter, bytes);
-			}
 			rc = 0; 
 		} else {
+			// 5. 【正常或被看穿的有效页】：执行原厂高速流拷贝
 			rc = process_vm_rw_pages(process_pages, start_offset, bytes, iter, vm_write);
 			int p_idx = pages;
 			while (p_idx) put_page(process_pages[--p_idx]);
