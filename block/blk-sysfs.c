@@ -937,6 +937,12 @@ int blk_register_queue(struct gendisk *disk)
 	kobject_uevent(&q->kobj, KOBJ_ADD);
 
 	wbt_enable_default(q);
+	
+	if (q && q->backing_dev_info) {
+		q->backing_dev_info->ra_pages = 256;
+		
+	blk_queue_flag_clear(QUEUE_FLAG_IO_STAT, q);
+	}
 
 	blk_throtl_register_queue(q);
 
