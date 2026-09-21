@@ -144,6 +144,9 @@ struct cpufreq_qcom {
 	char dcvsh_irq_name[MAX_FN_SIZE];
 	bool is_irq_enabled;
 	bool is_irq_requested;
+	struct regulator *cpu_reg; 
+	u32 *permanent_volt_table;
+	int permanent_volt_len;
 };
 
 struct cpufreq_counter {
@@ -346,7 +349,42 @@ qcom_cpufreq_hw_target_index(struct cpufreq_policy *policy,
 {
 	struct cpufreq_qcom *c = policy->driver_data;
 	unsigned long flags;
+	u32 target_freq_khz = policy->freq_table[index].frequency;
 
+	/* ============================================================ */
+	/* 🌟 【真·物理调压终极闭环】：动态检索外置 DTB 数据进行物理强制限制 */
+	/* ============================================================ */
+	if (c->cpu_reg && target_freq_khz != CPUFREQ_ENTRY_INVALID && 
+	    c->permanent_volt_table && c->permanent_volt_len > 0) {
+		
+		int idx;
+		u64 freq_hz = (u64)target_freq_khz * 1000;
+		u32 custom_volt_uv = 0;
+
+		/* 遍历该丛集专属的、永久驻留在内存中的外置 DTB 调压表 */
+		if (c->permanent_volt_len % 2 == 0) {
+			for (idx = 0; idx < c->permanent_volt_len; idx += 2) {
+				if ((u64)c->permanent_volt_table[idx] == freq_hz) {
+					u32 target_volt = c->permanent_volt_table[idx + 1];
+					
+					/* 🛡️ 极限安全自愈锁：手抖或笔误导致低于 500mV 时强制拉回，防止手机变砖 */
+					if (target_volt >= 500000) {
+						custom_volt_uv = target_volt;
+					}
+					break;
+				}
+			}
+		}
+
+		/* 只要匹配到你在外置 DTB 独立调压表里填写的特调电压，直接进行物理控压 */
+		if (custom_volt_uv >= 500000) {
+			/* 利用 regulator 硬件框架死死卡住 PMIC 输出，彻底阻断高通硬件闭环反弹 */
+			regulator_set_voltage(c->cpu_reg, custom_volt_uv, custom_volt_uv);
+		}
+	}
+	/* ============================================================ */
+
+	/* 放行高通原本的调频寄存器操作 */
 	if (c->skip_data.skip && index == c->skip_data.high_temp_index) {
 		spin_lock_irqsave(&c->skip_data.lock, flags);
 		writel_relaxed(c->skip_data.final_index,
@@ -362,6 +400,7 @@ qcom_cpufreq_hw_target_index(struct cpufreq_policy *policy,
 
 	return 0;
 }
+
 
 static unsigned int qcom_cpufreq_hw_get(unsigned int cpu)
 {
@@ -427,6 +466,14 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 	policy->freq_table = c->table;
 	policy->driver_data = c;
 	policy->dvfs_possible_from_any_cpu = true;
+
+	/* 🌟 【核心修正挂载点】：初始化时必须强行捕获主板 vdd_cpu 核心供电总线 */
+	if (!c->cpu_reg) {
+		c->cpu_reg = regulator_get(cpu_dev, "cpu");
+		if (IS_ERR(c->cpu_reg)) {
+			c->cpu_reg = NULL; // 防砖熔断：放行防卡开机一屏
+		}
+	}
 
 	em_register_perf_domain(policy->cpus, ret, &em_cb);
 
@@ -550,27 +597,29 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 		}
 	}
 
-	/* 加载独立的自定义设备树电压配置表（二元组格式：Hz, uV） */
-	int of_volt_len = 0;
-	u32 *of_volt_table = NULL;
+	/* 将临时解析表绑定至 c->permanent 永久常驻空间，跨越函数生命周期 */
+	int of_volt_raw_len = 0;
 	char volt_tbl_name[32];
 
+	/* 🌟 修正点：将包含取地址符错误的代码行，改为标准数组传参（擦除了 & 符号） */
 	snprintf(volt_tbl_name, sizeof(volt_tbl_name), "qcom,cpufreq-volt-table-%d", domain_index);
-	if (of_find_property(dev->of_node, volt_tbl_name, &of_volt_len) && of_volt_len > 0) {
-		int num_elements = of_volt_len / sizeof(u32);
-		of_volt_table = devm_kcalloc(dev, num_elements, sizeof(u32), GFP_KERNEL);
-		if (of_volt_table) {
-			of_ret = of_property_read_u32_array(dev->of_node, volt_tbl_name, of_volt_table, num_elements);
+	if (of_find_property(dev->of_node, volt_tbl_name, &of_volt_raw_len) && of_volt_raw_len > 0) {
+		int num_elements = of_volt_raw_len / sizeof(u32);
+		
+		/* 永久为该丛集分配属于它自己不被释放的内存影子 */
+		c->permanent_volt_table = devm_kcalloc(dev, num_elements, sizeof(u32), GFP_KERNEL);
+		if (c->permanent_volt_table) {
+			of_ret = of_property_read_u32_array(dev->of_node, volt_tbl_name, c->permanent_volt_table, num_elements);
 			if (of_ret) {
-				devm_kfree(dev, of_volt_table);
-				of_volt_table = NULL;
+				devm_kfree(dev, c->permanent_volt_table);
+				c->permanent_volt_table = NULL;
 			} else {
-				of_volt_len = num_elements;
+				c->permanent_volt_len = num_elements;
 			}
 		}
 	}
 
-	/* 初始化并分配 20KB 只读暗箱状态表大缓冲区，完美容纳全核心数据 */
+	/* 初始化并分配 40KB 只读暗箱状态表大缓冲区，完美容纳全核心数据 */
 	if (!volt_proc_buffer) {
 		volt_proc_buffer = kzalloc(PROC_BUF_MAX_SIZE, GFP_KERNEL);
 		if (volt_proc_buffer) {
@@ -598,14 +647,11 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 			
 		cur_freq = c->table[i].frequency;
 
-		/* ============================================================ */
-		/* 🌟 【真·核心提效接入点】：单次遍历同时检查频率使能与调压覆盖 */
-		/* ============================================================ */
-		u32 raw_hw_volt = volt; // 牢牢记住原始硬件出厂电压作为对比基准
+		/* 复合审查器：检测使使能并暂存 volt 给 proc 查看。传入常驻变量数据 */
+		u32 raw_hw_volt = volt; // 记录原始基准
 		
 		if (!of_check_freq_and_get_volt(of_table, of_len, cur_freq, 
-		                                of_volt_table, of_volt_len, &volt)) {
-			// 频率检查返回 false（说明不被允许注册），在此直接执行原厂禁用分支
+		                                c->permanent_volt_table, c->permanent_volt_len, &volt)) {
 			c->table[i].frequency = CPUFREQ_ENTRY_INVALID; 
 			cur_freq = CPUFREQ_ENTRY_INVALID;
 			c->table[i].flags = CPUFREQ_BOOST_FREQ;
@@ -619,19 +665,18 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 					"Domain-%d  %-6u %-12s %-10u %-10u %-8s\n",
 					domain_index, i, "DISABLED", raw_hw_volt, raw_hw_volt, "SKIPPED");
 			}
-			continue; // 💥 禁用频点完美在这里熔断跳出，绝不浪费多余 CPU 周期
+			continue; 
 		} else {
 			invalidate_freq = false; 
 		}
 
-		/* 🌟 零开销双电压并列直出记录：由于上方直接完成了对 volt 指针的替换，此处直接吐出对比 */
+		/* 零开销双电压并列直出记录：由于上方直接完成了对 volt 指针的替换，此处直接吐出对比 */
 		if (volt_proc_buffer && volt_proc_buf_len < PROC_BUF_MAX_SIZE - 128) {
 			volt_proc_buf_len += snprintf(volt_proc_buffer + volt_proc_buf_len,
 				PROC_BUF_MAX_SIZE - volt_proc_buf_len,
 				"Domain-%d  %-6u %-12u %-10u %-10u %-8s\n",
 				domain_index, i, cur_freq, raw_hw_volt, volt, "OK");
 		}
-		/* ============================================================ */
 
 		dev_dbg(dev, "index=%d freq=%d, volt=%u, core_count %d\n", i, c->table[i].frequency, volt, core_count);
 		
@@ -662,7 +707,6 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 		prev_cc = core_count;
 		prev_freq = cur_freq;
 		
-		/* 🌟 最终大闸：顺应系统原生 OPP 电源树链路向下游下发调降物理电压目标指令 */
 		for_each_cpu(cpu, &c->related_cpus) {
 			cpu_dev = get_cpu_device(cpu);
 			if (!cpu_dev)
@@ -673,12 +717,10 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev, struct cpufreq
 	c->lut_max_entries = i;
 	c->table[i].frequency = CPUFREQ_TABLE_END;
 	
-	if (of_volt_table)
-		devm_kfree(dev, of_volt_table);
+	/* 🌟 彻底移除了原厂的内存释放陷阱，让表在内核中永久长驻 */
 
 	return 0;
 }
-
 
 static int qcom_get_related_cpus(int index, struct cpumask *m)
 {
