@@ -17,10 +17,10 @@
 /*
  * See Documentation/block/deadline-iosched.txt
  */
-static const int read_expire = HZ / 2;  /* max time before a read is submitted. */
-static const int write_expire = 5 * HZ; /* ditto for writes, these limits are SOFT! */
-static const int writes_starved = 2;    /* max times reads can starve a write */
-static const int fifo_batch = 16;       /* # of sequential requests treated as one
+static const int read_expire = (HZ * 80) / 1000;  /* max time before a read is submitted. */
+static const int write_expire = 15 * HZ; /* ditto for writes, these limits are SOFT! */
+static const int writes_starved = 16;    /* max times reads can starve a write */
+static const int fifo_batch = 64;       /* # of sequential requests treated as one
 				     by the above parameters. For throughput. */
 
 struct deadline_data {
@@ -331,17 +331,27 @@ static int deadline_dispatch_requests(struct request_queue *q, int force)
 	 * data direction (read / write)
 	 */
 
-	if (reads) {
+		if (reads) {
 		BUG_ON(RB_EMPTY_ROOT(&dd->sort_list[READ]));
 
+		/* 
+		 * 【核心魔改】只要队列里有读请求，且读请求连续插队没超过 16 次（writes_starved），
+		 * 写请求就绝对不准插队！即使写请求饿死了，也必须先服务原神的读盘需求。
+		 */
 		if (deadline_fifo_request(dd, WRITE) &&
-		    (dd->starved++ >= dd->writes_starved))
+		    (dd->starved >= dd->writes_starved)) {
+			// 只有极度饥饿时才分发写，分发后计数器清零
+			dd->starved = 0; 
 			goto dispatch_writes;
+		}
 
+		// 正常情况下，无条件强制赋予读请求最高优先级
+		dd->starved++; 
 		data_dir = READ;
 
 		goto dispatch_find_request;
 	}
+
 
 	/*
 	 * there are either no reads or writes have been starved
@@ -445,7 +455,7 @@ static int deadline_init_queue(struct request_queue *q, struct elevator_type *e)
 	dd->fifo_expire[READ] = read_expire;
 	dd->fifo_expire[WRITE] = write_expire;
 	dd->writes_starved = writes_starved;
-	dd->front_merges = 1;
+	dd->front_merges = 0;
 	dd->fifo_batch = fifo_batch;
 
 	spin_lock_irq(q->queue_lock);
