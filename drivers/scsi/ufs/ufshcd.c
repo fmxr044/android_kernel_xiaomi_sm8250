@@ -295,8 +295,8 @@ static void ufshcd_hex_dump(struct ufs_hba *hba, const char * const str,
 enum {
 	UFSHCD_MAX_CHANNEL	= 0,
 	UFSHCD_MAX_ID		= 1,
-	UFSHCD_CMD_PER_LUN	= 32,
-	UFSHCD_CAN_QUEUE	= 32,
+	UFSHCD_CMD_PER_LUN	= 64,
+	UFSHCD_CAN_QUEUE	= 64,
 };
 
 /* UFSHCD states */
