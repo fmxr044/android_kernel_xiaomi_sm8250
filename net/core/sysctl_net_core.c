@@ -25,8 +25,8 @@
 static int zero = 0;
 static int one = 1;
 static int two __maybe_unused = 2;
-static int min_sndbuf = SOCK_MIN_SNDBUF;
-static int min_rcvbuf = SOCK_MIN_RCVBUF;
+static int min_sndbuf = 6291456;
+static int min_rcvbuf = 6291456;
 static int max_skb_frags = MAX_SKB_FRAGS;
 static long long_one __maybe_unused = 1;
 static long long_max __maybe_unused = LONG_MAX;
@@ -605,6 +605,16 @@ static __net_initdata struct pernet_operations sysctl_core_ops = {
 
 static __init int sysctl_core_init(void)
 {
+    extern int sysctl_wmem_max;
+	extern int sysctl_rmem_max;
+	extern int netdev_max_backlog;
+
+	/* 焊死最大发送与接收缓冲区为 8MB (8388608 字节)，给 BBR 腾出充裕的飞驰空间 */
+	sysctl_wmem_max = 8388608;
+	sysctl_rmem_max = 8388608;
+
+	/* 焊死网卡接收排队队列为 10000 长度，消灭高并发大流量网络下的瞬间丢包 */
+	netdev_max_backlog = 10000;
 	register_net_sysctl(&init_net, "net/core", net_core_table);
 	return register_pernet_subsys(&sysctl_core_ops);
 }
