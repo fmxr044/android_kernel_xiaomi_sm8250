@@ -275,7 +275,7 @@ queue_store_##name(struct request_queue *q, const char *page, size_t count) \
 		/* 降维打击：不论安卓层的脚本传什么值，内部无条件清除标志位，永远保持为 0 */ \
 		blk_queue_flag_clear(QUEUE_FLAG_IO_STAT, q);		\
 		return count;						\
-	}	
+	}	\
 	
 	ret = queue_var_store(&val, page, count);			\
 	if (ret < 0)							\
@@ -947,6 +947,9 @@ int blk_register_queue(struct gendisk *disk)
 	
 	if (q && q->backing_dev_info) {
 		q->backing_dev_info->ra_pages = 256;
+		//q->nr_requests = 256;
+		//blk_queue_flag_set(QUEUE_FLAG_SAME_COMP, q);
+		//blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, q);
 	}
 
 	blk_throtl_register_queue(q);
