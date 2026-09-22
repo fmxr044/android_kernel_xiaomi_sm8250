@@ -6199,6 +6199,26 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 	sdev->use_rpm_auto = 1;
 
 	ufshcd_crypto_setup_rq_keyslot_manager(hba, q);
+	
+	if (sdev && sdev->host) {
+		/* 1. 强控底层主控和逻辑单元的运行时硬件并发深度 */
+		sdev->host->can_queue = 64;
+		sdev->host->cmd_per_lun = 64;
+		
+		/* 2. 强控当前 SCSI 设备的运行时硬性队列深度限制 */
+		sdev->queue_depth = 64;
+	}
+
+	if (q) {
+		/* 
+		 * 3. 既然硬件能力被我们强行提到了 64，
+		 * 那么对应的块设备软件蓄水池上限，在这里直接强制焊死为 256！
+		 * 完美对齐公式 (can_queue * 4 = 256)，消灭内核的一切降级防御重置
+		 */
+		q->nr_requests = 256;
+		q->nr_congestion_on = 224;
+		q->nr_congestion_off = 200;
+	}
 
 	return 0;
 }
@@ -9520,8 +9540,8 @@ static struct scsi_host_template ufshcd_driver_template = {
 #endif
 	.this_id		= -1,
 	.sg_tablesize		= SG_ALL,
-	.cmd_per_lun		= UFSHCD_CMD_PER_LUN,
-	.can_queue		= UFSHCD_CAN_QUEUE,
+	.cmd_per_lun		= 64,
+	.can_queue		= 64,
 	.max_host_blocked	= 1,
 	.track_queue_depth	= 1,
 	.sdev_groups		= ufshcd_driver_groups,
@@ -10974,6 +10994,11 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	hba->sg_entry_size = sizeof(struct ufshcd_sg_entry);
 
 	INIT_LIST_HEAD(&hba->clk_list_head);
+	
+	if (host) {
+		host->can_queue = 64;
+		host->cmd_per_lun = 64;
+	}
 
 out_error:
 	return err;
