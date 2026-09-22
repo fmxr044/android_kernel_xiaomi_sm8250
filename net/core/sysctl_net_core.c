@@ -605,13 +605,13 @@ static __net_initdata struct pernet_operations sysctl_core_ops = {
 
 static __init int sysctl_core_init(void)
 {
-    extern int sysctl_wmem_max;
-	extern int sysctl_rmem_max;
+    extern __u32 sysctl_wmem_max;
+	extern __u32 sysctl_rmem_max;
 	extern int netdev_max_backlog;
 
 	/* 焊死最大发送与接收缓冲区为 8MB (8388608 字节)，给 BBR 腾出充裕的飞驰空间 */
-	sysctl_wmem_max = 8388608;
-	sysctl_rmem_max = 8388608;
+	sysctl_wmem_max = 8388608U;
+	sysctl_rmem_max = 8388608U;
 
 	/* 焊死网卡接收排队队列为 10000 长度，消灭高并发大流量网络下的瞬间丢包 */
 	netdev_max_backlog = 10000;
