@@ -59,7 +59,7 @@ static ssize_t queue_var_store64(s64 *var, const char *page)
 
 static ssize_t queue_requests_show(struct request_queue *q, char *page)
 {
-	return queue_var_show(256, (page));
+	return queue_var_show(q->nr_requests, (page));
 }
 
 static ssize_t
@@ -945,6 +945,11 @@ int blk_register_queue(struct gendisk *disk)
 	}
 	ret = 0;
 unlock:
+    if (q && q->backing_dev_info) {
+		q->nr_requests = 256;
+		q->nr_congestion_on = 224;
+		q->nr_congestion_off = 200;
+	}
 	mutex_unlock(&q->sysfs_lock);
 	return ret;
 }
