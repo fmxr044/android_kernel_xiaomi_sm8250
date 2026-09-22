@@ -945,11 +945,6 @@ int blk_register_queue(struct gendisk *disk)
 	}
 	ret = 0;
 unlock:
-    if (q && q->backing_dev_info) {
-		q->nr_requests = 256;
-		q->nr_congestion_on = 224;
-		q->nr_congestion_off = 200;
-	}
 	mutex_unlock(&q->sysfs_lock);
 	return ret;
 }
