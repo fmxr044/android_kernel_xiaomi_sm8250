@@ -302,6 +302,13 @@ proc_dolongvec_minmax_bpf_restricted(struct ctl_table *table, int write,
 }
 #endif
 
+static int shadow_backlog_sysctl(struct ctl_table *table, int write,
+				 void *buffer, size_t *lenp, loff_t *ppos)
+{
+	netdev_max_backlog = 10000;
+	return proc_dointvec(table, write, buffer, lenp, ppos);
+}
+
 static struct ctl_table net_core_table[] = {
 #ifdef CONFIG_NET
 	{
@@ -362,7 +369,7 @@ static struct ctl_table net_core_table[] = {
 		.data		= &netdev_max_backlog,
 		.maxlen		= sizeof(int),
 		.mode		= 0644,
-		.proc_handler	= proc_dointvec
+		.proc_handler	= shadow_backlog_sysctl
 	},
 	{
 		.procname	= "netdev_rss_key",
@@ -608,13 +615,8 @@ static __init int sysctl_core_init(void)
     extern __u32 sysctl_wmem_max;
 	extern __u32 sysctl_rmem_max;
 	extern int netdev_max_backlog;
-
-	/* 焊死最大发送与接收缓冲区为 8MB (8388608 字节)，给 BBR 腾出充裕的飞驰空间 */
 	sysctl_wmem_max = 8388608U;
 	sysctl_rmem_max = 8388608U;
-
-	/* 焊死网卡接收排队队列为 10000 长度，消灭高并发大流量网络下的瞬间丢包 */
-	netdev_max_backlog = 10000;
 	register_net_sysctl(&init_net, "net/core", net_core_table);
 	return register_pernet_subsys(&sysctl_core_ops);
 }
