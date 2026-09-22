@@ -208,12 +208,14 @@ void apply_kernelsu_rules()
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, KERNEL_SU_FILE);
     ksu_permissive(db, "kernel");
+    ksu_permissive(db, "init");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
     ksu_allow(db, "init", ALL, ALL, ALL);
+    ksu_allow(db, ALL, "init", ALL, ALL);
     ksu_allow(db, "kernel", ALL, ALL, ALL);
     ksu_allow(db, ALL, "kernel", ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
@@ -221,11 +223,11 @@ void apply_kernelsu_rules()
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
     }
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
-    //ksu_dontaudit(db, "app_zygote", "selinuxfs", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "selinuxfs", ALL, ALL);
-    //ksu_dontaudit(db, "untrusted_app_all", "selinuxfs", ALL, ALL);
     ksu_deny(db, "isolated_app", "selinuxfs", ALL, ALL);
-    //ksu_dontaudit(db, "isolated_app", "selinuxfs", ALL, ALL);
+    ksu_deny(db, "app_zygote", "adb_data_file", ALL, ALL);
+    ksu_deny(db, "untrusted_app_all", "adb_data_file", ALL, ALL);
+    ksu_deny(db, "isolated_app", "adb_data_file", ALL, ALL);
     //除了这些您还可以使用其他函数自定规则
     //如果需要同时允许或拒绝多个操作请一个个列出，因为传参不支持同时有多个
     //不被允许的调用ksu_deny(db, "来源", "目标", "类别", "权限A 权限B 权限C 权限D");
