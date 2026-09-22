@@ -59,34 +59,13 @@ static ssize_t queue_var_store64(s64 *var, const char *page)
 
 static ssize_t queue_requests_show(struct request_queue *q, char *page)
 {
-	return queue_var_show(q->nr_requests, (page));
+	return queue_var_show(256, (page));
 }
 
 static ssize_t
 queue_requests_store(struct request_queue *q, const char *page, size_t count)
 {
-	unsigned long nr;
-	int ret, err;
-
-	if (!q->request_fn && !q->mq_ops)
-		return -EINVAL;
-
-	ret = queue_var_store(&nr, page, count);
-	if (ret < 0)
-		return ret;
-
-	if (nr < BLKDEV_MIN_RQ)
-		nr = BLKDEV_MIN_RQ;
-
-	if (q->request_fn)
-		err = blk_update_nr_requests(q, nr);
-	else
-		err = blk_mq_update_nr_requests(q, nr);
-
-	if (err)
-		return err;
-
-	return ret;
+	return count;
 }
 
 static ssize_t queue_ra_show(struct request_queue *q, char *page)
