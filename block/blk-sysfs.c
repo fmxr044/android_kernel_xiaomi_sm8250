@@ -271,7 +271,6 @@ queue_store_##name(struct request_queue *q, const char *page, size_t count) \
 	unsigned long val;						\
 	ssize_t ret;							\
 									\
-	/* 【核心修复】在宏体内的每一行末尾都严格追加了 \ 符号 */		\
 	if (strcmp(#name, "iostats") == 0) {				\
 		blk_queue_flag_clear(QUEUE_FLAG_IO_STAT, q);		\
 		return count;						\
@@ -948,7 +947,7 @@ int blk_register_queue(struct gendisk *disk)
 	
 	if (q && q->backing_dev_info) {
 		q->backing_dev_info->ra_pages = 256;
-		//q->nr_requests = 256;
+		q->nr_requests = 256;
 		//blk_queue_flag_set(QUEUE_FLAG_SAME_COMP, q);
 		//blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, q);
 	}
