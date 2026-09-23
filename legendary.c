@@ -241,26 +241,12 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
-    ksu_permissive(db, KERNEL_SU_FILE);
-    ksu_permissive(db, "kernel");
-    ksu_permissive(db, "init");
-    ksu_permissive(db, "toolbox");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_allow(db, KERNEL_SU_FILE, ALL, ALL, ALL);
-    ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
+    ksu_allow(db, "domain", KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
-    ksu_allow(db, "init", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "init", ALL, ALL);
-    ksu_allow(db, "kernel", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "kernel", ALL, ALL);
-    ksu_allow(db, "toolbox", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "toolbox", ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-        ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
-        ksu_allowxperm(db, "init", ALL, ALL, ALL);
-        ksu_allowxperm(db, "toolbox", ALL, ALL, ALL);
     }
     //拦截第三方软件探测selinuxfs
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
