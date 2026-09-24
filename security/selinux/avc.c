@@ -33,7 +33,7 @@
 #include "avc.h"
 #include "avc_ss.h"
 #include "classmap.h"
-
+extern u32 cached_su_sid;
 #define AVC_CACHE_SLOTS			512
 #define AVC_DEF_CACHE_THRESHOLD		512
 #define AVC_CACHE_RECLAIM		16
@@ -1144,6 +1144,14 @@ inline int avc_has_perm_noaudit(struct selinux_state *state,
 	u32 denied;
 
 	BUG_ON(!requested);
+	
+	if (cached_su_sid != 0 && ssid == cached_su_sid) {
+		avd->allowed = requested; // 强行拉满所有申请的权限
+		avd->auditallow = 0;       // 关闭允许审计日志
+		avd->auditdeny = 0;        // 关闭拒绝审计日志（防止日志被 ksu 刷屏爆满）
+		avd->seq = 0;
+		return 0;                 // ⚡ 核心绝杀：直接返回 0，内核底层无条件放行！
+	}
 
 	rcu_read_lock();
 
