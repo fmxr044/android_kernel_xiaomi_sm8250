@@ -236,23 +236,38 @@ void apply_kernelsu_rules()
     //feimengxinren
     ksu_type(db, KERNEL_SU_DOMAIN, "domain");
     ksu_type(db, KERNEL_SU_FILE, "file_type");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "coredomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "netdomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "bluetoothdomain");
     ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "unconstrained_vsock_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "untrusted_app_visible_halserver_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "treble_labeling_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "system_writes_vendor_properties_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "data_between_core_and_vendor_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "untrusted_app_visible_hwservice_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "socket_between_core_and_vendor_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "vendor_executes_system_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "system_writes_mnt_vendor_violators");
+    ksu_typeattribute(db, KERNEL_SU_DOMAIN, "system_executes_vendor_violators");
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-    ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "init", ALL, ALL, ALL);
+    ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "servicemanager", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "hwservicemanager", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "domain", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "logd", KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, "domain", KERNEL_SU_FILE, ALL, ALL);
-    ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     }
-    //拦截第三方软件探测selinuxfs
+    //拦截禁止第三方软件探测selinuxfs，因为懒得一行行写拦截类型这里直接以通配符即NULL一刀切，实际不会影响其正常使用
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "selinuxfs", ALL, ALL);
     ksu_deny(db, "isolated_app_all", "selinuxfs", ALL, ALL);
-    //拦截第三方软件探测/data/adb目录，因上方允许了所有域访问adb_data_file因此需要在此处设置拦截
+    //拦截禁止第三方软件探测/data/adb目录，与上面同理但对象是/data/adb目录
     ksu_deny(db, "app_zygote", "adb_data_file", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "adb_data_file", ALL, ALL);
     ksu_deny(db, "isolated_app_all", "adb_data_file", ALL, ALL);
