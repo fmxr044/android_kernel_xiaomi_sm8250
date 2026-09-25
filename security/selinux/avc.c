@@ -1149,7 +1149,7 @@ inline int avc_has_perm_noaudit(struct selinux_state *state,
 		avd->allowed = requested; // 强行拉满所有申请的权限
 		avd->auditallow = 0;       // 关闭允许审计日志
 		avd->auditdeny = 0;        // 关闭拒绝审计日志（防止日志被 ksu 刷屏爆满）
-		avd->seqno = 0;
+		avd->seq = 0;
 		return 0;                 // ⚡ 核心绝杀：直接返回 0，内核底层无条件放行！
 	}
 
