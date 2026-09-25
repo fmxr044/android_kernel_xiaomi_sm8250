@@ -227,25 +227,20 @@ void apply_kernelsu_rules()
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, "init");
     ksu_permissive(db, "kernel");
-    ksu_permissive(db, "zygote");
     ksu_permissive(db, "system_server");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
     ksu_allow(db, "init", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "init", ALL, ALL);
     ksu_allow(db, "kernel", ALL, ALL, ALL);
     ksu_allow(db, ALL, "kernel", ALL, ALL);
-    ksu_allow(db, "zygote", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "zygote", ALL, ALL);
     ksu_allow(db, "system_server", ALL, ALL, ALL);
     ksu_allow(db, ALL, "system_server", ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_allowxperm(db, "init", ALL, ALL, ALL);
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
-        ksu_allowxperm(db, "zygote", ALL, ALL, ALL);
         ksu_allowxperm(db, "system_server", ALL, ALL, ALL);
     }
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
