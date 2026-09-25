@@ -242,12 +242,8 @@ void apply_kernelsu_rules()
     }
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "selinuxfs", ALL, ALL);
-    ksu_deny(db, "isolated_app_all", "selinuxfs", ALL, ALL);
-    ksu_deny(db, "webview_zygote", "selinuxfs", ALL, ALL);
     ksu_deny(db, "app_zygote", "adb_data_file", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "adb_data_file", ALL, ALL);
-    ksu_deny(db, "isolated_app_all", "adb_data_file", ALL, ALL);
-    ksu_deny(db, "webview_zygote", "adb_data_file", ALL, ALL);
     //如果需要同时允许或拒绝多个操作请逐一列出，禁止一次性传入多个参数
     //不被允许的调用ksu_*(db, "来源A 来源B 来源C 来源D", "目标A 目标B 目标C 目标D", "类别A 类别B 类别C 类别D", "权限A 权限B 权限C 权限D");
     //规范调用法ksu_*(db, "来源", "目标", "类别", "权限");
