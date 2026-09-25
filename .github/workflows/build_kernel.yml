@@ -65,7 +65,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         echo "开始为RE-SUKISU赋能"
-        sed -i 's/^static u32 cached_su_sid/u32 cached_su_sid/' KernelSu/kernel/selinux/selinux.c
+        sed -i 's/^static u32 cached_su_sid/u32 cached_su_sid/' KernelSU/kernel/selinux/selinux.c
         cp legendary.c KernelSU/kernel/selinux/rules.c
         echo "赋能后检查是否赋能成功"
         cat KernelSU/kernel/selinux/rules.c | grep "feimengxinren"
