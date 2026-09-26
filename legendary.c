@@ -232,6 +232,7 @@ void apply_kernelsu_rules()
         goto out_free;
     }
 #endif
+
     //feimengxinren
     ksu_type(db, KERNEL_SU_DOMAIN, "domain");
     ksu_type(db, KERNEL_SU_FILE, "file_type");
@@ -252,23 +253,17 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, "init");
-    ksu_permissive(db, "kernel");
     ksu_permissive(db, "system_server");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-    ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
-    ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
-    ksu_allow(db, ALL, "adb_data_file", ALL, ALL);
     ksu_allow(db, "init", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "init", ALL, ALL);
-    ksu_allow(db, "kernel", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "kernel", ALL, ALL);
     ksu_allow(db, "system_server", ALL, ALL, ALL);
-    ksu_allow(db, ALL, "system_server", ALL, ALL);
+    ksu_allow(db, "doamin", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "hwservicemanager", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "servicemanager", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "logd", KERNEL_SU_DOMAIN, ALL, ALL);
+    ksu_allow(db, "domain", KERNEL_SU_FILE, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
-        ksu_allowxperm(db, "init", ALL, ALL, ALL);
-        ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
-        ksu_allowxperm(db, "system_server", ALL, ALL, ALL);
     }
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "selinuxfs", ALL, ALL);
@@ -302,6 +297,7 @@ void apply_kernelsu_rules()
     //bool ksu_type_member(struct policydb *db, const char *src, const char *tgt, const char *cls, const char *def);
     //File system labeling
     //bool ksu_genfscon(struct policydb *db, const char *fs_name, const char *path, const char *ctx);
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     rcu_assign_pointer(selinux_state.policy, pol);
     synchronize_rcu();
