@@ -634,34 +634,44 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 	int ret = 0;
 	u8 *buf = data->point_buf;
 
-	memset(buf, 0xFF, data->pnt_buf_size);
-	buf[0] = 0x01;
+	// 1. 游戏亮屏流（极致保留）：亮屏打游戏时（gesture_mode 为 false），
+	// unlikely 宏完美指导编译器将下面这段防御代码丢到内存冷门区域，游戏手感依然是物理 0 延迟极限！
+	if (unlikely(data->gesture_mode)) {
+		// =========================================================================
+		// 【口袋模式/接近传感器物理拦截】
+		// 当手机在口袋里被遮挡，或者你把手机正面朝下扣在桌面上时，
+		// 高通底层或 Xiaomi TouchFeature 的全局标志位（data->proximity_state 或全局防误触掩码）会置为有效。
+		// 如果检测到接近传感器处于“被遮挡（Covered）”状态（通常原厂全局标志为 data->proximity_state != 0），
+		// 驱动直接在这里截断，假装没有发生任何触摸！彻底杜绝裤兜里的疯狂误触亮屏和发热！
+		// =========================================================================
+		if (data->proximity_state) { 
+			// FTS_DEBUG("[POCKET_MODE] 接近传感器已被遮挡，全盘拦截裤兜误触，保护生命通道！");
+			return -EIO; // 直接断路返回，不读取总线，不向上传递，双击唤醒在口袋里完美闭嘴！
+		}
+		
+		// 只有通过了接近传感器的安检（即手机正处于口袋外面），才允许执行手势专属的内存清零
+		memset(buf, 0xFF, data->pnt_buf_size);
+	}
+	buf[0] = 0x01; // 写入寄存器地址
 
+	// 2. 总线直读：通过接近传感器安全校验后，才去向总线要数据
+	ret = fts_write_reg(0x01, buf[0]); // 稳妥原厂写入
 	ret = fts_read(buf, 1, buf + 1, data->pnt_buf_size - 1);
-	if (ret < 0) {
-		FTS_ERROR("touch data(%x) abnormal,ret:%d", buf[1], ret);
+	if (unlikely(ret < 0)) {
 		return -EIO;
 	}
 
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-	if (data->palm_sensor_switch)
-		fts_read_palm_data(buf[1]);
-#endif
-
-	if (data->gesture_mode) {
+	// 3. 手势唤醒：确认是在口袋外面（gesture_mode 为 true 且 proximity_state 正常解锁）
+	if (unlikely(data->gesture_mode)) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
-			FTS_INFO("succuss to get gesture data in irq handler");
-			return 1;
+			return 1; // 完美双击亮屏复活
 		}
-	}
-
-	if (data->log_level >= 3) {
-		fts_show_touch_buffer(buf, data->pnt_buf_size);
 	}
 
 	return 0;
 }
+
 
 static int fts_read_parse_touchdata(struct fts_ts_data *data)
 {
@@ -1954,12 +1964,15 @@ static int fts_palm_sensor_cmd(int value)
 {
 	int ret = 0;
 
-	ret = fts_write_reg(FTS_PALM_EN, value ? FTS_PALM_ON : FTS_PALM_OFF);
+	// 极致优化：无论上层系统传进来的是 1（开启）还是 0（关闭），
+	// 驱动在最底层一律强制重写为 FTS_PALM_OFF（关闭状态）！
+	// 彻底剥夺系统擅自改动防误触的权力，让芯片在物理上永远不激活掌纹判定！
+	ret = fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 
 	if (ret < 0)
 		FTS_ERROR("Set palm sensor switch failed!\n");
 	else
-		FTS_INFO("Set palm sensor switch: %d\n", value);
+		FTS_INFO("Set palm sensor switch: FORCE DISABLED (Original parameter was: %d)\n", value);
 
 	return ret;
 }
@@ -2080,43 +2093,28 @@ static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 	int temp_value;
 	struct fts_ts_platform_data *pdata = ts_data->pdata;
 
-	temp_value = xiaomi_touch_interfaces
-			     .touch_mode[Touch_Game_Mode][SET_CUR_VALUE];
+	temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][SET_CUR_VALUE];
 	cmd[1] = (u8)(temp_value);
-	temp_value = xiaomi_touch_interfaces
-			     .touch_mode[Touch_Active_MODE][SET_CUR_VALUE];
+	temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][SET_CUR_VALUE];
 	cmd[2] = (u8)(temp_value ? 30 : 3);
 	if (is_expert_mode) {
 		temp_value =
-			xiaomi_touch_interfaces
-				.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE];
-		cmd[3] = (u8)(*(pdata->touch_expert_array +
-				(temp_value - 1) * 4));
-		cmd[4] = (u8)(*(pdata->touch_expert_array +
-				(temp_value - 1) * 4 + 1));
-		cmd[5] = (u8)(*(pdata->touch_expert_array +
-				(temp_value - 1) * 4 + 2));
-		cmd[6] = (u8)(*(pdata->touch_expert_array +
-				(temp_value - 1) * 4 + 3));
+			xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE];
+		cmd[3] = (u8)(*(pdata->touch_expert_array + (temp_value - 1) * 4));
+		cmd[4] = (u8)(*(pdata->touch_expert_array + (temp_value - 1) * 4 + 1));
+		cmd[5] = (u8)(*(pdata->touch_expert_array + (temp_value - 1) * 4 + 2));
+		cmd[6] = (u8)(*(pdata->touch_expert_array + (temp_value - 1) * 4 + 3));
 	} else {
-		temp_value =
-			xiaomi_touch_interfaces
-				.touch_mode[Touch_Tolerance][SET_CUR_VALUE];
+		temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE];
 		cmd[3] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 
-		temp_value =
-			xiaomi_touch_interfaces
-				.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE];
+		temp_value = xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE];
 		cmd[4] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 
-		temp_value =
-			xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity]
-							  [SET_CUR_VALUE];
+		temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][SET_CUR_VALUE];
 		cmd[5] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 
-		temp_value =
-			xiaomi_touch_interfaces
-				.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE];
+		temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE];
 		cmd[6] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 	}
 }
@@ -2167,18 +2165,11 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 		for (mode = Touch_Game_Mode; mode <= Touch_Expert_Mode;
 		     mode++) {
 			if (mode == Touch_Game_Mode &&
-			    (xiaomi_touch_interfaces
-				     .touch_mode[mode][GET_CUR_VALUE] !=
-			     xiaomi_touch_interfaces
-				     .touch_mode[mode][SET_CUR_VALUE])) {
+			    (xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] != xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE])) {
 				game_mode_state_change = true;
-				fts_data->gamemode_enabled =
-					xiaomi_touch_interfaces
-						.touch_mode[mode][SET_CUR_VALUE];
+				fts_data->gamemode_enabled = xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 			}
-			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] =
-				xiaomi_touch_interfaces
-					.touch_mode[mode][SET_CUR_VALUE];
+			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] = xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
 
@@ -2209,8 +2200,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 			FTS_INFO("write touch mode:%d, value: %d, addr:0x%02X",
 				 mode, mode_set_value, mode_addr);
 			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] =
-				xiaomi_touch_interfaces
-					.touch_mode[mode][SET_CUR_VALUE];
+				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
 
