@@ -487,9 +487,6 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 
 	for (i = 0; i < data->touch_point; i++) {
-		if (fts_input_report_key(data, i) == 0) {
-			continue;
-		}
 
 		va_reported = true;
 		input_mt_slot(data->input_dev, events[i].id);
@@ -548,7 +545,6 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	data->touchs = touchs;
 
 	if (va_reported) {
-		/* touchs==0, there's no point but key */
 		if (EVENT_NO_DOWN(data) || (!touchs)) {
 			if (data->log_level >= 1) {
 				FTS_DEBUG("[B]Points All Up!");
@@ -676,12 +672,15 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 	int max_touch_num = data->pdata->max_touch_number;
 	u8 *buf = data->point_buf;
+
 	ret = fts_read_touchdata(data);
 	if (ret) {
 		return ret;
 	}
+
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	data->touch_point = 0;
+
 	if ((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
 	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF)) {
 		FTS_DEBUG("touch buff is 0xff, need recovery state");
@@ -689,10 +688,12 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		fts_tp_state_recovery(data);
 		return -EIO;
 	}
+
 	if (data->point_num > max_touch_num) {
 		FTS_INFO("invalid point_num(%d)", data->point_num);
 		return -EIO;
 	}
+
 	for (i = 0; i < max_touch_num; i++) {
 		base = FTS_ONE_TCH_LEN * i;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
@@ -702,6 +703,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 			FTS_ERROR("ID(%d) beyond max_touch_number", pointid);
 			return -EINVAL;
 		}
+
 		data->touch_point++;
 		events[i].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) +
 			      (buf[FTS_TOUCH_X_L_POS + base] << 4) +
@@ -710,64 +712,24 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 			      (buf[FTS_TOUCH_Y_L_POS + base] << 4) +
 			      ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		/*fw report 16x, dts report 10x*/
-		//events[i].x = events[i].x * 10 / 16;
-		//events[i].y = events[i].y * 10 / 16;
+		events[i].x = events[i].x * 10 / 16;
+		events[i].y = events[i].y * 10 / 16;
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
 		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
 		// events[i].p =  buf[FTS_TOUCH_PRE_POS + base] & 0x03;
-		
-				//触控魔改  非萌新人
-		if (events[i].id < FTS_MAX_POINTS_SUPPORT) {
-			static int last_raw_x[FTS_MAX_POINTS_SUPPORT] = {0};
-			static int last_raw_y[FTS_MAX_POINTS_SUPPORT] = {0};
 
-			if (EVENT_DOWN(events[i].flag)) {
-				// 提取未经缩放的原始坐标
-				int raw_x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) +
-							(buf[FTS_TOUCH_X_L_POS + base] << 4) +
-							((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-				int raw_y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) +
-							(buf[FTS_TOUCH_Y_L_POS + base] << 4) +
-							((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-
-				// 执行标准 DTS 分辨率映射 (fw 16x -> dts 10x)
-				int mapped_x = (raw_x * 10) / 16;
-				int mapped_y = (raw_y * 10) / 16;
-				// 类原生突破死区核心：检测是否存在极其微小的物理位移
-				// 如果物理坐标未变，但系统可能处于死板过滤状态，且这属于连续触控阶段
-				if (last_raw_x[events[i].id] != 0 && 
-					raw_x == last_raw_x[events[i].id] && 
-					raw_y == last_raw_y[events[i].id]) {
-					// 坐标末尾注入 1 像素的极微小交替伪抖动 (+1 / -1)
-					// 欺骗 <inputreader> 使其认为手指在微动，从而不进入静止过滤死区
-					static bool jitter_flip = false;
-					jitter_flip = !jitter_flip;
-					events[i].x = mapped_x + (jitter_flip ? 1 : 0);
-					events[i].y = mapped_y + (jitter_flip ? 0 : 1);
-				} else {
-					// <假设>物理坐标本身就在动，直接信任标准映射值不叠加残差
-					events[i].x = mapped_x;
-					events[i].y = mapped_y;
-				}
-				// 保存原始坐标作为下次对比基准
-				last_raw_x[events[i].id] = raw_x;
-				last_raw_y[events[i].id] = raw_y;
-			} else {
-				// 手指抬起时立即清空历史状态防止污染下次点击
-				last_raw_x[events[i].id] = 0;
-				last_raw_y[events[i].id] = 0;
-			}
-		}
 		if (EVENT_DOWN(events[i].flag) && (data->point_num == 0)) {
 			FTS_INFO("abnormal touch data from fw");
 			return -EIO;
 		}
 	}
+
 	if (data->touch_point == 0) {
 		FTS_INFO("no touch point information");
 		return -EIO;
 	}
+
 	return 0;
 }
 
@@ -1702,26 +1664,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		goto err_irq_req;
 	}
 
-	ret = fts_create_proc(ts_data);
-	if (ret) {
-		FTS_ERROR("create proc node fail");
-	}
-
-	ret = fts_create_sysfs(ts_data);
-	if (ret) {
-		FTS_ERROR("create sysfs node fail");
-	}
-
-	ts_data->tpdbg_dentry = debugfs_create_dir("tp_debug", NULL);
-	if (IS_ERR_OR_NULL(ts_data->tpdbg_dentry)) {
-		FTS_ERROR("create tp_debug dir fail");
-	}
-	if (IS_ERR_OR_NULL(debugfs_create_file("switch_state", 0660,
-					       ts_data->tpdbg_dentry, ts_data,
-					       &tpdbg_operations))) {
-		FTS_ERROR("create switch_state fail");
-	}
-
 #if FTS_POINT_REPORT_CHECK_EN
 	ret = fts_point_report_check_init(ts_data);
 	if (ret) {
@@ -1738,13 +1680,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	if (ret) {
 		FTS_ERROR("init gesture fail");
 	}
-
-#if FTS_TEST_EN
-	ret = fts_test_init(ts_data);
-	if (ret) {
-		FTS_ERROR("init production test fail");
-	}
-#endif
 
 #if FTS_ESDCHECK_EN
 	ret = fts_esdcheck_init(ts_data);
@@ -1832,16 +1767,9 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 	fts_point_report_check_exit(ts_data);
 #endif
 
-	debugfs_remove_recursive(ts_data->tpdbg_dentry);
-	fts_remove_proc(ts_data);
-	fts_remove_sysfs(ts_data);
 	fts_ex_mode_exit(ts_data);
 
 	fts_fwupg_exit(ts_data);
-
-#if FTS_TEST_EN
-	fts_test_exit(ts_data);
-#endif
 
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_exit(ts_data);
