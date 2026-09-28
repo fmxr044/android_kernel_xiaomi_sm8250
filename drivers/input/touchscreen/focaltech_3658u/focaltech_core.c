@@ -674,23 +674,22 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	u8 *buf = data->point_buf;
 
 	ret = fts_read_touchdata(data);
-	if (ret) {
+	if (unlikely(ret)) {
 		return ret;
 	}
 
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	data->touch_point = 0;
 
-	if ((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
-	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF)) {
+	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
+	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
 		FTS_DEBUG("touch buff is 0xff, need recovery state");
 		fts_release_all_finger();
 		fts_tp_state_recovery(data);
 		return -EIO;
 	}
 
-	if (data->point_num > max_touch_num) {
-		FTS_INFO("invalid point_num(%d)", data->point_num);
+	if (unlikely(data->point_num > max_touch_num)) {
 		return -EIO;
 	}
 
@@ -699,7 +698,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID)
 			break;
-		else if (pointid >= max_touch_num) {
+		else if (unlikely(pointid >= max_touch_num)) {
 			FTS_ERROR("ID(%d) beyond max_touch_number", pointid);
 			return -EINVAL;
 		}
@@ -711,22 +710,14 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		events[i].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) +
 			      (buf[FTS_TOUCH_Y_L_POS + base] << 4) +
 			      ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		/*fw report 16x, dts report 10x*/
-		events[i].x = events[i].x * 10 / 16;
-		events[i].y = events[i].y * 10 / 16;
+		events[i].x = (events[i].x * 5) >> 3;
+		events[i].y = (events[i].y * 5) >> 3;
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
 		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		// events[i].p =  buf[FTS_TOUCH_PRE_POS + base] & 0x03;
-
-		if (EVENT_DOWN(events[i].flag) && (data->point_num == 0)) {
-			FTS_INFO("abnormal touch data from fw");
-			return -EIO;
-		}
 	}
 
-	if (data->touch_point == 0) {
-		FTS_INFO("no touch point information");
+	if (unlikely(data->touch_point == 0)) {
 		return -EIO;
 	}
 
