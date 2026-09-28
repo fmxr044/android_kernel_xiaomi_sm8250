@@ -143,7 +143,9 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	/* recover TP charger state 0x8B */
 	/* recover TP glove state 0xC0 */
 	/* recover TP cover state 0xC1 */
-	fts_ex_mode_recovery(ts_data);
+	ts_data->glove_mode = true;
+    fts_ex_mode_recovery(ts_data);
+
 	/* recover TP gesture state 0xD0 */
 	fts_gesture_recovery(ts_data);
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
@@ -633,39 +635,22 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 {
 	int ret = 0;
 	u8 *buf = data->point_buf;
-
-	// 1. 游戏亮屏流（极致保留）：亮屏打游戏时（gesture_mode 为 false），
-	// unlikely 宏完美指导编译器将下面这段防御代码丢到内存冷门区域，游戏手感依然是物理 0 延迟极限！
+	
 	if (unlikely(data->gesture_mode)) {
-		// =========================================================================
-		// 【口袋模式/接近传感器物理拦截】
-		// 当手机在口袋里被遮挡，或者你把手机正面朝下扣在桌面上时，
-		// 高通底层或 Xiaomi TouchFeature 的全局标志位（data->proximity_state 或全局防误触掩码）会置为有效。
-		// 如果检测到接近传感器处于“被遮挡（Covered）”状态（通常原厂全局标志为 data->proximity_state != 0），
-		// 驱动直接在这里截断，假装没有发生任何触摸！彻底杜绝裤兜里的疯狂误触亮屏和发热！
-		// =========================================================================
-		if (data->proximity_state) { 
-			// FTS_DEBUG("[POCKET_MODE] 接近传感器已被遮挡，全盘拦截裤兜误触，保护生命通道！");
-			return -EIO; // 直接断路返回，不读取总线，不向上传递，双击唤醒在口袋里完美闭嘴！
-		}
-		
-		// 只有通过了接近传感器的安检（即手机正处于口袋外面），才允许执行手势专属的内存清零
 		memset(buf, 0xFF, data->pnt_buf_size);
 	}
-	buf[0] = 0x01; // 写入寄存器地址
+	buf[0] = 0x01;
 
-	// 2. 总线直读：通过接近传感器安全校验后，才去向总线要数据
-	ret = fts_write_reg(0x01, buf[0]); // 稳妥原厂写入
+	ret = fts_write_reg(0x01, buf[0]);
 	ret = fts_read(buf, 1, buf + 1, data->pnt_buf_size - 1);
 	if (unlikely(ret < 0)) {
 		return -EIO;
 	}
 
-	// 3. 手势唤醒：确认是在口袋外面（gesture_mode 为 true 且 proximity_state 正常解锁）
 	if (unlikely(data->gesture_mode)) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
-			return 1; // 完美双击亮屏复活
+			return 1;
 		}
 	}
 
@@ -1730,6 +1715,14 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	INIT_WORK(&ts_data->power_supply_work, fts_power_supply_work);
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
 	power_supply_reg_notifier(&ts_data->power_supply_notifier);
+	
+	ts_data->glove_mode = true;
+
+	fts_ex_mode_recovery(ts_data);
+	// =========================================================================
+
+	ts_data->charger_mode = false;
+	mutex_init(&ts_data->power_supply_lock);
 
 	FTS_FUNC_EXIT();
 	return 0;
@@ -1893,10 +1886,11 @@ static int fts_ts_resume(struct device *dev)
 #endif
 		fts_reset_proc(200);
 	}
-
+	
 	fts_wait_tp_to_valid();
-	fts_ex_mode_recovery(ts_data);
-
+    ts_data->glove_mode = true;
+    fts_ex_mode_recovery(ts_data);
+    
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_resume();
 #endif
