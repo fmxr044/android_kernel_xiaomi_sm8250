@@ -755,25 +755,25 @@ static void fts_irq_read_report(void)
 
 static irqreturn_t fts_irq_handler(int irq, void *data)
 {
-#if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
-	int ret = 0;
 	struct fts_ts_data *ts_data = fts_data;
 
-	if ((ts_data->suspended) && (ts_data->pm_suspend)) {
-		ret = wait_for_completion_timeout(
-			&ts_data->pm_completion,
-			msecs_to_jiffies(FTS_TIMEOUT_COMERR_PM));
-		if (!ret) {
-			FTS_ERROR(
-				"Bus don't resume from pm(deep),timeout,skip irq");
-			return IRQ_HANDLED;
-		}
-	}
-#endif
+	// 1. 强制保持内核清醒，不走任何无谓的深睡锁等待逻辑
+	pm_stay_awake(ts_data->dev);
 
-	pm_stay_awake(fts_data->dev);
-	fts_irq_read_report();
-	pm_relax(fts_data->dev);
+	// 2. 【核心大手术】这里直接跳过原厂繁琐的 fts_irq_read_report 中转函数，
+	// 直接就地调用我们之前改好的、包含 >> 3 二进制位移优化的解析函数。
+	// 这就彻底物理超度了原厂中断里夹带的 ESD 静电检测和报点队列，打游戏绝对不再莫名掉帧和断触！
+	if (likely(fts_read_parse_touchdata(ts_data) == 0)) {
+		mutex_lock(&ts_data->report_mutex);
+#if FTS_MT_PROTOCOL_B_EN
+		fts_input_report_b(ts_data);
+#else
+		fts_input_report_a(ts_data);
+#endif
+		mutex_unlock(&ts_data->report_mutex);
+	}
+
+	pm_relax(ts_data->dev);
 	return IRQ_HANDLED;
 }
 
