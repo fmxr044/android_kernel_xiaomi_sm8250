@@ -679,33 +679,58 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	int max_touch_num = data->pdata->max_touch_number;
 	u8 *buf = data->point_buf;
 
-	ret = fts_read_touchdata(data);
-	if (ret) {
-		return ret;
+	memset(buf, 0xFF, data->pnt_buf_size);
+	buf[0] = 0x01;
+
+	ret = fts_read(buf, 1, buf + 1, data->pnt_buf_size - 1);
+	if (unlikely(ret < 0)) {
+		FTS_ERROR("touch data(%x) abnormal,ret:%d", buf[1], ret);
+		return -EIO;
+	}
+
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+	if (data->palm_sensor_switch)
+		fts_read_palm_data(buf[1]);
+#endif
+
+	if (data->gesture_mode) {
+		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
+		if (0 == ret) {
+			FTS_INFO("succuss to get gesture data in irq handler");
+			return 1;
+		}
+	}
+
+	if (data->log_level >= 3) {
+		fts_show_touch_buffer(buf, data->pnt_buf_size);
 	}
 
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	data->touch_point = 0;
 
-	if ((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
-	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF)) {
+	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
+	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
 		FTS_DEBUG("touch buff is 0xff, need recovery state");
 		fts_release_all_finger();
 		fts_tp_state_recovery(data);
 		return -EIO;
 	}
 
-	if (data->point_num > max_touch_num) {
+	if (unlikely(data->point_num > max_touch_num)) {
 		FTS_INFO("invalid point_num(%d)", data->point_num);
 		return -EIO;
 	}
 
-	for (i = 0; i < max_touch_num; i++) {
+	#pragma unroll
+	for (i = 0; i < 10; i++) {
+		if (unlikely(i >= max_touch_num))
+			break;
+
 		base = FTS_ONE_TCH_LEN * i;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID)
 			break;
-		else if (pointid >= max_touch_num) {
+		else if (unlikely(pointid >= max_touch_num)) {
 			FTS_ERROR("ID(%d) beyond max_touch_number", pointid);
 			return -EINVAL;
 		}
@@ -717,13 +742,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		events[i].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) +
 			      (buf[FTS_TOUCH_Y_L_POS + base] << 4) +
 			      ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		/*fw report 16x, dts report 10x*/
-		events[i].x = events[i].x * 10 / 16;
-		events[i].y = events[i].y * 10 / 16;
+			      
+		events[i].x = ((events[i].x << 2) + events[i].x) >> 3;
+		events[i].y = ((events[i].y << 2) + events[i].y) >> 3;
+		
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
-		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
+		events[i].id = pointid;
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		// events[i].p =  buf[FTS_TOUCH_PRE_POS + base] & 0x03;
 
 		if (EVENT_DOWN(events[i].flag) && (data->point_num == 0)) {
 			FTS_INFO("abnormal touch data from fw");
@@ -731,7 +756,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		}
 	}
 
-	if (data->touch_point == 0) {
+	if (unlikely(data->touch_point == 0)) {
 		FTS_INFO("no touch point information");
 		return -EIO;
 	}
@@ -741,19 +766,52 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 
 static void fts_irq_read_report(void)
 {
-	int ret = 0;
 	struct fts_ts_data *ts_data = fts_data;
+	
+	if (fts_read_parse_touchdata(ts_data) == 0) {
+		mutex_lock(&ts_data->report_mutex);
+#if FTS_MT_PROTOCOL_B_EN
+		fts_input_report_b(ts_data);
+#else
+		fts_input_report_a(ts_data);
+#endif
+		mutex_unlock(&ts_data->report_mutex);
+	}
+}
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_set_intr(1);
+static irqreturn_t fts_irq_handler(int irq, void *data)
+{
+	struct fts_ts_data *ts_data = fts_data;
+	int parse_ret;
+
+#if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
+	int ret = 0;
+	if ((ts_data->suspended) && (ts_data->pm_suspend)) {
+		ret = wait_for_completion_timeout(
+			&ts_data->pm_completion,
+			msecs_to_jiffies(FTS_TIMEOUT_COMERR_PM));
+		if (!ret) {
+			FTS_ERROR("Bus don't resume from pm(deep),timeout,skip irq");
+			return IRQ_HANDLED;
+		}
+	}
 #endif
 
-#if FTS_POINT_REPORT_CHECK_EN
-	fts_prc_queue_work(ts_data);
-#endif
+	/* 进场保持最高优先级系统清醒状态 */
+	pm_stay_awake(ts_data->dev);
 
-	ret = fts_read_parse_touchdata(ts_data);
-	if (ret == 0) {
+	/* 调用重构后的高效率单次总线解析函数 */
+	parse_ret = fts_read_parse_touchdata(ts_data);
+
+	/* 1. 若成功捕获双击亮屏手势（返回 1），立刻放行中断，不让坐标上报覆盖手势按键动作 */
+	if (parse_ret == 1) {
+		pm_relax(ts_data->dev);
+		return IRQ_HANDLED;
+	}
+
+	/* 2. 亮屏下正常高刷打游戏的多指滑动报点（返回 0） */
+	if (likely(parse_ret == 0)) {
+		/* 完美保留并死守原厂安全的互斥锁逻辑，杜绝任何外部文件的冲突报错 */
 		mutex_lock(&ts_data->report_mutex);
 #if FTS_MT_PROTOCOL_B_EN
 		fts_input_report_b(ts_data);
@@ -763,32 +821,7 @@ static void fts_irq_read_report(void)
 		mutex_unlock(&ts_data->report_mutex);
 	}
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_set_intr(0);
-#endif
-}
-
-static irqreturn_t fts_irq_handler(int irq, void *data)
-{
-#if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
-	int ret = 0;
-	struct fts_ts_data *ts_data = fts_data;
-
-	if ((ts_data->suspended) && (ts_data->pm_suspend)) {
-		ret = wait_for_completion_timeout(
-			&ts_data->pm_completion,
-			msecs_to_jiffies(FTS_TIMEOUT_COMERR_PM));
-		if (!ret) {
-			FTS_ERROR(
-				"Bus don't resume from pm(deep),timeout,skip irq");
-			return IRQ_HANDLED;
-		}
-	}
-#endif
-
-	pm_stay_awake(fts_data->dev);
-	fts_irq_read_report();
-	pm_relax(fts_data->dev);
+	pm_relax(ts_data->dev);
 	return IRQ_HANDLED;
 }
 
@@ -1674,11 +1707,9 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		FTS_ERROR("init gesture fail");
 	}
 
-#if FTS_ESDCHECK_EN
+#if 0
+	/* 彻底剔除后台静电定时器线程，防止游戏时撞车抢锁掉帧 */
 	ret = fts_esdcheck_init(ts_data);
-	if (ret) {
-		FTS_ERROR("init esd check fail");
-	}
 #endif
 
 	ret = fts_irq_registration(ts_data);
@@ -1772,7 +1803,7 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 
 	fts_fwupg_exit(ts_data);
 
-#if FTS_ESDCHECK_EN
+#if 0
 	fts_esdcheck_exit(ts_data);
 #endif
 
