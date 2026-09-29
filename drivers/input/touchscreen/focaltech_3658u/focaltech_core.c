@@ -175,33 +175,25 @@ int fts_reset_proc(int hdelayms)
 
 void fts_irq_disable(void)
 {
-	unsigned long irqflags;
-
 	FTS_FUNC_ENTER();
-	spin_lock_irqsave(&fts_data->irq_lock, irqflags);
-
+	
 	if (!fts_data->irq_disabled) {
 		disable_irq_nosync(fts_data->irq);
 		fts_data->irq_disabled = true;
 	}
 
-	spin_unlock_irqrestore(&fts_data->irq_lock, irqflags);
 	FTS_FUNC_EXIT();
 }
 
 void fts_irq_enable(void)
 {
-	unsigned long irqflags = 0;
-
 	FTS_FUNC_ENTER();
-	spin_lock_irqsave(&fts_data->irq_lock, irqflags);
-
+	
 	if (fts_data->irq_disabled) {
 		enable_irq(fts_data->irq);
 		fts_data->irq_disabled = false;
 	}
 
-	spin_unlock_irqrestore(&fts_data->irq_lock, irqflags);
 	FTS_FUNC_EXIT();
 }
 
@@ -657,7 +649,6 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 	return 0;
 }
 
-
 static int fts_read_parse_touchdata(struct fts_ts_data *data)
 {
 	int ret = 0;
@@ -668,26 +659,37 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	int max_touch_num = data->pdata->max_touch_number;
 	u8 *buf = data->point_buf;
 
-	ret = fts_read_touchdata(data);
-	if (unlikely(ret)) {
-		return ret;
+	if (unlikely(data->gesture_mode)) {
+		memset(buf, 0xFF, data->pnt_buf_size);
+	}
+	buf[0] = 0x01;
+	
+	ret = fts_read(buf, 1, buf + 1, data->pnt_buf_size - 1);
+	if (unlikely(ret < 0)) {
+		return -EIO;
+	}
+
+	if (unlikely(data->gesture_mode)) {
+		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
+		if (0 == ret) {
+			return 1;
+		}
 	}
 
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	data->touch_point = 0;
-
+	
 	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
 	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
-		FTS_DEBUG("touch buff is 0xff, need recovery state");
-		fts_release_all_finger();
-		fts_tp_state_recovery(data);
+		FTS_DEBUG("touch buff is 0xff, skipping to prevent deadlock");
 		return -EIO;
 	}
 
 	if (unlikely(data->point_num > max_touch_num)) {
 		return -EIO;
 	}
-
+	
+	#pragma unroll
 	for (i = 0; i < max_touch_num; i++) {
 		base = FTS_ONE_TCH_LEN * i;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
@@ -705,10 +707,12 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		events[i].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) +
 			      (buf[FTS_TOUCH_Y_L_POS + base] << 4) +
 			      ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[i].x = (events[i].x * 5) >> 3;
-		events[i].y = (events[i].y * 5) >> 3;
+			      
+		events[i].x = ((events[i].x << 2) + events[i].x) >> 3;
+		events[i].y = ((events[i].y << 2) + events[i].y) >> 3;
+		
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
-		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
+		events[i].id = pointid;
 		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
 	}
 
@@ -751,13 +755,9 @@ static void fts_irq_read_report(void)
 static irqreturn_t fts_irq_handler(int irq, void *data)
 {
 	struct fts_ts_data *ts_data = fts_data;
-
-	// 1. 强制保持内核清醒，不走任何无谓的深睡锁等待逻辑
+	
 	pm_stay_awake(ts_data->dev);
-
-	// 2. 【核心大手术】这里直接跳过原厂繁琐的 fts_irq_read_report 中转函数，
-	// 直接就地调用我们之前改好的、包含 >> 3 二进制位移优化的解析函数。
-	// 这就彻底物理超度了原厂中断里夹带的 ESD 静电检测和报点队列，打游戏绝对不再莫名掉帧和断触！
+	
 	if (likely(fts_read_parse_touchdata(ts_data) == 0)) {
 		mutex_lock(&ts_data->report_mutex);
 #if FTS_MT_PROTOCOL_B_EN
@@ -1535,41 +1535,29 @@ static void fts_power_supply_work(struct work_struct *work)
 {
 	struct fts_ts_data *ts_data =
 		container_of(work, struct fts_ts_data, power_supply_work);
-	bool charger_mode;
 	int ret;
 
 	if (ts_data == NULL)
 		return;
+
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 	if (ts_data->pm_suspend) {
-		FTS_ERROR("TP is in suspend mode, don't set usb status!");
 		return;
 	}
 #endif
+
 	pm_stay_awake(ts_data->dev);
-	mutex_lock(&ts_data->power_supply_lock);
-	charger_mode = !!power_supply_is_system_supplied();
-	if (charger_mode != ts_data->charger_mode) {
-		ts_data->charger_mode = charger_mode;
-		FTS_INFO("%s %d\n", __func__, charger_mode);
-		if (charger_mode) {
-			FTS_INFO("%s USB is exist\n", __func__);
-			ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-			if (ret < 0)
-				FTS_ERROR("set power supply exist fail, ret=%d",
-					  ret);
-		} else {
-			FTS_INFO("%s USB is not exist\n", __func__);
-			ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-			if (ret < 0)
-				FTS_ERROR(
-					"set power supply not exist fail, ret=%d",
-					ret);
-		}
+	
+	ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	if (ret < 0) {
+		FTS_ERROR("set power supply mode register fail, ret=%d", ret);
 	}
-	mutex_unlock(&ts_data->power_supply_lock);
+	
+	ts_data->charger_mode = false;
+	
 	pm_relax(ts_data->dev);
 }
+
 
 static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 {
@@ -2346,17 +2334,13 @@ static int fts_get_mode_all(int mode, int *value)
 static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 {
 	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_CUR_VALUE] =
-		xiaomi_touch_interfaces
-			.touch_mode[Touch_Game_Mode][GET_DEF_VALUE];
+		xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_DEF_VALUE];
 
-	xiaomi_touch_interfaces
-		.touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] =
-		xiaomi_touch_interfaces
-			.touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE];
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] =
+		xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE];
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_CUR_VALUE] =
-		xiaomi_touch_interfaces
-			.touch_mode[Touch_Edge_Filter][GET_DEF_VALUE];
+		xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_DEF_VALUE];
 
 	fts_update_touchmode_data(ts_data);
 }
