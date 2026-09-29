@@ -1923,6 +1923,16 @@ static int fts_ts_resume(struct device *dev)
     ts_data->glove_mode = true;
     fts_ex_mode_recovery(ts_data);
     
+	{
+		u8 cmd[7] = { 0xc1, 0x01, 0x1e, 0x01, 0x01, 0x01, 0x01 };
+		int ret_cmd = fts_write(cmd, sizeof(cmd));
+		if (ret_cmd < 0) {
+			FTS_ERROR("LineageOS supermode inject fail! ret=%d\n", ret_cmd);
+		} else {
+			FTS_INFO("LineageOS supermode: 1-Pixel Deadzone INJECT SUCCESS!\n");
+		}
+	}
+    
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_resume();
 #endif
@@ -2116,16 +2126,13 @@ static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 	int temp_value;
 	struct fts_ts_platform_data *pdata = ts_data->pdata;
 
-	temp_value = xiaomi_touch_interfaces
-			     .touch_mode[Touch_Game_Mode][SET_CUR_VALUE];
+	temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][SET_CUR_VALUE];
 	cmd[1] = (u8)(temp_value);
-	temp_value = xiaomi_touch_interfaces
-			     .touch_mode[Touch_Active_MODE][SET_CUR_VALUE];
+	temp_value = xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][SET_CUR_VALUE];
 	cmd[2] = (u8)(temp_value ? 30 : 3);
 	if (is_expert_mode) {
 		temp_value =
-			xiaomi_touch_interfaces
-				.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE];
+			xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE];
 		cmd[3] = (u8)(*(pdata->touch_expert_array +
 				(temp_value - 1) * 4));
 		cmd[4] = (u8)(*(pdata->touch_expert_array +
