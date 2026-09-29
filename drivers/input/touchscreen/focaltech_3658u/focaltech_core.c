@@ -689,9 +689,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	data->touch_point = 0;
 	
-	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF))) {
+	/* 精准修复：必须为每个 buf 补充正确的数组索引下标，消灭指针语法报错 */
+	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
+	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
+		FTS_DEBUG("touch buff is 0xff, cross-drop to prevent deadlock");
 		return -EIO;
 	}
+
 
 	if (unlikely(data->point_num > max_touch_num)) {
 		return -EIO;

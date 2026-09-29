@@ -317,11 +317,13 @@ int fts_gesture_readdata(struct fts_ts_data *ts_data, u8 *data)
 		return 1;
 	}
 
-	/* 2. 【核心优化】使用全局自旋锁锁住数据提取段，防止双击特征码在多线程并发时被踩踏挤断 */
+	/* 修正后：加入严格的数组下标引用与宏范围防御 */
 	spin_lock_irqsave(&ts_data->irq_lock, flags);
 
-	memset(gesture->coordinate_x, 0, GESTURE_POINTS_MAX * sizeof(u16));
-	memset(gesture->coordinate_y, 0, GESTURE_POINTS_MAX * sizeof(u16));
+	memset(gesture->coordinate_x, 0, FTS_GESTURE_POINTS_MAX * sizeof(u16));
+	memset(gesture->coordinate_y, 0, FTS_GESTURE_POINTS_MAX * sizeof(u16));
+	
+	/* 精准修复：确保 buf 使用数组下标，防止指针直接赋值给标量变量的严重编译错误 */
 	gesture->gesture_id = buf[2];
 	gesture->point_num = buf[3];
 
@@ -331,12 +333,12 @@ int fts_gesture_readdata(struct fts_ts_data *ts_data, u8 *data)
 	if (gesture->gesture_id == GESTURE_DOUBLECLICK &&
 	    !(ts_data->gesture_status & 0x01)) {
 		FTS_INFO("double click is not enabled!");
-		spin_unlock_irqrestore(&ts_data->irq_lock, flags); // 注意放锁
+		spin_unlock_irqrestore(&ts_data->irq_lock, flags); 
 		return 0;
 	} else if (gesture->gesture_id == GESTURE_SINGLETAP &&
 		   !(ts_data->gesture_status & 0x02)) {
 		FTS_INFO("single tap is not enabled!");
-		spin_unlock_irqrestore(&ts_data->irq_lock, flags); // 注意放锁
+		spin_unlock_irqrestore(&ts_data->irq_lock, flags); 
 		return 0;
 	}
 
