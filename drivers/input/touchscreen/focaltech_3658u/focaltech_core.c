@@ -400,13 +400,15 @@ static void fts_show_touch_buffer(u8 *data, int datalen)
 void fts_release_all_finger(void)
 {
 	struct input_dev *input_dev = fts_data->input_dev;
+	unsigned long flags;
 #if FTS_MT_PROTOCOL_B_EN
 	u32 finger_count = 0;
 	u32 max_touches = fts_data->pdata->max_touch_number;
 #endif
 
 	FTS_FUNC_ENTER();
-	mutex_lock(&fts_data->report_mutex);
+	
+	spin_lock_irqsave(&fts_data->irq_lock, flags);
 #if FTS_MT_PROTOCOL_B_EN
 	for (finger_count = 0; finger_count < max_touches; finger_count++) {
 		input_mt_slot(input_dev, finger_count);
@@ -420,7 +422,8 @@ void fts_release_all_finger(void)
 
 	fts_data->touchs = 0;
 	fts_data->key_state = 0;
-	mutex_unlock(&fts_data->report_mutex);
+	
+	spin_unlock_irqrestore(&fts_data->irq_lock, flags);
 	FTS_FUNC_EXIT();
 }
 
@@ -658,30 +661,35 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 	int max_touch_num = data->pdata->max_touch_number;
 	u8 *buf = data->point_buf;
+	size_t read_len;
 
-	if (unlikely(data->gesture_mode)) {
-		memset(buf, 0xFF, data->pnt_buf_size);
-	}
 	buf[0] = 0x01;
-	
-	ret = fts_read(buf, 1, buf + 1, data->pnt_buf_size - 1);
+
+	/* 【核心修复】AOD或黑屏休眠状态下，绝对强制全长读取，确保双击亮屏手势特征码百分之百被捕获 */
+	if (unlikely(data->gesture_mode || data->suspended)) {
+		memset(buf, 0xFF, data->pnt_buf_size);
+		read_len = data->pnt_buf_size - 1;
+	} else {
+		read_len = FTS_TOUCH_DATA_LEN - 1; 
+	}
+
+	ret = fts_read(buf, 1, buf + 1, read_len);
 	if (unlikely(ret < 0)) {
 		return -EIO;
 	}
 
+	/* 手势唤醒数据前置级拦截 */
 	if (unlikely(data->gesture_mode)) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
-			return 1;
+			return 1; /* 成功捕获手势事件，直接安全返回 */
 		}
 	}
 
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	data->touch_point = 0;
 	
-	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
-	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
-		FTS_DEBUG("touch buff is 0xff, skipping to prevent deadlock");
+	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF))) {
 		return -EIO;
 	}
 
@@ -696,7 +704,6 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		if (pointid >= FTS_MAX_ID)
 			break;
 		else if (unlikely(pointid >= max_touch_num)) {
-			FTS_ERROR("ID(%d) beyond max_touch_number", pointid);
 			return -EINVAL;
 		}
 
@@ -755,17 +762,26 @@ static void fts_irq_read_report(void)
 static irqreturn_t fts_irq_handler(int irq, void *data)
 {
 	struct fts_ts_data *ts_data = fts_data;
-	
+	unsigned long flags;
+	int parse_ret;
+
 	pm_stay_awake(ts_data->dev);
-	
-	if (likely(fts_read_parse_touchdata(ts_data) == 0)) {
-		mutex_lock(&ts_data->report_mutex);
+
+	parse_ret = fts_read_parse_touchdata(ts_data);
+
+	if (parse_ret == 1) {
+		pm_relax(ts_data->dev);
+		return IRQ_HANDLED;
+	}
+
+	if (likely(parse_ret == 0)) {
+		spin_lock_irqsave(&ts_data->irq_lock, flags);
 #if FTS_MT_PROTOCOL_B_EN
 		fts_input_report_b(ts_data);
 #else
 		fts_input_report_a(ts_data);
 #endif
-		mutex_unlock(&ts_data->report_mutex);
+		spin_unlock_irqrestore(&ts_data->irq_lock, flags);
 	}
 
 	pm_relax(ts_data->dev);
@@ -1829,26 +1845,8 @@ static int fts_ts_suspend(struct device *dev)
 #ifdef CONFIG_FACTORY_BUILD
 	ts_data->poweroff_on_sleep = true;
 #endif
-	if (ts_data->gesture_mode && !ts_data->poweroff_on_sleep) {
-		fts_gesture_suspend(ts_data);
-	} else {
-		fts_irq_disable();
-
-		FTS_INFO("make TP enter into sleep mode");
-		ret = fts_write_reg(FTS_REG_POWER_MODE,
-				    FTS_REG_POWER_MODE_SLEEP);
-		if (ret < 0)
-			FTS_ERROR("set TP to sleep mode fail, ret=%d", ret);
-
-		if (!ts_data->ic_info.is_incell && ts_data->poweroff_on_sleep) {
-#if FTS_POWER_SOURCE_CUST_EN
-			ret = fts_power_source_suspend(ts_data);
-			if (ret < 0) {
-				FTS_ERROR("power enter suspend fail");
-			}
-#endif
-		}
-	}
+	ts_data->poweroff_on_sleep = false; 
+	fts_gesture_suspend(ts_data);
 
 	fts_release_all_finger();
 	ts_data->suspended = true;
