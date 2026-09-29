@@ -797,21 +797,17 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 	}
 #endif
 
-	/* 进场保持最高优先级系统清醒状态 */
 	pm_stay_awake(ts_data->dev);
 
-	/* 调用重构后的高效率单次总线解析函数 */
 	parse_ret = fts_read_parse_touchdata(ts_data);
 
-	/* 1. 若成功捕获双击亮屏手势（返回 1），立刻放行中断，不让坐标上报覆盖手势按键动作 */
 	if (parse_ret == 1) {
 		pm_relax(ts_data->dev);
 		return IRQ_HANDLED;
 	}
 
-	/* 2. 亮屏下正常高刷打游戏的多指滑动报点（返回 0） */
 	if (likely(parse_ret == 0)) {
-		/* 完美保留并死守原厂安全的互斥锁逻辑，杜绝任何外部文件的冲突报错 */
+
 		mutex_lock(&ts_data->report_mutex);
 #if FTS_MT_PROTOCOL_B_EN
 		fts_input_report_b(ts_data);
@@ -1708,7 +1704,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	}
 
 #if 0
-	/* 彻底剔除后台静电定时器线程，防止游戏时撞车抢锁掉帧 */
 	ret = fts_esdcheck_init(ts_data);
 #endif
 
@@ -1757,7 +1752,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ts_data->glove_mode = true;
 
 	fts_ex_mode_recovery(ts_data);
-	// =========================================================================
 
 	ts_data->charger_mode = false;
 	mutex_init(&ts_data->power_supply_lock);
@@ -1995,10 +1989,7 @@ static void fts_read_palm_data(u8 reg_value)
 static int fts_palm_sensor_cmd(int value)
 {
 	int ret = 0;
-
-	// 极致优化：无论上层系统传进来的是 1（开启）还是 0（关闭），
-	// 驱动在最底层一律强制重写为 FTS_PALM_OFF（关闭状态）！
-	// 彻底剥夺系统擅自改动防误触的权力，让芯片在物理上永远不激活掌纹判定！
+	
 	ret = fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 
 	if (ret < 0)
@@ -2497,7 +2488,7 @@ static int fts_ts_probe(struct spi_device *spi)
 	fts_data = ts_data;
 	ts_data->spi = spi;
 	ts_data->dev = &spi->dev;
-	ts_data->log_level = 1;
+	ts_data->log_level = 0;
 	ts_data->poweroff_on_sleep = false;
 
 	ts_data->bus_type = BUS_TYPE_SPI_V2;
