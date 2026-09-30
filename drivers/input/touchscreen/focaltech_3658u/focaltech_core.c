@@ -484,9 +484,9 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 
 	for (i = 0; i < data->touch_point; i++) {
-		if (fts_input_report_key(data, i) == 0) {
-			continue;
-		}
+		//if (fts_input_report_key(data, i) == 0) {
+			//continue;
+		//}
 
 		va_reported = true;
 		input_mt_slot(data->input_dev, events[i].id);
@@ -569,9 +569,9 @@ static int fts_input_report_a(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 
 	for (i = 0; i < data->touch_point; i++) {
-		if (fts_input_report_key(data, i) == 0) {
-			continue;
-		}
+		//if (fts_input_report_key(data, i) == 0) {
+			//continue;
+		//}
 
 		va_reported = true;
 		if (EVENT_DOWN(events[i].flag)) {
