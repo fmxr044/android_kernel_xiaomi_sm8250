@@ -81,7 +81,7 @@ enum {
 static const struct afe_clk_set lpass_clk_set_default = {
 	AFE_API_VERSION_CLOCK_SET,
 	Q6AFE_LPASS_CLK_ID_PRI_PCM_IBIT,
-	Q6AFE_LPASS_OSR_CLK_19_P2_MHZ,
+	19200000,
 	Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
 	0,
@@ -89,7 +89,7 @@ static const struct afe_clk_set lpass_clk_set_default = {
 
 static const struct afe_clk_cfg lpass_clk_cfg_default = {
 	AFE_API_VERSION_I2S_CONFIG,
-	Q6AFE_LPASS_OSR_CLK_19_P2_MHZ,
+	19200000,
 	0,
 	Q6AFE_LPASS_CLK_SRC_INTERNAL,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
