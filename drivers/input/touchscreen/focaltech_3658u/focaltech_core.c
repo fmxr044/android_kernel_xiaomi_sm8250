@@ -140,23 +140,18 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	FTS_FUNC_ENTER();
 	/* wait tp stable */
 	fts_wait_tp_to_valid();
-	/* recover TP charger state 0x8B */
-	/* recover TP glove state 0xC0 */
-	/* recover TP cover state 0xC1 */
+	
 	ts_data->glove_mode = true;
-    fts_ex_mode_recovery(ts_data);
-
-	/* recover TP gesture state 0xD0 */
+	ts_data->charger_mode = false;
+	
 	fts_gesture_recovery(ts_data);
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-	/* recover TP game mode state */
 	fts_game_mode_recovery(ts_data);
-	/* recover TP palm mode state */
 	fts_palm_mode_recovery(ts_data);
 #endif
-	/* set touch in charge mode or not */
-	ts_data->charger_mode = false;
+	
 	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
+
 	FTS_FUNC_EXIT();
 }
 
@@ -1630,7 +1625,8 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 			       pdata_size);
 		} else {
 			FTS_ERROR("platform_data is null");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto err_bus_init;
 		}
 	}
 
@@ -1744,17 +1740,33 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 #endif
 
 	ts_data->charger_mode = false;
+	ts_data->glove_mode = true;
 	mutex_init(&ts_data->power_supply_lock);
 	INIT_WORK(&ts_data->power_supply_work, fts_power_supply_work);
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
 	power_supply_reg_notifier(&ts_data->power_supply_notifier);
 	
-	ts_data->glove_mode = true;
-
 	fts_ex_mode_recovery(ts_data);
-
-	ts_data->charger_mode = false;
-	mutex_init(&ts_data->power_supply_lock);
+	
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	{
+		u8 cmd[7];
+		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[1] = 0x01;
+		cmd[2] = 0x1e;
+		cmd[3] = 0x01;
+		cmd[4] = 0x01;
+		cmd[5] = 0x01;
+		cmd[6] = 0x01;
+		
+		int ret_cmd = fts_write(cmd, sizeof(cmd));
+		if (unlikely(ret_cmd < 0)) {
+			FTS_ERROR("LineageOS Boot-Inject core failed! ret=%d\n", ret_cmd);
+		} else {
+			FTS_INFO("LineageOS Boot-Inject: GLOVE & 1-PIXEL DEADZONE SUCCESFULLY FIXED!\n");
+		}
+	}
 
 	FTS_FUNC_EXIT();
 	return 0;
@@ -1920,19 +1932,7 @@ static int fts_ts_resume(struct device *dev)
 	}
 
 	fts_wait_tp_to_valid();
-    ts_data->glove_mode = true;
-    fts_ex_mode_recovery(ts_data);
-    
-	{
-		u8 cmd[7] = { 0xc1, 0x01, 0x1e, 0x01, 0x01, 0x01, 0x01 };
-		int ret_cmd = fts_write(cmd, sizeof(cmd));
-		if (ret_cmd < 0) {
-			FTS_ERROR("LineageOS supermode inject fail! ret=%d\n", ret_cmd);
-		} else {
-			FTS_INFO("LineageOS supermode: 1-Pixel Deadzone INJECT SUCCESS!\n");
-		}
-	}
-    
+	    
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_resume();
 #endif
