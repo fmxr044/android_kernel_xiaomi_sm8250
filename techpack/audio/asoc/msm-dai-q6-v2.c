@@ -81,7 +81,7 @@ enum {
 static const struct afe_clk_set lpass_clk_set_default = {
 	AFE_API_VERSION_CLOCK_SET,
 	Q6AFE_LPASS_CLK_ID_PRI_PCM_IBIT,
-	Q6AFE_LPASS_OSR_CLK_2_P048_MHZ,
+	Q6AFE_LPASS_OSR_CLK_19_P2_MHZ,
 	Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
 	0,
@@ -89,7 +89,7 @@ static const struct afe_clk_set lpass_clk_set_default = {
 
 static const struct afe_clk_cfg lpass_clk_cfg_default = {
 	AFE_API_VERSION_I2S_CONFIG,
-	Q6AFE_LPASS_OSR_CLK_2_P048_MHZ,
+	Q6AFE_LPASS_OSR_CLK_19_P2_MHZ,
 	0,
 	Q6AFE_LPASS_CLK_SRC_INTERNAL,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
@@ -4255,7 +4255,7 @@ static struct snd_soc_dai_driver msm_dai_q6_bt_a2dp_rx_dai = {
 		.stream_name = "Internal BT-A2DP Playback",
 		.aif_name = "INT_BT_A2DP_RX",
 		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.formats = DAI_FORMATS_S16_S24_S32_LE,
 		.channels_min = 1,
 		.channels_max = 2,
 		.rate_max = 48000,
