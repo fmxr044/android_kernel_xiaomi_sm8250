@@ -120,7 +120,7 @@ static ssize_t fts_debug_write(struct file *filp, const char __user *buff,
 		FTS_DEBUG("[APK]: PROC_SET_TEST_FLAG = %x", writebuf[1]);
 		if (writebuf[1] == 0) {
 #if FTS_ESDCHECK_EN
-			fts_esdcheck_switch(ENABLE);
+			fts_esdcheck_switch(DISABLE);
 #endif
 		} else {
 #if FTS_ESDCHECK_EN
@@ -326,7 +326,7 @@ static int fts_debug_write(struct file *filp, const char __user *buff,
 		FTS_DEBUG("[APK]: PROC_SET_TEST_FLAG = %x", writebuf[1]);
 		if (writebuf[1] == 0) {
 #if FTS_ESDCHECK_EN
-			fts_esdcheck_switch(ENABLE);
+			fts_esdcheck_switch(DISABLE);
 #endif
 		} else {
 #if FTS_ESDCHECK_EN
