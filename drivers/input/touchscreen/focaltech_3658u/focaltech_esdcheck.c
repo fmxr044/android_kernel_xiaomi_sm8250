@@ -328,7 +328,7 @@ int fts_esdcheck_switch(bool enable)
 {
 	struct fts_ts_data *ts_data = fts_data;
 	FTS_FUNC_ENTER();
-	if (fts_esdcheck_data.mode == ENABLE) {
+	if (fts_esdcheck_data.mode == DISABLE) {
 		if (enable) {
 			FTS_DEBUG("ESD check start");
 			fts_esdcheck_data.flow_work_hold_cnt = 0;
@@ -362,7 +362,7 @@ int fts_esdcheck_suspend(void)
 int fts_esdcheck_resume(void)
 {
 	FTS_FUNC_ENTER();
-	fts_esdcheck_switch(ENABLE);
+	fts_esdcheck_switch(DISABLE);
 	fts_esdcheck_data.suspend = 0;
 	fts_esdcheck_data.intr = 0;
 	fts_esdcheck_data.intr_cnt = 0;
@@ -379,8 +379,8 @@ static ssize_t fts_esdcheck_store(struct device *dev,
 	mutex_lock(&input_dev->mutex);
 	if (FTS_SYSFS_ECHO_ON(buf)) {
 		FTS_DEBUG("enable esdcheck");
-		fts_esdcheck_data.mode = ENABLE;
-		fts_esdcheck_switch(ENABLE);
+		fts_esdcheck_data.mode = DISABLE;
+		fts_esdcheck_switch(DISABLE);
 	} else if (FTS_SYSFS_ECHO_OFF(buf)) {
 		FTS_DEBUG("disable esdcheck");
 		fts_esdcheck_switch(DISABLE);
@@ -450,10 +450,10 @@ int fts_esdcheck_init(struct fts_ts_data *ts_data)
 
 	memset((u8 *)&fts_esdcheck_data, 0, sizeof(struct fts_esdcheck_st));
 
-	fts_esdcheck_data.mode = ENABLE;
+	fts_esdcheck_data.mode = DISABLE;
 	fts_esdcheck_data.intr = 0;
 	fts_esdcheck_data.intr_cnt = 0;
-	fts_esdcheck_switch(ENABLE);
+	fts_esdcheck_switch(DISABLE);
 	fts_create_esd_sysfs(ts_data->dev);
 	FTS_FUNC_EXIT();
 	return 0;
