@@ -135,12 +135,13 @@ int us_afe_callback(int data)
 	el_data.timestamp = timespec_to_ns(&ts);
 	pr_info("%s: data = %d\n", __func__, data);
 
-	if (!data)
+	if (!data) {
 		el_data.data1 = 0;
 		proc_prox_state = '0';
-	else
+	} else {
 		el_data.data1 = 5;
 		proc_prox_state = '1';
+	}
 
 	if (g_us_prox) {
 		ret = iio_push_to_buffers(g_us_prox->prox_idev,
