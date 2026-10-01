@@ -484,10 +484,7 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 
 	for (i = 0; i < data->touch_point; i++) {
-		//if (fts_input_report_key(data, i) == 0) {
-			//continue;
-		//}
-
+	
 		va_reported = true;
 		input_mt_slot(data->input_dev, events[i].id);
 
@@ -569,9 +566,6 @@ static int fts_input_report_a(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 
 	for (i = 0; i < data->touch_point; i++) {
-		//if (fts_input_report_key(data, i) == 0) {
-			//continue;
-		//}
 
 		va_reported = true;
 		if (EVENT_DOWN(events[i].flag)) {
@@ -689,10 +683,6 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 #endif
 
 	if (data->gesture_mode) {
-	    if (data->suspended && (data->palm_sensor_switch != 0)) {
-			FTS_INFO("double tap gesture blocked in suspend state\n");
-			return -EIO;
-		}
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
 			FTS_INFO("succuss to get gesture data in irq handler");
@@ -1596,11 +1586,7 @@ static void fts_power_supply_work(struct work_struct *work)
 
 	pm_stay_awake(ts_data->dev);
 	
-	ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	if (ret < 0) {
-		FTS_ERROR("set power supply mode register fail, ret=%d", ret);
-	}
-	
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	ts_data->charger_mode = false;
 	
 	pm_relax(ts_data->dev);
@@ -1743,8 +1729,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	register_early_suspend(&ts_data->early_suspend);
 #endif
 
-	ts_data->charger_mode = false;
-	ts_data->glove_mode = true;
 	mutex_init(&ts_data->power_supply_lock);
 	INIT_WORK(&ts_data->power_supply_work, fts_power_supply_work);
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
@@ -1753,7 +1737,9 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	fts_ex_mode_recovery(ts_data);
 	
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	ts_data->charger_mode = false;
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	ts_data->glove_mode = true;
 	{
 		u8 cmd[7];
 		cmd[0] = FTS_REG_GAMEMODE;
@@ -1874,17 +1860,19 @@ static int fts_ts_suspend(struct device *dev)
 		return 0;
 	}
 
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-	if (ts_data->palm_sensor_switch) {
-		FTS_INFO("palm sensor ON, switch to OFF");
-		update_palm_sensor_value(0);
-		fts_palm_sensor_cmd(0);
-	}
-#endif
+//#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+    fts_write_reg(FTS_PALM_EN, FTS_PALM_ON);
+    ts_data->palm_sensor_switch = 1;
+	//if (ts_data->palm_sensor_switch) {
+		//FTS_INFO("palm sensor ON, switch to OFF");
+		//update_palm_sensor_value(0);
+		//fts_palm_sensor_cmd(0);
+	//}
+//#endif
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_suspend();
-#endif
+//#if FTS_ESDCHECK_EN
+	//fts_esdcheck_suspend();
+//#endif
 
 #ifdef CONFIG_FACTORY_BUILD
 	ts_data->poweroff_on_sleep = true;
@@ -1895,10 +1883,9 @@ static int fts_ts_suspend(struct device *dev)
 		fts_irq_disable();
 
 		FTS_INFO("make TP enter into sleep mode");
-		ret = fts_write_reg(FTS_REG_POWER_MODE,
-				    FTS_REG_POWER_MODE_SLEEP);
-		if (ret < 0)
-			FTS_ERROR("set TP to sleep mode fail, ret=%d", ret);
+		fts_write_reg(FTS_REG_POWER_MODE, FTS_REG_POWER_MODE_SLEEP);
+		//if (ret < 0)
+			//FTS_ERROR("set TP to sleep mode fail, ret=%d", ret);
 
 		if (!ts_data->ic_info.is_incell && ts_data->poweroff_on_sleep) {
 #if FTS_POWER_SOURCE_CUST_EN
@@ -1937,16 +1924,18 @@ static int fts_ts_resume(struct device *dev)
 
 	fts_wait_tp_to_valid();
 	    
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_resume();
-#endif
+//#if FTS_ESDCHECK_EN
+	//fts_esdcheck_resume();
+//#endif
 
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-	if (ts_data->palm_sensor_switch) {
-		FTS_INFO("palm sensor OFF, switch to ON");
-		fts_palm_sensor_cmd(1);
-	}
-#endif
+//#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+    fts_write_reg(FTS_PALM_EN, FTS_PALM_ON);
+    ts_data->palm_sensor_switch = 1;
+	//if (ts_data->palm_sensor_switch) {
+		//FTS_INFO("palm sensor OFF, switch to ON");
+		//fts_palm_sensor_cmd(1);
+	//}
+//#endif
 
 	if (ts_data->gesture_mode && !ts_data->poweroff_on_sleep) {
 		fts_gesture_resume(ts_data);
@@ -2002,14 +1991,17 @@ static void fts_read_palm_data(u8 reg_value)
 
 static int fts_palm_sensor_cmd(int value)
 {
+    
+    return 0;
+    
 	int ret = 0;
 	
-	ret = fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	//ret = fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 
-	if (ret < 0)
-		FTS_ERROR("Set palm sensor switch failed!\n");
-	else
-		FTS_INFO("Set palm sensor switch: FORCE DISABLED (Original parameter was: %d)\n", value);
+	//if (ret < 0)
+		//FTS_ERROR("Set palm sensor switch failed!\n");
+	//else
+		//FTS_INFO("Set palm sensor switch: FORCE DISABLED (Original parameter was: %d)\n", value);
 
 	return ret;
 }
@@ -2190,7 +2182,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	u8 mode_set_value = 0;
 	u8 mode_addr = 0;
 	bool game_mode_state_change = false;
-	u8 cmd[7] = { 0xc1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	u8 cmd[7] = { 0xc1, 0x01, 0x1e, 0x01, 0x01, 0x01, 0x01 };
 
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 	if (ts_data && ts_data->pm_suspend) {
@@ -2339,7 +2331,7 @@ static int fts_set_cur_value(int mode, int value)
 	} else if (mode == Touch_Expert_Mode) {
 		fts_data->is_expert_mode = true;
 	} else if (mode >= Touch_UP_THRESHOLD && mode <= Touch_Tap_Stability) {
-		fts_data->is_expert_mode = false;
+		fts_data->is_expert_mode = true;
 	}
 
 	if (value > xiaomi_touch_interfaces.touch_mode[mode][GET_MAX_VALUE]) {
@@ -2357,8 +2349,8 @@ static int fts_reset_mode(int mode)
 {
 	if (mode == Touch_Game_Mode) {
 		fts_restore_normal_mode();
-		fts_data->gamemode_enabled = false;
-		fts_data->is_expert_mode = false;
+		fts_data->gamemode_enabled = true;
+		fts_data->is_expert_mode = true;
 	} else if (mode < Touch_Mode_NUM) {
 		fts_restore_mode_value(mode, GET_DEF_VALUE);
 	} else {
