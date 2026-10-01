@@ -484,6 +484,9 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 
 	for (i = 0; i < data->touch_point; i++) {
+		//if (fts_input_report_key(data, i) == 0) {
+			//continue;
+		//}
 
 		va_reported = true;
 		input_mt_slot(data->input_dev, events[i].id);
@@ -566,6 +569,9 @@ static int fts_input_report_a(struct fts_ts_data *data)
 	struct ts_event *events = data->events;
 
 	for (i = 0; i < data->touch_point; i++) {
+		//if (fts_input_report_key(data, i) == 0) {
+			//continue;
+		//}
 
 		va_reported = true;
 		if (EVENT_DOWN(events[i].flag)) {
@@ -683,25 +689,6 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 #endif
 
 	if (data->gesture_mode) {
-	        struct file *file_ptr = NULL;
-		    char state_buf = 0;
-		    loff_t pos = 0;
-
-		    file_ptr = filp_open("/proc/gesture_prox_state", O_RDONLY, 0);
-		    if (!IS_ERR(file_ptr)) {
-			/* 使用 4.19 稳妥的 kernel_read 读取 1 个字节的数据 */
-			kernel_read(file_ptr, &state_buf, 1, &pos);
-			filp_close(file_ptr, NULL);
-
-			/* 如果读取到 '1'，代表接近传感器检测到口袋遮挡，直接拦截 */
-			if (state_buf == '1') {
-				FTS_INFO("LineageOS Pocket-Mode: Double tap BLOCKED by /proc/gesture_prox_state!\n");
-				return -EIO; // 中断本次双击的唤醒报点
-			}
-		} else {
-			/* 如果刷回原厂系统，节点不存在则直接放行，毫无副作用 */
-			FTS_DEBUG("Pocket-Mode: Proc node not found, normal bypass.\n");
-		}
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
 			FTS_INFO("succuss to get gesture data in irq handler");
@@ -2156,11 +2143,13 @@ static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 				(temp_value - 1) * 4 + 3));
 	} else {
 		temp_value =
-			xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE];
+			xiaomi_touch_interfaces
+				.touch_mode[Touch_Tolerance][SET_CUR_VALUE];
 		cmd[3] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 
 		temp_value =
-			xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE];
+			xiaomi_touch_interfaces
+				.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE];
 		cmd[4] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 
 		temp_value =
@@ -2169,7 +2158,8 @@ static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 		cmd[5] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 
 		temp_value =
-			xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE];
+			xiaomi_touch_interfaces
+				.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE];
 		cmd[6] = (u8)(*(pdata->touch_range_array + temp_value - 1));
 	}
 }
@@ -2220,14 +2210,18 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 		for (mode = Touch_Game_Mode; mode <= Touch_Expert_Mode;
 		     mode++) {
 			if (mode == Touch_Game_Mode &&
-			    (xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] !=
-			     xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE])) {
+			    (xiaomi_touch_interfaces
+				     .touch_mode[mode][GET_CUR_VALUE] !=
+			     xiaomi_touch_interfaces
+				     .touch_mode[mode][SET_CUR_VALUE])) {
 				game_mode_state_change = true;
 				fts_data->gamemode_enabled =
-					xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
+					xiaomi_touch_interfaces
+						.touch_mode[mode][SET_CUR_VALUE];
 			}
 			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] =
-				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
+				xiaomi_touch_interfaces
+					.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
 
@@ -2258,7 +2252,8 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 			FTS_INFO("write touch mode:%d, value: %d, addr:0x%02X",
 				 mode, mode_set_value, mode_addr);
 			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] =
-				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
+				xiaomi_touch_interfaces
+					.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
 
@@ -2275,7 +2270,8 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 			FTS_INFO("write touch mode:%d, value: %d, addr:0x%02X",
 				 mode, mode_set_value, mode_addr);
 			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] =
-				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
+				xiaomi_touch_interfaces
+					.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
 
@@ -2409,13 +2405,17 @@ static int fts_get_mode_all(int mode, int *value)
 static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 {
 	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_CUR_VALUE] =
-		xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_DEF_VALUE];
+		xiaomi_touch_interfaces
+			.touch_mode[Touch_Game_Mode][GET_DEF_VALUE];
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] =
-		xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE];
+	xiaomi_touch_interfaces
+		.touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] =
+		xiaomi_touch_interfaces
+			.touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE];
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_CUR_VALUE] =
-		xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_DEF_VALUE];
+		xiaomi_touch_interfaces
+			.touch_mode[Touch_Edge_Filter][GET_DEF_VALUE];
 
 	fts_update_touchmode_data(ts_data);
 }
