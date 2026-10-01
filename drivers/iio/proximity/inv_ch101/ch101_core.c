@@ -67,8 +67,6 @@ static bool current_state;
 
 static struct ch101_i2c_bus ch101_store;
 
-void ch101_test_proc_init(void);
-
 static void init_fw(struct ch101_data *data);
 static void test_gpios(struct ch101_data *data);
 static int test_rst_gpio(struct ch101_data *data, struct gpio_desc *rst);
@@ -143,38 +141,6 @@ static const struct iio_event_spec ch101_events[] = {
 		.storagebits = 16,				\
 		.shift = 0,					\
 	},							\
-}
-
-#include <linux/proc_fs.h>
-#include <linux/seq_file.h>
-
-static int ch101_test_proc_show(struct seq_file *m, void *v)
-{
-	/* 调用上面写好的直传函数，向硬件索要最原始的毫米数字 */
-	extern int fts_get_ch101_raw_distance(void);
-	
-	/* 极其干净的输出：直接打印纯数字，没有任何英文废话干扰，方便你写自动化测试脚本 */
-	seq_printf(m, "%d\n", fts_get_ch101_raw_distance());
-	return 0;
-}
-
-static int ch101_test_proc_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, ch101_test_proc_show, NULL);
-}
-
-static const struct file_operations ch101_test_proc_fops = {
-	.owner		= THIS_MODULE,
-	.open		= ch101_test_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
-
-void ch101_test_proc_init(void)
-{
-	/* 在根目录创建 proc/ch101_test 测试节点 */
-	proc_create("ch101_test", 0444, NULL, &ch101_test_proc_fops);
 }
 
 enum ch101_chan {
@@ -1185,7 +1151,7 @@ error_request_threaded_irq:
 error_find_sensors:
 	devm_iio_device_free(&client->dev, indio_dev);
 	dev_err(dev, "%s: Error %d:\n", __func__, ret);
-    ch101_test_proc_init();
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(ch101_core_probe);
@@ -1226,30 +1192,6 @@ int ch101_core_remove(struct i2c_client *client)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(ch101_core_remove);
-/* ==================== 临时测试：CH101 物理距离纯净直传接口 ==================== */
-/* 纯粹的硬件盲读透传：芯片读到多少毫米，就原封不动返回多少数字 */
-int fts_get_ch101_raw_distance(void)
-{
-	struct iio_dev *indio_dev;
-	struct ch101_data *data;
-
-	/* 1. 安全跨文件捞取当前在内核总线里加载的 ch101 实例 */
-	if (!ch101_store.i2c_client) {
-		return -1; // 硬件未就绪或断电时返回 -1
-	}
-
-	indio_dev = i2c_get_clientdata(ch101_store.i2c_client);
-	if (!indio_dev)
-		return -2;
-
-	data = iio_priv(indio_dev);
-	if (!data)
-		return -3;
-
-	/* 2. 【绝对直传】不做任何大腿、裤兜的 0 和 1 判定，芯片硬件里是多少 mm 就直接返回多少 */
-	return (int)data->buffer.distance[0];
-}
-EXPORT_SYMBOL(fts_get_ch101_raw_distance); // 导出最高规格全局符号
 
 MODULE_AUTHOR("Invensense Corporation");
 MODULE_DESCRIPTION("Invensense CH101 core device driver");
