@@ -134,13 +134,23 @@ int us_afe_callback(int data)
 	get_monotonic_boottime(&ts);
 	el_data.timestamp = timespec_to_ns(&ts);
 	pr_info("%s: data = %d\n", __func__, data);
+	
+	switch (data) {
+		case 0:
+			proc_prox_state = '0'; // 物理无遮挡时，写入字符 '0'
+			break;
+		case 5:
+			proc_prox_state = '5'; // 物理有遮挡时，写入字符 '5'
+			break;
+		default:
+			proc_prox_state = 'E'; // 其它未知硬件返回值
+			break;
+	}
 
 	if (!data) {
 		el_data.data1 = 0;
-		proc_prox_state = '0';
 	} else {
 		el_data.data1 = 5;
-		proc_prox_state = '1';
 	}
 
 	if (g_us_prox) {
