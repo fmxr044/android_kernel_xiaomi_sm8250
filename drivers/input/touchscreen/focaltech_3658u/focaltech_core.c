@@ -689,6 +689,10 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 #endif
 
 	if (data->gesture_mode) {
+	    if (data->suspended && (data->palm_sensor_switch != 0)) {
+			FTS_INFO("double tap gesture blocked in suspend state\n");
+			return -EIO;
+		}
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
 			FTS_INFO("succuss to get gesture data in irq handler");
