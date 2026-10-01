@@ -1750,12 +1750,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		cmd[5] = 0x01;
 		cmd[6] = 0x01;
 		
-		int ret_cmd = fts_write(cmd, sizeof(cmd));
-		if (unlikely(ret_cmd < 0)) {
-			FTS_ERROR("LineageOS Boot-Inject core failed! ret=%d\n", ret_cmd);
-		} else {
-			FTS_INFO("LineageOS Boot-Inject: GLOVE & 1-PIXEL DEADZONE SUCCESFULLY FIXED!\n");
-		}
+		fts_write(cmd, sizeof(cmd));
 	}
 
 	FTS_FUNC_EXIT();
@@ -1859,20 +1854,10 @@ static int fts_ts_suspend(struct device *dev)
 		FTS_INFO("fw upgrade in process, can't suspend");
 		return 0;
 	}
-
-//#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-    fts_write_reg(FTS_PALM_EN, FTS_PALM_ON);
-    ts_data->palm_sensor_switch = 1;
-	//if (ts_data->palm_sensor_switch) {
-		//FTS_INFO("palm sensor ON, switch to OFF");
-		//update_palm_sensor_value(0);
-		//fts_palm_sensor_cmd(0);
-	//}
-//#endif
-
-//#if FTS_ESDCHECK_EN
-	//fts_esdcheck_suspend();
-//#endif
+	
+    fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+    
+    ts_data->palm_sensor_switch = 0;
 
 #ifdef CONFIG_FACTORY_BUILD
 	ts_data->poweroff_on_sleep = true;
@@ -1884,9 +1869,7 @@ static int fts_ts_suspend(struct device *dev)
 
 		FTS_INFO("make TP enter into sleep mode");
 		fts_write_reg(FTS_REG_POWER_MODE, FTS_REG_POWER_MODE_SLEEP);
-		//if (ret < 0)
-			//FTS_ERROR("set TP to sleep mode fail, ret=%d", ret);
-
+		
 		if (!ts_data->ic_info.is_incell && ts_data->poweroff_on_sleep) {
 #if FTS_POWER_SOURCE_CUST_EN
 			ret = fts_power_source_suspend(ts_data);
@@ -1923,20 +1906,32 @@ static int fts_ts_resume(struct device *dev)
 	}
 
 	fts_wait_tp_to_valid();
-	    
-//#if FTS_ESDCHECK_EN
-	//fts_esdcheck_resume();
-//#endif
-
-//#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-    fts_write_reg(FTS_PALM_EN, FTS_PALM_ON);
-    ts_data->palm_sensor_switch = 1;
-	//if (ts_data->palm_sensor_switch) {
-		//FTS_INFO("palm sensor OFF, switch to ON");
-		//fts_palm_sensor_cmd(1);
-	//}
-//#endif
-
+	
+    fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+    
+    ts_data->palm_sensor_switch = 0;
+    
+    fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+    
+	ts_data->charger_mode = false;
+	
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	
+	ts_data->glove_mode = true;
+	
+	{
+		u8 cmd[7];
+		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[1] = 0x01;
+		cmd[2] = 0x1e;
+		cmd[3] = 0x01;
+		cmd[4] = 0x01;
+		cmd[5] = 0x01;
+		cmd[6] = 0x01;
+		
+		fts_write(cmd, sizeof(cmd));
+	}
+	
 	if (ts_data->gesture_mode && !ts_data->poweroff_on_sleep) {
 		fts_gesture_resume(ts_data);
 	} else {
@@ -1991,37 +1986,21 @@ static void fts_read_palm_data(u8 reg_value)
 
 static int fts_palm_sensor_cmd(int value)
 {
-    
-    return 0;
-    
-	int ret = 0;
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	
-	//ret = fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-
-	//if (ret < 0)
-		//FTS_ERROR("Set palm sensor switch failed!\n");
-	//else
-		//FTS_INFO("Set palm sensor switch: FORCE DISABLED (Original parameter was: %d)\n", value);
-
-	return ret;
+	return 0;
 }
 
 static int fts_palm_sensor_write(int value)
 {
-	int ret = 0;
-
 	if (fts_data == NULL)
 		return -EINVAL;
 
-	fts_data->palm_sensor_switch = value;
-
-	if (fts_data->suspended)
-		return 0;
-
-	ret = fts_palm_sensor_cmd(value);
-	if (ret < 0)
-		FTS_ERROR("set palm sensor cmd failed: %d\n", value);
-	return ret;
+	fts_data->palm_sensor_switch = 0;
+	
+	fts_palm_sensor_cmd(0);
+	
+	return 0;
 }
 
 static u8 fts_panel_vendor_read(void)
