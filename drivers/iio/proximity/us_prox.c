@@ -33,6 +33,11 @@
 #include <linux/platform_device.h>
 
 #define US_PROX_IIO_NAME "distance"
+#include <linux/proc_fs.h>
+#include <linux/uaccess.h>
+
+static char proc_prox_state = '0';
+static struct proc_dir_entry *prox_proc_entry = NULL;
 
 static struct us_prox_data *g_us_prox;
 
@@ -132,8 +137,10 @@ int us_afe_callback(int data)
 
 	if (!data)
 		el_data.data1 = 0;
+		proc_prox_state = '0';
 	else
 		el_data.data1 = 5;
+		proc_prox_state = '1';
 
 	if (g_us_prox) {
 		ret = iio_push_to_buffers(g_us_prox->prox_idev,
@@ -311,15 +318,36 @@ static struct platform_device us_prox_dev = {
 	},
 };
 
+static ssize_t prox_proc_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char tmp[2];
+	tmp[0] = proc_prox_state;
+	tmp[1] = '\n';
+	return simple_read_from_buffer(buf, count, ppos, tmp, 2);
+}
+
+/* 注意：Linux 4.19 内核这里使用的是经典的 file_operations */
+static const struct file_operations prox_proc_fops = {
+	.owner = THIS_MODULE,
+	.read  = prox_proc_read,
+};
+
 static int __init us_prox_init(void)
 {
 	platform_device_register(&us_prox_dev);
+	prox_proc_entry = proc_create("gesture_prox_state", 0444, NULL, &prox_proc_fops);
+	if (!prox_proc_entry) {
+		pr_err("us_prox: Failed to create proc entry\n");
+	}
 	return platform_driver_register(&us_prox_driver);
 }
 module_init(us_prox_init);
 
 static void __exit us_prox_exit(void)
 {
+    if (prox_proc_entry) {
+		proc_remove(prox_proc_entry);
+	}
 	platform_driver_unregister(&us_prox_driver);
 	platform_device_unregister(&us_prox_dev);
 }
