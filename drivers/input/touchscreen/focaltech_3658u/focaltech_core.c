@@ -1,36 +1,3 @@
-/*
- *
- * FocalTech TouchScreen driver.
- *
- * Copyright (c) 2012-2020, FocalTech Systems, Ltd., all rights reserved.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
-/*****************************************************************************
-*
-* File Name: focaltech_core.c
-*
-* Author: Focaltech Driver Team
-*
-* Created: 2016-08-08
-*
-* Abstract: entrance for focaltech ts driver
-*
-* Version: V1.0
-*
-*****************************************************************************/
-
-/*****************************************************************************
-* Included header files
-*****************************************************************************/
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/of.h>
@@ -41,20 +8,16 @@
 #include <drm/drm_notifier_mi.h>
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
-#define FTS_SUSPEND_LEVEL 1 /* Early-suspend level */
+#define FTS_SUSPEND_LEVEL 1
 #endif
 #if defined(CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE) &&                         \
 	defined(CONFIG_TOUCHSCREEN_COMMON)
 #include <linux/input/tp_common.h>
 #endif
 #include "focaltech_core.h"
-
-/*****************************************************************************
-* Private constant and macro definitions using #define
-*****************************************************************************/
 #define FTS_DRIVER_NAME "fts_ts"
-#define INTERVAL_READ_REG 200 /* unit:ms */
-#define TIMEOUT_READ_REG 1000 /* unit:ms */
+#define INTERVAL_READ_REG 200
+#define TIMEOUT_READ_REG 1000
 #if FTS_POWER_SOURCE_CUST_EN
 #define FTS_VTG_MIN_UV 3200000
 #define FTS_VTG_MAX_UV 3200000
@@ -62,47 +25,25 @@
 #define FTS_I2C_VTG_MIN_UV 1800000
 #define FTS_I2C_VTG_MAX_UV 1800000
 #endif
-
 #define SUPER_RESOLUTION_FACOTR 10
-
-/*****************************************************************************
-* Global variable or extern global variabls/functions
-*****************************************************************************/
 struct fts_ts_data *fts_data;
-
-/*****************************************************************************
-* Static function prototypes
-*****************************************************************************/
 static int fts_ts_suspend(struct device *dev);
 static int fts_ts_resume(struct device *dev);
-
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 static void fts_read_palm_data(u8 reg_value);
 static int fts_palm_sensor_cmd(int value);
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data);
 static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
-
-#define PANEL_ORIENTATION_DEGREE_0 0 /* normal portrait orientation */
-#define PANEL_ORIENTATION_DEGREE_90 1 /* anticlockwise 90 degrees */
-#define PANEL_ORIENTATION_DEGREE_180 2 /* anticlockwise 180 degrees */
-#define PANEL_ORIENTATION_DEGREE_270 3 /* anticlockwise 270 degrees */
-
-#define ORIENTATION_0_OR_180 0 /* anticlockwise 0 or 180 degrees */
-#define NORMAL_ORIENTATION_90 1 /* anticlockwise 90 degrees in normal */
-#define NORMAL_ORIENTATION_270 2 /* anticlockwise 270 degrees in normal */
-#define GAME_ORIENTATION_90 3 /* anticlockwise 90 degrees in game */
-#define GAME_ORIENTATION_270 4 /* anticlockwise 270 degrees in game */
-
+#define PANEL_ORIENTATION_DEGREE_0 0
+#define PANEL_ORIENTATION_DEGREE_90 1
+#define PANEL_ORIENTATION_DEGREE_180 2
+#define PANEL_ORIENTATION_DEGREE_270 3
+#define ORIENTATION_0_OR_180 0
+#define NORMAL_ORIENTATION_90 1
+#define NORMAL_ORIENTATION_270 2
+#define GAME_ORIENTATION_90 3
+#define GAME_ORIENTATION_270 4
 #endif
-
-/*****************************************************************************
-*  Name: fts_wait_tp_to_valid
-*  Brief: Read chip id until TP FW become valid(Timeout: TIMEOUT_READ_REG),
-*         need call when reset/power on/resume...
-*  Input:
-*  Output:
-*  Return: return 0 if tp valid, otherwise return error code
-*****************************************************************************/
 int fts_wait_tp_to_valid(void)
 {
 	int ret = 0;
@@ -111,7 +52,6 @@ int fts_wait_tp_to_valid(void)
 	u8 idl = 0;
 	u8 chip_idh = fts_data->ic_info.ids.chip_idh;
 	u8 chip_idl = fts_data->ic_info.ids.chip_idl;
-
 	do {
 		ret = fts_read_reg(FTS_REG_CHIP_ID, &idh);
 		ret = fts_read_reg(FTS_REG_CHIP_ID2, &idl);
@@ -124,37 +64,20 @@ int fts_wait_tp_to_valid(void)
 		cnt++;
 		msleep(INTERVAL_READ_REG);
 	} while ((cnt * INTERVAL_READ_REG) < TIMEOUT_READ_REG);
-
 	return -EIO;
 }
-
-/*****************************************************************************
-*  Name: fts_tp_state_recovery
-*  Brief: Need execute this function when reset
-*  Input:
-*  Output:
-*  Return:
-*****************************************************************************/
 void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 {
 	FTS_FUNC_ENTER();
-	/* wait tp stable */
 	fts_wait_tp_to_valid();
-	
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
-	
 	fts_gesture_recovery(ts_data);
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	fts_game_mode_recovery(ts_data);
 	fts_palm_mode_recovery(ts_data);
-#endif
-	
 	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
-
 	FTS_FUNC_EXIT();
 }
-
 int fts_reset_proc(int hdelayms)
 {
 	FTS_DEBUG("tp reset");
@@ -164,50 +87,38 @@ int fts_reset_proc(int hdelayms)
 	if (hdelayms) {
 		msleep(hdelayms);
 	}
-
 	return 0;
 }
-
 void fts_irq_disable(void)
 {
 	unsigned long irqflags;
-
 	FTS_FUNC_ENTER();
 	spin_lock_irqsave(&fts_data->irq_lock, irqflags);
-
 	if (!fts_data->irq_disabled) {
 		disable_irq_nosync(fts_data->irq);
 		fts_data->irq_disabled = true;
 	}
-
 	spin_unlock_irqrestore(&fts_data->irq_lock, irqflags);
 	FTS_FUNC_EXIT();
 }
-
 void fts_irq_enable(void)
 {
 	unsigned long irqflags = 0;
-
 	FTS_FUNC_ENTER();
 	spin_lock_irqsave(&fts_data->irq_lock, irqflags);
-
 	if (fts_data->irq_disabled) {
 		enable_irq(fts_data->irq);
 		fts_data->irq_disabled = false;
 	}
-
 	spin_unlock_irqrestore(&fts_data->irq_lock, irqflags);
 	FTS_FUNC_EXIT();
 }
-
 void fts_hid2std(void)
 {
 	int ret = 0;
 	u8 buf[3] = { 0xEB, 0xAA, 0x09 };
-
 	if (fts_data->bus_type != BUS_TYPE_I2C)
 		return;
-
 	ret = fts_write(buf, 3);
 	if (ret < 0) {
 		FTS_ERROR("hid2std cmd write fail");
@@ -226,19 +137,16 @@ void fts_hid2std(void)
 		}
 	}
 }
-
 static int fts_get_chip_types(struct fts_ts_data *ts_data, u8 id_h, u8 id_l,
 			      bool fw_valid)
 {
 	int i = 0;
 	struct ft_chip_t ctype[] = FTS_CHIP_TYPE_MAPPING;
 	u32 ctype_entries = sizeof(ctype) / sizeof(struct ft_chip_t);
-
 	if ((0x0 == id_h) || (0x0 == id_l)) {
 		FTS_ERROR("id_h/id_l is 0");
 		return -EINVAL;
 	}
-
 	FTS_DEBUG("verify id:0x%02x%02x", id_h, id_l);
 	for (i = 0; i < ctype_entries; i++) {
 		if (VALID == fw_valid) {
@@ -255,22 +163,18 @@ static int fts_get_chip_types(struct fts_ts_data *ts_data, u8 id_h, u8 id_l,
 				break;
 		}
 	}
-
 	if (i >= ctype_entries) {
 		return -ENODATA;
 	}
-
 	ts_data->ic_info.ids = ctype[i];
 	return 0;
 }
-
 static int fts_read_bootid(struct fts_ts_data *ts_data, u8 *id)
 {
 	int ret = 0;
 	u8 chip_id[2] = { 0 };
 	u8 id_cmd[4] = { 0 };
 	u32 id_cmd_len = 0;
-
 	id_cmd[0] = 0xF1;
 	id_cmd[1] = 0x50;
 	ret = fts_write(id_cmd, 2);
@@ -278,7 +182,6 @@ static int fts_read_bootid(struct fts_ts_data *ts_data, u8 *id)
 		FTS_ERROR("write 0x50 to F1 fail");
 		return ret;
 	}
-
 	id_cmd[0] = FTS_CMD_START1;
 	id_cmd[1] = FTS_CMD_START2;
 	ret = fts_write(id_cmd, 2);
@@ -286,7 +189,6 @@ static int fts_read_bootid(struct fts_ts_data *ts_data, u8 *id)
 		FTS_ERROR("start cmd write fail");
 		return ret;
 	}
-
 	msleep(FTS_CMD_START_DELAY);
 	id_cmd[0] = FTS_CMD_READ_ID;
 	id_cmd[1] = id_cmd[2] = id_cmd[3] = 0x00;
@@ -300,22 +202,10 @@ static int fts_read_bootid(struct fts_ts_data *ts_data, u8 *id)
 			  chip_id[1]);
 		return -EIO;
 	}
-
 	id[0] = chip_id[0];
 	id[1] = chip_id[1];
 	return 0;
 }
-
-/*****************************************************************************
-* Name: fts_get_ic_information
-* Brief: read chip id to get ic information, after run the function, driver w-
-*        ill know which IC is it.
-*        If cant get the ic information, maybe not focaltech's touch IC, need
-*        unregister the driver
-* Input:
-* Output:
-* Return: return 0 if get correct ic information, otherwise return error code
-*****************************************************************************/
 static int fts_get_ic_information(struct fts_ts_data *ts_data)
 {
 	int ret = 0;
@@ -638,10 +528,10 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 		return -EIO;
 	}
 
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-	if (data->palm_sensor_switch)
-		fts_read_palm_data(buf[1]);
-#endif
+//#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+	//if (data->palm_sensor_switch)
+		//fts_read_palm_data(buf[1]);
+//#endif
 
 	if (data->gesture_mode) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
@@ -677,10 +567,10 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		return -EIO;
 	}
 
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-	if (data->palm_sensor_switch)
-		fts_read_palm_data(buf[1]);
-#endif
+//#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+	//if (data->palm_sensor_switch)
+		//fts_read_palm_data(buf[1]);
+//#endif
 
 	if (data->gesture_mode) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
@@ -1689,9 +1579,9 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		FTS_ERROR("init gesture fail");
 	}
 
-#if 0
-	ret = fts_esdcheck_init(ts_data);
-#endif
+//#if 0
+	//ret = fts_esdcheck_init(ts_data);
+//#endif
 
 	ret = fts_irq_registration(ts_data);
 	if (ret) {
@@ -1736,10 +1626,18 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	
 	fts_ex_mode_recovery(ts_data);
 	
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	
+    ts_data->palm_sensor_switch = 0;
+    
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	
 	ts_data->charger_mode = false;
+	
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	
 	ts_data->glove_mode = true;
+	
 	{
 		u8 cmd[7];
 		cmd[0] = FTS_REG_GAMEMODE;
@@ -1794,9 +1692,9 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 
 	fts_fwupg_exit(ts_data);
 
-#if 0
-	fts_esdcheck_exit(ts_data);
-#endif
+//#if 0
+	//fts_esdcheck_exit(ts_data);
+//#endif
 
 	fts_gesture_exit(ts_data);
 	fts_bus_exit(ts_data);
@@ -1855,10 +1753,6 @@ static int fts_ts_suspend(struct device *dev)
 		return 0;
 	}
 	
-    fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-    
-    ts_data->palm_sensor_switch = 0;
-
 #ifdef CONFIG_FACTORY_BUILD
 	ts_data->poweroff_on_sleep = true;
 #endif
@@ -1906,31 +1800,6 @@ static int fts_ts_resume(struct device *dev)
 	}
 
 	fts_wait_tp_to_valid();
-	
-    fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-    
-    ts_data->palm_sensor_switch = 0;
-    
-    fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-    
-	ts_data->charger_mode = false;
-	
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	
-	ts_data->glove_mode = true;
-	
-	{
-		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
-		cmd[1] = 0x01;
-		cmd[2] = 0x1e;
-		cmd[3] = 0x01;
-		cmd[4] = 0x01;
-		cmd[5] = 0x01;
-		cmd[6] = 0x01;
-		
-		fts_write(cmd, sizeof(cmd));
-	}
 	
 	if (ts_data->gesture_mode && !ts_data->poweroff_on_sleep) {
 		fts_gesture_resume(ts_data);
@@ -1995,6 +1864,8 @@ static int fts_palm_sensor_write(int value)
 {
 	if (fts_data == NULL)
 		return -EINVAL;
+		
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 
 	fts_data->palm_sensor_switch = 0;
 	
@@ -2397,12 +2268,11 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data)
 {
-	int ret = 0;
-
-	ret = fts_palm_sensor_cmd(ts_data->palm_sensor_switch);
-	if (ret < 0)
-		FTS_ERROR("set palm sensor cmd failed: %d\n",
-			  ts_data->palm_sensor_switch);
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+    
+    ts_data->palm_sensor_switch = 0;
+    
+    return;
 }
 
 static int fts_get_touch_super_resolution_factor(void)
