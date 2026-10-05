@@ -562,9 +562,9 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 		}
 	}
 
-	//if (data->log_level >= 3) {
-		//fts_show_touch_buffer(buf, data->pnt_buf_size);
-	//}
+	if (data->log_level >= 3) {
+		fts_show_touch_buffer(buf, data->pnt_buf_size);
+	}
 
 	return 0;
 }
@@ -591,14 +591,14 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	if (data->gesture_mode) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
-			//FTS_INFO("succuss to get gesture data in irq handler");
+			FTS_INFO("succuss to get gesture data in irq handler");
 			return 1;
 		}
 	}
 
-	//if (data->log_level >= 3) {
-		//fts_show_touch_buffer(buf, data->pnt_buf_size);
-	//}
+	if (data->log_level >= 3) {
+		fts_show_touch_buffer(buf, data->pnt_buf_size);
+	}
 
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;
 	
@@ -606,7 +606,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 
 	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
 	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
-		//FTS_DEBUG("touch buff is 0xff, need recovery state");
+		FTS_DEBUG("touch buff is 0xff, need recovery state");
 		fts_release_all_finger();
 		fts_tp_state_recovery(data);
 		return -EIO;
@@ -616,7 +616,8 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		FTS_INFO("invalid point_num(%d)", data->point_num);
 		return -EIO;
 	}
-	
+	/* === 每一根手指都使用独立的 do-while 块进行隔离，且严格修复了 Y 坐标计算寄存器错误 === */
+
 	// --- i = 0 ---
 	do {
 		if (unlikely(0 >= max_touch_num)) goto loop_exit;
@@ -769,10 +770,10 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 
     loop_exit:
     
-    i = 10; // 维持原本函数的 i 状态
+    i = 10;
         
     if (unlikely(data->touch_point == 0)) {
-        //FTS_INFO("no touch point information");
+        FTS_INFO("no touch point information");
         return -EIO;
     }
         return 0;
@@ -1712,11 +1713,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	if (ret) {
 		FTS_ERROR("init gesture fail");
 	}
-
-//#if 0
-	//ret = fts_esdcheck_init(ts_data);
-//#endif
-
+	
 	ret = fts_irq_registration(ts_data);
 	if (ret) {
 		FTS_ERROR("request irq failed");
@@ -1906,7 +1903,24 @@ static int fts_ts_suspend(struct device *dev)
 #endif
 		}
 	}
-
+    fts_write_reg(FTS_PALM_EN, FTS_PALM_ON);//启动掌纹检测最大程度避免误唤醒，但此方法无法用于辅助判断手机是否处于被遮罩状态(即处于口袋或皮套中)，如果您需要避免遮罩状态误唤醒手机就必须使用接近传感器判断但由于munch的传感器是超声波同时还不是在内核中因此实现起来略微麻烦
+    ts_data->palm_sensor_switch = 1;
+    fts_write_reg(FTS_REG_CHARGER_MODE_EN, 1);//不用判断当前状态无条件开启充电模式
+	ts_data->charger_mode = true;
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0);//关闭手套模式降低息屏功耗
+	ts_data->glove_mode = false;
+	{
+		u8 cmd[7];
+		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[1] = 0x00;//临时关闭游戏模式降低息屏时的功耗其他参数不变，但亮屏时依然要重复写入避免特调失效，正常情况下延迟可以忽略不计，要手机触控全局保持满血还不允许降频只能这样做，这点小牺牲没问题
+		cmd[2] = 0x1e;
+		cmd[3] = 0x01;
+		cmd[4] = 0x01;
+		cmd[5] = 0x01;
+		cmd[6] = 0x01;
+		
+		fts_write(cmd, sizeof(cmd));
+	}
 	fts_release_all_finger();
 	ts_data->suspended = true;
 	FTS_FUNC_EXIT();
@@ -1939,12 +1953,8 @@ static int fts_ts_resume(struct device *dev)
 	} else {
 		fts_irq_enable();
 	}
-
-	ts_data->poweroff_on_sleep = false;
 	
-	ts_data->suspended = false;
-	
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+    fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	
     ts_data->palm_sensor_switch = 0;
     
@@ -1968,6 +1978,9 @@ static int fts_ts_resume(struct device *dev)
 		
 		fts_write(cmd, sizeof(cmd));
 	}
+	ts_data->poweroff_on_sleep = false;
+	
+	ts_data->suspended = false;
 	
 	FTS_FUNC_EXIT();
 	
@@ -2092,17 +2105,17 @@ static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_CUR_VALUE] = 1;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MAX_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MIN_VALUE] = 5;//原1
-	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_DEF_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][SET_CUR_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_CUR_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MAX_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MIN_VALUE] = 1;//原1
+	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_DEF_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][SET_CUR_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_CUR_VALUE] = 1;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MAX_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MIN_VALUE] = 5;//原1
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_DEF_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE] = 5;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_CUR_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MAX_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MIN_VALUE] = 1;//原1
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_DEF_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_CUR_VALUE] = 1;
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_MAX_VALUE] = 1;//原3>通过EXPERT_ARRAY_SIZE定义获取
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_MIN_VALUE] = 1;
