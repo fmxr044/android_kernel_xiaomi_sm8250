@@ -16,8 +16,8 @@
 #endif
 #include "focaltech_core.h"
 #define FTS_DRIVER_NAME "fts_ts"
-#define INTERVAL_READ_REG 15
-#define TIMEOUT_READ_REG 150
+#define INTERVAL_READ_REG 10
+#define TIMEOUT_READ_REG 100
 #if FTS_POWER_SOURCE_CUST_EN
 #define FTS_VTG_MIN_UV 3200000
 #define FTS_VTG_MAX_UV 3200000
@@ -298,7 +298,7 @@ static void fts_show_touch_buffer(u8 *data, int datalen)
 
 	tmpbuf = kzalloc(1024, GFP_KERNEL);
 	if (!tmpbuf) {
-		//FTS_ERROR("tmpbuf zalloc fail");
+		FTS_ERROR("tmpbuf zalloc fail");
 		return;
 	}
 
@@ -308,7 +308,7 @@ static void fts_show_touch_buffer(u8 *data, int datalen)
 		if (count >= 1024)
 			break;
 	}
-	//FTS_DEBUG("point buffer:%s", tmpbuf);
+	FTS_DEBUG("point buffer:%s", tmpbuf);
 
 	if (tmpbuf) {
 		kfree(tmpbuf);
@@ -375,13 +375,13 @@ static int fts_input_report_key(struct fts_ts_data *data, int index)
 				input_report_key(data->input_dev,
 						 data->pdata->keys[i], 1);
 				data->key_state |= (1 << i);
-				//FTS_DEBUG("Key%d(%d,%d) DOWN!", i, x, y);
+				FTS_DEBUG("Key%d(%d,%d) DOWN!", i, x, y);
 			} else if (EVENT_UP(data->events[index].flag) &&
 				   (data->key_state & (1 << i))) {
 				input_report_key(data->input_dev,
 						 data->pdata->keys[i], 0);
 				data->key_state &= ~(1 << i);
-				//FTS_DEBUG("Key%d(%d,%d) Up!", i, x, y);
+				FTS_DEBUG("Key%d(%d,%d) Up!", i, x, y);
 			}
 			return 0;
 		}
@@ -405,38 +405,53 @@ static int fts_input_report_b(struct fts_ts_data *data)
 		input_mt_slot(data->input_dev, events[i].id);
 
 		if (EVENT_DOWN(events[i].flag)) {
-			input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, true);
+			input_mt_report_slot_state(data->input_dev,
+						   MT_TOOL_FINGER, true);
 
 #if FTS_REPORT_PRESSURE_EN
 			if (events[i].p <= 0) {
 				events[i].p = 0x3f;
 			}
-			input_report_abs(data->input_dev, ABS_MT_PRESSURE, events[i].p);
+			input_report_abs(data->input_dev, ABS_MT_PRESSURE,
+					 events[i].p);
 #endif
 			if (events[i].area <= 0) {
 				events[i].area = 0x09;
 			}
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X, events[i].x);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, events[i].y);
+			input_report_abs(data->input_dev, ABS_MT_POSITION_X,
+					 events[i].x);
+			input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
+					 events[i].y);
 
 			touchs |= BIT(events[i].id);
 			data->touchs |= BIT(events[i].id);
-			
+
+			if ((data->log_level >= 2) ||
+			    ((1 == data->log_level) &&
+			     (FTS_TOUCH_DOWN == events[i].flag))) {
+				FTS_DEBUG("[B]P%d DOWN!", events[i].id);
+			}
+		} else {
 			uppoint++;
-			input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, false);
-	    	data->touchs &= ~BIT(events[i].id);
+			input_mt_report_slot_state(data->input_dev,
+						   MT_TOOL_FINGER, false);
+			data->touchs &= ~BIT(events[i].id);
+			if (data->log_level >= 1) {
+				FTS_DEBUG("[B]P%d UP!", events[i].id);
+			}
 		}
 	}
 
 	if (unlikely(data->touchs ^ touchs)) {
 		for (i = 0; i < max_touch_num; i++) {
 			if (BIT(i) & (data->touchs ^ touchs)) {
-				//if (data->log_level >= 1) {
-					//FTS_DEBUG("[B]P%d UP!", i);
-				//}
+				if (data->log_level >= 1) {
+					FTS_DEBUG("[B]P%d UP!", i);
+				}
 				va_reported = true;
 				input_mt_slot(data->input_dev, i);
-				input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, false);
+				input_mt_report_slot_state(
+					data->input_dev, MT_TOOL_FINGER, false);
 			}
 		}
 	}
@@ -445,9 +460,9 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	if (va_reported) {
 		/* touchs==0, there's no point but key */
 		if (EVENT_NO_DOWN(data) || (!touchs)) {
-			//if (data->log_level >= 1) {
-				//FTS_DEBUG("[B]Points All Up!");
-			//}
+			if (data->log_level >= 1) {
+				FTS_DEBUG("[B]Points All Up!");
+			}
 			input_report_key(data->input_dev, BTN_TOUCH, 0);
 		} else {
 			input_report_key(data->input_dev, BTN_TOUCH, 1);
@@ -490,14 +505,14 @@ static int fts_input_report_a(struct fts_ts_data *data)
 
 			input_mt_sync(data->input_dev);
 
-			//if ((data->log_level >= 2) ||
-			    //((1 == data->log_level) &&
-			     //(FTS_TOUCH_DOWN == events[i].flag))) {
-				//FTS_DEBUG("[A]P%d(%d, %d)[p:%d,tm:%d] DOWN!",
-					  //events[i].id, events[i].x,
-					  //events[i].y, events[i].p,
-					  //events[i].area);
-			//}
+			if ((data->log_level >= 2) ||
+			    ((1 == data->log_level) &&
+			     (FTS_TOUCH_DOWN == events[i].flag))) {
+				FTS_DEBUG("[A]P%d(%d, %d)[p:%d,tm:%d] DOWN!",
+					  events[i].id, events[i].x,
+					  events[i].y, events[i].p,
+					  events[i].area);
+			}
 			touchs++;
 		}
 	}
@@ -510,9 +525,9 @@ static int fts_input_report_a(struct fts_ts_data *data)
 
 	if (va_reported) {
 		if (EVENT_NO_DOWN(data)) {
-			//if (data->log_level >= 1) {
-				//FTS_DEBUG("[A]Points All Up!");
-			//}
+			if (data->log_level >= 1) {
+				FTS_DEBUG("[A]Points All Up!");
+			}
 			input_report_key(data->input_dev, BTN_TOUCH, 0);
 			input_mt_sync(data->input_dev);
 		} else {
@@ -535,14 +550,14 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 
 	ret = fts_read(buf, 1, buf + 1, data->pnt_buf_size - 1);
 	if (ret < 0) {
-		//FTS_ERROR("touch data(%x) abnormal,ret:%d", buf[1], ret);
+		FTS_ERROR("touch data(%x) abnormal,ret:%d", buf[1], ret);
 		return -EIO;
 	}
 	
 	if (data->gesture_mode) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
 		if (0 == ret) {
-			//FTS_INFO("succuss to get gesture data in irq handler");
+			FTS_INFO("succuss to get gesture data in irq handler");
 			return 1;
 		}
 	}
@@ -569,7 +584,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 
 	ret = fts_read(buf, 1, buf + 1, data->pnt_buf_size - 1);
 	if (unlikely(ret < 0)) {
-		//FTS_ERROR("touch data(%x) abnormal,ret:%d", buf[1], ret);
+		FTS_ERROR("touch data(%x) abnormal,ret:%d", buf[1], ret);
 		return -EIO;
 	}
 	
@@ -598,7 +613,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	}
 
 	if (unlikely(data->point_num > max_touch_num)) {
-		//FTS_INFO("invalid point_num(%d)", data->point_num);
+		FTS_INFO("invalid point_num(%d)", data->point_num);
 		return -EIO;
 	}
 	
@@ -608,13 +623,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 0;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[0].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[0].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[0].x = ((events[0].x << 2) + events[0].x) >> 3; events[0].y = ((events[0].y << 2) + events[0].y) >> 3;
 		events[0].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[0].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[0].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[0].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[0].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 1 ---
@@ -623,13 +638,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 1;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[1].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[1].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[1].x = ((events[1].x << 2) + events[1].x) >> 3; events[1].y = ((events[1].y << 2) + events[1].y) >> 3;
 		events[1].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[1].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[1].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[1].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[1].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 2 ---
@@ -638,13 +653,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 2;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[2].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[2].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[2].x = ((events[2].x << 2) + events[2].x) >> 3; events[2].y = ((events[2].y << 2) + events[2].y) >> 3;
 		events[2].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[2].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[2].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[2].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[2].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 3 ---
@@ -653,13 +668,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 3;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[3].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[3].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[3].x = ((events[3].x << 2) + events[3].x) >> 3; events[3].y = ((events[3].y << 2) + events[3].y) >> 3;
 		events[3].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[3].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[3].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[3].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[3].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 4 ---
@@ -668,13 +683,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 4;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[4].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[4].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[4].x = ((events[4].x << 2) + events[4].x) >> 3; events[4].y = ((events[4].y << 2) + events[4].y) >> 3;
 		events[4].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[4].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[4].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[4].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[4].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 5 ---
@@ -683,13 +698,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 5;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[5].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[5].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[5].x = ((events[5].x << 2) + events[5].x) >> 3; events[5].y = ((events[5].y << 2) + events[5].y) >> 3;
 		events[5].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[5].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[5].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[5].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[5].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 6 ---
@@ -698,13 +713,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 6;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[6].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[6].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[6].x = ((events[6].x << 2) + events[6].x) >> 3; events[6].y = ((events[6].y << 2) + events[6].y) >> 3;
 		events[6].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[6].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[6].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[6].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[6].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 7 ---
@@ -713,13 +728,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 7;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[7].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[7].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[7].x = ((events[7].x << 2) + events[7].x) >> 3; events[7].y = ((events[7].y << 2) + events[7].y) >> 3;
 		events[7].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[7].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[7].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[7].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[7].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
 	// --- i = 8 ---
@@ -728,13 +743,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 8;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[8].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[8].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[8].x = ((events[8].x << 2) + events[8].x) >> 3; events[8].y = ((events[8].y << 2) + events[8].y) >> 3;
 		events[8].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[8].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[8].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[8].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[8].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
     // --- i = 9 ---
@@ -743,13 +758,13 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		base = FTS_ONE_TCH_LEN * 9;
 		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
 		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { /*FTS_ERROR("ID(%d) beyond max_touch_number", pointid);*/ return -EINVAL; }
+		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
 		data->touch_point++;
 		events[9].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
 		events[9].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
 		events[9].x = ((events[9].x << 2) + events[9].x) >> 3; events[9].y = ((events[9].y << 2) + events[9].y) >> 3;
 		events[9].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[9].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[9].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[9].flag) && (data->point_num == 0)) { /*FTS_INFO("abnormal touch data from fw");*/ return -EIO; }
+		if (EVENT_DOWN(events[9].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
 	} while(0);
 
     loop_exit:
@@ -790,7 +805,7 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 			&ts_data->pm_completion,
 			msecs_to_jiffies(FTS_TIMEOUT_COMERR_PM));
 		if (!ret) {
-			//FTS_ERROR("Bus don't resume from pm(deep),timeout,skip irq");
+			FTS_ERROR("Bus don't resume from pm(deep),timeout,skip irq");
 			return IRQ_HANDLED;
 		}
 	}
@@ -827,8 +842,10 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 
 	ts_data->irq = gpio_to_irq(pdata->irq_gpio);
 	pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
-	//FTS_INFO("irq:%d, flag:%x", ts_data->irq, pdata->irq_gpio_flags);
-	ret = request_threaded_irq(ts_data->irq, NULL, fts_irq_handler, pdata->irq_gpio_flags, FTS_DRIVER_NAME, ts_data);
+	FTS_INFO("irq:%d, flag:%x", ts_data->irq, pdata->irq_gpio_flags);
+	ret = request_threaded_irq(ts_data->irq, NULL, fts_irq_handler,
+				   pdata->irq_gpio_flags, FTS_DRIVER_NAME,
+				   ts_data);
 
 	return ret;
 }
@@ -843,7 +860,7 @@ static int fts_input_init(struct fts_ts_data *ts_data)
 	FTS_FUNC_ENTER();
 	input_dev = input_allocate_device();
 	if (!input_dev) {
-		//FTS_ERROR("Failed to allocate memory for input device");
+		FTS_ERROR("Failed to allocate memory for input device");
 		return -ENOMEM;
 	}
 
@@ -866,9 +883,10 @@ static int fts_input_init(struct fts_ts_data *ts_data)
 	input_set_capability(input_dev, EV_KEY, KEY_GOTO);
 
 	if (pdata->have_key) {
-		//FTS_INFO("set key capabilities");
+		FTS_INFO("set key capabilities");
 		for (key_num = 0; key_num < pdata->key_number; key_num++)
-			input_set_capability(input_dev, EV_KEY, pdata->keys[key_num]);
+			input_set_capability(input_dev, EV_KEY,
+					     pdata->keys[key_num]);
 	}
 
 #if FTS_MT_PROTOCOL_B_EN
@@ -877,15 +895,17 @@ static int fts_input_init(struct fts_ts_data *ts_data)
 #else
 	input_set_abs_params(input_dev, ABS_MT_TRACKING_ID, 0, 0x0F, 0, 0);
 #endif
-	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->x_min, pdata->x_max - 1, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, pdata->y_min, pdata->y_max - 1, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->x_min,
+			     pdata->x_max - 1, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, pdata->y_min,
+			     pdata->y_max - 1, 0, 0);
 #if FTS_REPORT_PRESSURE_EN
 	input_set_abs_params(input_dev, ABS_MT_PRESSURE, 0, 0xFF, 0, 0);
 #endif
 
 	ret = input_register_device(input_dev);
 	if (ret) {
-		//FTS_ERROR("Input device registration failed");
+		FTS_ERROR("Input device registration failed");
 		input_set_drvdata(input_dev, NULL);
 		input_free_device(input_dev);
 		input_dev = NULL;
@@ -909,14 +929,14 @@ static int fts_report_buffer_init(struct fts_ts_data *ts_data)
 	ts_data->point_buf =
 		(u8 *)kzalloc(ts_data->pnt_buf_size + 1, GFP_KERNEL);
 	if (!ts_data->point_buf) {
-		//FTS_ERROR("failed to alloc memory for point buf");
+		FTS_ERROR("failed to alloc memory for point buf");
 		return -ENOMEM;
 	}
 
 	events_num = point_num * sizeof(struct ts_event);
 	ts_data->events = (struct ts_event *)kzalloc(events_num, GFP_KERNEL);
 	if (!ts_data->events) {
-		//FTS_ERROR("failed to alloc memory for point events");
+		FTS_ERROR("failed to alloc memory for point events");
 		kfree_safe(ts_data->point_buf);
 		return -ENOMEM;
 	}
