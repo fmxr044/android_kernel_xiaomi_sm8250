@@ -547,6 +547,9 @@ static inline void printk_deferred_exit(void)
 
 #endif
 
+#ifdef BUILD_PRINTK_C
+//NOP
+#else
 #undef pr_emerg
 #undef pr_alert
 #undef pr_crit
@@ -599,9 +602,6 @@ static inline void printk_deferred_exit(void)
 #define pr_notice_ratelimited(...) do {} while (0)
 #define pr_info_ratelimited(...)   do {} while (0)
 #define pr_debug_ratelimited(...)  do {} while (0)
-#ifdef BUILD_PRINTK_C
-//NOP
-#else
 #undef printk
 #undef printk_deferred
 #undef vprintk
