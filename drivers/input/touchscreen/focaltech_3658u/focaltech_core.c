@@ -2021,7 +2021,7 @@ static int fts_palm_sensor_cmd(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
     
-    ts_data->palm_sensor_switch = 0;
+    //ts_data->palm_sensor_switch = 0;
 	
 	return 0;
 }
@@ -2030,7 +2030,7 @@ static int fts_palm_sensor_write(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
     
-    ts_data->palm_sensor_switch = 0;
+    //ts_data->palm_sensor_switch = 0;
 	
 	return 0;
 }
@@ -2360,15 +2360,15 @@ static int fts_reset_mode(int mode)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	
-    ts_data->palm_sensor_switch = 0;
+    //ts_data->palm_sensor_switch = 0;
     
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	
-	ts_data->charger_mode = false;
+	//ts_data->charger_mode = false;
 	
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
 	
-	ts_data->glove_mode = true;
+	//ts_data->glove_mode = true;
 	
 	{
 		u8 cmd[7];
