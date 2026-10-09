@@ -1607,9 +1607,13 @@ static void fts_power_supply_work(struct work_struct *work)
 #endif
 
 	pm_stay_awake(ts_data->dev);
+	
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	
 	ts_data->charger_mode = false;
+	
 	//fts_game_mode_recovery(ts_data);
+	
 	pm_relax(ts_data->dev);
 }
 
@@ -2133,7 +2137,7 @@ static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 				     bool is_expert_mode)
 {
-    pm_stay_awake(ts_data->dev);
+    
 
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	
