@@ -17,8 +17,8 @@
 #endif
 #include "focaltech_core.h"
 #define FTS_DRIVER_NAME "fts_ts"
-#define INTERVAL_READ_REG 50
-#define TIMEOUT_READ_REG 250
+#define INTERVAL_READ_REG 25
+#define TIMEOUT_READ_REG 125
 #if FTS_POWER_SOURCE_CUST_EN
 #define FTS_VTG_MIN_UV 3200000
 #define FTS_VTG_MAX_UV 3200000
@@ -95,7 +95,7 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	fts_data->charger_mode = false;
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = false;
+	fts_data->is_expert_mode = true;
 	
 	fts_gesture_recovery(ts_data);
 	
@@ -1668,7 +1668,7 @@ static int fts_ts_resume(struct device *dev)
 	fts_data->charger_mode = false;
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = false;
+	fts_data->is_expert_mode = true;
 	
 	FTS_FUNC_EXIT();
 	return 0;
@@ -1856,7 +1856,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	u8 mode_set_value = 0;
 	u8 mode_addr = 0;
 	bool game_mode_state_change = false;
-	u8 cmd[7] = { 0xc1, 0x01, 0x1e, 0x01, 0x01, 0x14, 0x01 };
+	u8 cmd[7] = { 0xc1, 0x1, 0x1e, 0x1, 0x1, 0x1e, 0x1 };
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 	if (ts_data && ts_data->pm_suspend) {
 		FTS_ERROR(
@@ -1914,8 +1914,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 			FTS_INFO("write touch mode:%d, value: %d, addr:0x%02X",
 				 mode, mode_set_value, mode_addr);
 			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] =
-				xiaomi_touch_interfaces
-					.touch_mode[mode][SET_CUR_VALUE];
+				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
 	mode = Touch_Edge_Filter;
@@ -1930,8 +1929,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 			FTS_INFO("write touch mode:%d, value: %d, addr:0x%02X",
 				 mode, mode_set_value, mode_addr);
 			xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE] =
-				xiaomi_touch_interfaces
-					.touch_mode[mode][SET_CUR_VALUE];
+				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
 	mutex_unlock(&ts_data->cmd_update_mutex);
@@ -1988,9 +1986,9 @@ static int fts_set_cur_value(int mode, int value)
 		fts_power_status_handle(fts_data);
 		return 0;
 	} else if (mode == Touch_Expert_Mode) {
-		fts_data->is_expert_mode = false;
+		fts_data->is_expert_mode = true;
 	} else if (mode >= Touch_UP_THRESHOLD && mode <= Touch_Tap_Stability) {
-		fts_data->is_expert_mode = false;
+		fts_data->is_expert_mode = true;
 	}
 	if (value > xiaomi_touch_interfaces.touch_mode[mode][GET_MAX_VALUE]) {
 		value = xiaomi_touch_interfaces.touch_mode[mode][GET_MAX_VALUE];
@@ -2027,7 +2025,7 @@ static int fts_reset_mode(int mode)
 	fts_data->charger_mode = false;
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = false;
+	fts_data->is_expert_mode = true;
 	return 0;
 }
 static int fts_get_mode_value(int mode, int value_type)
@@ -2082,7 +2080,7 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 	fts_data->charger_mode = false;
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = false;
+	fts_data->is_expert_mode = true;
 }
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data)
 {
