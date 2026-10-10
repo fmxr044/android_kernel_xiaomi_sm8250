@@ -2039,17 +2039,6 @@ static int fts_reset_mode(int mode)
 		
 		fts_write(cmd, sizeof(cmd));
 	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
-	ts_data->gamemode_enabled = true;
-	ts_data->is_expert_mode = true;
 	return 0;
 }
 static int fts_get_mode_value(int mode, int value_type)
