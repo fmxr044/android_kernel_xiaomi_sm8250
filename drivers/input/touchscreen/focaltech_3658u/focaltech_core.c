@@ -72,34 +72,29 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	FTS_FUNC_ENTER();
 	
 	fts_wait_tp_to_valid();
-	
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	
-    ts_data->palm_sensor_switch = 0;
-    
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	
-	ts_data->charger_mode = false;
-	
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	
-	ts_data->glove_mode = true;
-	
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
 		cmd[0] = FTS_REG_GAMEMODE;
-		cmd[1] = 0x01;
+		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x01;
-		cmd[4] = 0x01;
-		cmd[5] = 0x14;
-		cmd[6] = 0x01;
+		cmd[3] = 0x1;
+		cmd[4] = 0x1;
+		cmd[5] = 0x1e;
+		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
-	
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	
 	fts_data->is_expert_mode = false;
 	
 	fts_gesture_recovery(ts_data);
@@ -1502,32 +1497,28 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	fts_ex_mode_recovery(ts_data);
 	
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	
-    ts_data->palm_sensor_switch = 0;
-    
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	
-	ts_data->charger_mode = false;
-	
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	
-	ts_data->glove_mode = true;
-	
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
 		cmd[0] = FTS_REG_GAMEMODE;
-		cmd[1] = 0x01;
+		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x01;
-		cmd[4] = 0x01;
-		cmd[5] = 0x14;
-		cmd[6] = 0x01;
+		cmd[3] = 0x1;
+		cmd[4] = 0x1;
+		cmd[5] = 0x1e;
+		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
-	
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	
 	fts_data->is_expert_mode = false;
 
 	FTS_FUNC_EXIT();
@@ -1655,32 +1646,28 @@ static int fts_ts_resume(struct device *dev)
 	ts_data->suspended = false;
 	
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	
-    ts_data->palm_sensor_switch = 0;
-    
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	
-	ts_data->charger_mode = false;
-	
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	
-	ts_data->glove_mode = true;
-	
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
 		cmd[0] = FTS_REG_GAMEMODE;
-		cmd[1] = 0x01;
+		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x01;
-		cmd[4] = 0x01;
-		cmd[5] = 0x14;
-		cmd[6] = 0x01;
+		cmd[3] = 0x1;
+		cmd[4] = 0x1;
+		cmd[5] = 0x1e;
+		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
-	
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	
 	fts_data->is_expert_mode = false;
 	
 	FTS_FUNC_EXIT();
@@ -2020,17 +2007,25 @@ static int fts_reset_mode(int mode)
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
 		cmd[0] = FTS_REG_GAMEMODE;
-		cmd[1] = 0x01;
+		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x01;
-		cmd[4] = 0x01;
-		cmd[5] = 0x14;
-		cmd[6] = 0x01;
+		cmd[3] = 0x1;
+		cmd[4] = 0x1;
+		cmd[5] = 0x1e;
+		cmd[6] = 0x1;
+		
 		fts_write(cmd, sizeof(cmd));
-	}	
+	}
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = false;
 	return 0;
@@ -2067,17 +2062,25 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
 		cmd[0] = FTS_REG_GAMEMODE;
-		cmd[1] = 0x01;
+		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x01;
-		cmd[4] = 0x01;
-		cmd[5] = 0x14;
-		cmd[6] = 0x01;
+		cmd[3] = 0x1;
+		cmd[4] = 0x1;
+		cmd[5] = 0x1e;
+		cmd[6] = 0x1;
+		
 		fts_write(cmd, sizeof(cmd));
-	}	
+	}
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = false;
 }
