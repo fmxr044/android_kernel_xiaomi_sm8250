@@ -17,8 +17,8 @@
 #endif
 #include "focaltech_core.h"
 #define FTS_DRIVER_NAME "fts_ts"
-#define INTERVAL_READ_REG 25
-#define TIMEOUT_READ_REG 125
+#define INTERVAL_READ_REG 20 //stock 200
+#define TIMEOUT_READ_REG 100 //stock 1000
 #if FTS_POWER_SOURCE_CUST_EN
 #define FTS_VTG_MIN_UV 3200000
 #define FTS_VTG_MAX_UV 3200000
@@ -45,6 +45,10 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #define GAME_ORIENTATION_90 3
 #define GAME_ORIENTATION_270 4
 #endif
+#define CMD1 0x0
+#define CMD2 0x0
+#define CMD3 0x20
+#define CMD4 0x0
 int fts_wait_tp_to_valid(void)
 {
 	int ret = 0;
@@ -83,10 +87,10 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 		cmd[0] = FTS_REG_GAMEMODE;
 		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x1;
-		cmd[4] = 0x1;
-		cmd[5] = 0x20;
-		cmd[6] = 0x1;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
@@ -1508,10 +1512,10 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		cmd[0] = FTS_REG_GAMEMODE;
 		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x1;
-		cmd[4] = 0x1;
-		cmd[5] = 0x20;
-		cmd[6] = 0x1;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
@@ -1658,10 +1662,10 @@ static int fts_ts_resume(struct device *dev)
 		cmd[0] = FTS_REG_GAMEMODE;
 		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x1;
-		cmd[4] = 0x1;
-		cmd[5] = 0x20;
-		cmd[6] = 0x1;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
@@ -1859,7 +1863,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	u8 mode_set_value = 0;
 	u8 mode_addr = 0;
 	bool game_mode_state_change = false;
-	u8 cmd[7] = { 0xc1, 0x1, 0x1e, 0x1, 0x1, 0x20, 0x1 };
+	u8 cmd[7] = { 0xc1, 0x1, 0x1e, CMD1, CMD2, CMD3, CMD4 };
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 	if (ts_data && ts_data->pm_suspend) {
 		FTS_ERROR(
@@ -2017,10 +2021,10 @@ static int fts_reset_mode(int mode)
 		cmd[0] = FTS_REG_GAMEMODE;
 		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x1;
-		cmd[4] = 0x1;
-		cmd[5] = 0x20;
-		cmd[6] = 0x1;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
@@ -2067,10 +2071,10 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 		cmd[0] = FTS_REG_GAMEMODE;
 		cmd[1] = 0x1;
 		cmd[2] = 0x1e;
-		cmd[3] = 0x1;
-		cmd[4] = 0x1;
-		cmd[5] = 0x20;
-		cmd[6] = 0x1;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
 		
 		fts_write(cmd, sizeof(cmd));
 	}
