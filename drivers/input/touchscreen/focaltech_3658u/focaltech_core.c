@@ -70,7 +70,6 @@ int fts_wait_tp_to_valid(void)
 void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 {
 	FTS_FUNC_ENTER();
-	
 	fts_wait_tp_to_valid();
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
@@ -86,7 +85,7 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 		cmd[2] = 0x1e;
 		cmd[3] = 0x1;
 		cmd[4] = 0x1;
-		cmd[5] = 0x1e;
+		cmd[5] = 0x20;
 		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
@@ -96,13 +95,9 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
-	ts_data->gamemode_enabled = true;
-	ts_data->is_expert_mode = true;
-	
 	fts_gesture_recovery(ts_data);
 	
 	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
@@ -1501,7 +1496,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
 	power_supply_reg_notifier(&ts_data->power_supply_notifier);
 	fts_ex_mode_recovery(ts_data);
-	
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
@@ -1516,7 +1510,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		cmd[2] = 0x1e;
 		cmd[3] = 0x1;
 		cmd[4] = 0x1;
-		cmd[5] = 0x1e;
+		cmd[5] = 0x20;
 		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
@@ -1525,14 +1519,10 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	fts_data->charger_mode = false;
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = false;
-	
+	fts_data->is_expert_mode = true;
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
-	ts_data->gamemode_enabled = true;
-	ts_data->is_expert_mode = true;
-
 	FTS_FUNC_EXIT();
 	return 0;
 err_irq_req:
@@ -1656,7 +1646,6 @@ static int fts_ts_resume(struct device *dev)
 	}
 	ts_data->poweroff_on_sleep = false;	
 	ts_data->suspended = false;
-	
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
@@ -1671,7 +1660,7 @@ static int fts_ts_resume(struct device *dev)
 		cmd[2] = 0x1e;
 		cmd[3] = 0x1;
 		cmd[4] = 0x1;
-		cmd[5] = 0x1e;
+		cmd[5] = 0x20;
 		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
@@ -1681,13 +1670,9 @@ static int fts_ts_resume(struct device *dev)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
-	ts_data->gamemode_enabled = true;
-	ts_data->is_expert_mode = true;
-	
 	FTS_FUNC_EXIT();
 	return 0;
 }
@@ -1874,7 +1859,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	u8 mode_set_value = 0;
 	u8 mode_addr = 0;
 	bool game_mode_state_change = false;
-	u8 cmd[7] = { 0xc1, 0x1, 0x1e, 0x1, 0x1, 0x1e, 0x1 };
+	u8 cmd[7] = { 0xc1, 0x1, 0x1e, 0x1, 0x1, 0x20, 0x1 };
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 	if (ts_data && ts_data->pm_suspend) {
 		FTS_ERROR(
@@ -2034,7 +2019,7 @@ static int fts_reset_mode(int mode)
 		cmd[2] = 0x1e;
 		cmd[3] = 0x1;
 		cmd[4] = 0x1;
-		cmd[5] = 0x1e;
+		cmd[5] = 0x20;
 		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
@@ -2084,7 +2069,7 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 		cmd[2] = 0x1e;
 		cmd[3] = 0x1;
 		cmd[4] = 0x1;
-		cmd[5] = 0x1e;
+		cmd[5] = 0x20;
 		cmd[6] = 0x1;
 		
 		fts_write(cmd, sizeof(cmd));
@@ -2094,12 +2079,9 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
-	ts_data->gamemode_enabled = true;
-	ts_data->is_expert_mode = true;
 }
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data)
 {
