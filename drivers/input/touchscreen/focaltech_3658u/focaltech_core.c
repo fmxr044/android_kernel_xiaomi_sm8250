@@ -17,7 +17,7 @@
 #endif
 #include "focaltech_core.h"
 #define FTS_DRIVER_NAME "fts_ts"
-#define INTERVAL_READ_REG 25 //stock 200
+#define INTERVAL_READ_REG 25 //stock 200 
 #define TIMEOUT_READ_REG 200 //stock 1000
 #if FTS_POWER_SOURCE_CUST_EN
 #define FTS_VTG_MIN_UV 3200000
@@ -1624,6 +1624,33 @@ static int fts_ts_suspend(struct device *dev)
 	}
 	fts_release_all_finger();
 	ts_data->suspended = true;
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	{
+		u8 cmd[7];
+		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[1] = 0x1;
+		cmd[2] = 0x1e;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
+		
+		fts_write(cmd, sizeof(cmd));
+	}
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
+	fts_data->gamemode_enabled = true;
+	fts_data->is_expert_mode = true;
+	ts_data->glove_mode = true;
+	ts_data->charger_mode = false;
+	ts_data->palm_sensor_switch = 0;
 	FTS_FUNC_EXIT();
 	return 0;
 }
@@ -1845,16 +1872,70 @@ static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 }
 static void fts_restore_mode_value(int mode, int value_type)
 {
-	xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE] =
-		xiaomi_touch_interfaces.touch_mode[mode][value_type];
+	//xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE] =
+		//xiaomi_touch_interfaces.touch_mode[mode][value_type];
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	{
+		u8 cmd[7];
+		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[1] = 0x1;
+		cmd[2] = 0x1e;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
+		
+		fts_write(cmd, sizeof(cmd));
+	}
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
+	fts_data->gamemode_enabled = true;
+	fts_data->is_expert_mode = true;
+	ts_data->glove_mode = true;
+	ts_data->charger_mode = false;
+	ts_data->palm_sensor_switch = 0;
 }
 static void fts_restore_normal_mode(void)
 {
-	int i;
-	for (i = 0; i < Touch_Report_Rate; i++) {
-		if (i != Touch_Panel_Orientation)
-			fts_restore_mode_value(i, GET_DEF_VALUE);
+	//int i;
+	//for (i = 0; i < Touch_Report_Rate; i++) {
+		//if (i != Touch_Panel_Orientation)
+			//fts_restore_mode_value(i, GET_DEF_VALUE);
+	//}
+    fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	{
+		u8 cmd[7];
+		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[1] = 0x1;
+		cmd[2] = 0x1e;
+		cmd[3] = CMD1;
+		cmd[4] = CMD2;
+		cmd[5] = CMD3;
+		cmd[6] = CMD4;
+		
+		fts_write(cmd, sizeof(cmd));
 	}
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
+	fts_data->gamemode_enabled = true;
+	fts_data->is_expert_mode = true;
+	ts_data->glove_mode = true;
+	ts_data->charger_mode = false;
+	ts_data->palm_sensor_switch = 0;
 }
 static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 {
@@ -2028,6 +2109,14 @@ static int fts_reset_mode(int mode)
 		
 		fts_write(cmd, sizeof(cmd));
 	}
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
+	fts_data->gamemode_enabled = true;
+	fts_data->is_expert_mode = true;
+	ts_data->glove_mode = true;
+	ts_data->charger_mode = false;
+	ts_data->palm_sensor_switch = 0;
 	return 0;
 }
 static int fts_get_mode_value(int mode, int value_type)
