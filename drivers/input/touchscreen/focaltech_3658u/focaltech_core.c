@@ -1898,9 +1898,9 @@ static void fts_restore_mode_value(int mode, int value_type)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
+	//ts_data->glove_mode = true;
+	//ts_data->charger_mode = false;
+	//ts_data->palm_sensor_switch = 0;
 }
 static void fts_restore_normal_mode(void)
 {
@@ -1933,9 +1933,9 @@ static void fts_restore_normal_mode(void)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
+	//ts_data->glove_mode = true;
+	//ts_data->charger_mode = false;
+	//ts_data->palm_sensor_switch = 0;
 }
 static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 {
@@ -2114,9 +2114,9 @@ static int fts_reset_mode(int mode)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
+	//ts_data->glove_mode = true;
+	//ts_data->charger_mode = false;
+	//ts_data->palm_sensor_switch = 0;
 	return 0;
 }
 static int fts_get_mode_value(int mode, int value_type)
