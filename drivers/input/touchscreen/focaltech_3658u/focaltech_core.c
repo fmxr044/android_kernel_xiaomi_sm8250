@@ -75,6 +75,10 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 {
 	FTS_FUNC_ENTER();
 	fts_wait_tp_to_valid();
+	fts_ex_mode_recovery(ts_data);
+	fts_game_mode_recovery(ts_data);
+	fts_palm_mode_recovery(ts_data);
+	fts_gesture_recovery(ts_data);
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
@@ -102,10 +106,7 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
-	fts_gesture_recovery(ts_data);
-	
 	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
-	
 	FTS_FUNC_EXIT();
 }
 int fts_reset_proc(int hdelayms)
@@ -1744,11 +1745,13 @@ static void fts_read_palm_data(u8 reg_value)
 static int fts_palm_sensor_cmd(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	FTS_INFO("fts_palm_sensor_cmd called")
 	return 0;
 }
 static int fts_palm_sensor_write(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	FTS_INFO("fts_palm_sensor_write called")
 	return 0;
 }
 static u8 fts_panel_vendor_read(void)
@@ -1872,8 +1875,8 @@ static void fts_config_game_mode_cmd(struct fts_ts_data *ts_data, u8 *cmd,
 }
 static void fts_restore_mode_value(int mode, int value_type)
 {
-	//xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE] =
-		//xiaomi_touch_interfaces.touch_mode[mode][value_type];
+	xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE] =
+		xiaomi_touch_interfaces.touch_mode[mode][value_type];
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
@@ -1898,17 +1901,15 @@ static void fts_restore_mode_value(int mode, int value_type)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	//ts_data->glove_mode = true;
-	//ts_data->charger_mode = false;
-	//ts_data->palm_sensor_switch = 0;
+	FTS_INFO("fts_restore_mode_value called")
 }
 static void fts_restore_normal_mode(void)
 {
-	//int i;
-	//for (i = 0; i < Touch_Report_Rate; i++) {
-		//if (i != Touch_Panel_Orientation)
-			//fts_restore_mode_value(i, GET_DEF_VALUE);
-	//}
+	int i;
+	for (i = 0; i < Touch_Report_Rate; i++) {
+		if (i != Touch_Panel_Orientation)
+			fts_restore_mode_value(i, GET_DEF_VALUE);
+	}
     fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
@@ -1933,9 +1934,7 @@ static void fts_restore_normal_mode(void)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	//ts_data->glove_mode = true;
-	//ts_data->charger_mode = false;
-	//ts_data->palm_sensor_switch = 0;
+	FTS_INFO("fts_restore_normal_mode called")
 }
 static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 {
@@ -2114,9 +2113,6 @@ static int fts_reset_mode(int mode)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	//ts_data->glove_mode = true;
-	//ts_data->charger_mode = false;
-	//ts_data->palm_sensor_switch = 0;
 	return 0;
 }
 static int fts_get_mode_value(int mode, int value_type)
