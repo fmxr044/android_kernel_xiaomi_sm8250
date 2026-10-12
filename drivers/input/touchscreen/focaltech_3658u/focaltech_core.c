@@ -1745,13 +1745,13 @@ static void fts_read_palm_data(u8 reg_value)
 static int fts_palm_sensor_cmd(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	FTS_INFO("fts_palm_sensor_cmd called")
+	FTS_INFO("fts_palm_sensor_cmd called");
 	return 0;
 }
 static int fts_palm_sensor_write(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	FTS_INFO("fts_palm_sensor_write called")
+	FTS_INFO("fts_palm_sensor_write called");
 	return 0;
 }
 static u8 fts_panel_vendor_read(void)
@@ -1901,7 +1901,7 @@ static void fts_restore_mode_value(int mode, int value_type)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	FTS_INFO("fts_restore_mode_value called")
+	FTS_INFO("fts_restore_mode_value called");
 }
 static void fts_restore_normal_mode(void)
 {
@@ -1934,7 +1934,7 @@ static void fts_restore_normal_mode(void)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	FTS_INFO("fts_restore_normal_mode called")
+	FTS_INFO("fts_restore_normal_mode called");
 }
 static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 {
