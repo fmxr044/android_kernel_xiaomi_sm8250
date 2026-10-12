@@ -17,8 +17,8 @@
 #endif
 #include "focaltech_core.h"
 #define FTS_DRIVER_NAME "fts_ts"
-#define INTERVAL_READ_REG 25 //stock 200 
-#define TIMEOUT_READ_REG 200 //stock 1000
+#define INTERVAL_READ_REG 5 //stock 200 /* unit:ms */
+#define TIMEOUT_READ_REG 50 //stock 1000 /* unit:ms */
 #if FTS_POWER_SOURCE_CUST_EN
 #define FTS_VTG_MIN_UV 3200000
 #define FTS_VTG_MAX_UV 3200000
