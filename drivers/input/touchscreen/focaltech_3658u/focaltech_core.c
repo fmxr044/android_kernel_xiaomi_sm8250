@@ -46,7 +46,7 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #define GAME_ORIENTATION_270 4
 #endif
 #define CMD1 0x1
-#define CMD2 0x1
+#define CMD2 0x0
 #define CMD3 0x0
 #define CMD4 0x0
 #define CMD5 0x20
