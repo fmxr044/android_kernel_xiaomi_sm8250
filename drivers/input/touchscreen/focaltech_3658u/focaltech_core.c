@@ -45,12 +45,13 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #define GAME_ORIENTATION_90 3
 #define GAME_ORIENTATION_270 4
 #endif
-#define CMD1 0x1
-#define CMD2 0x0
-#define CMD3 0x0
-#define CMD4 0x0
-#define CMD5 0x20
-#define CMD6 0x0
+#define CMD0 0xc1 //GAME MODE REG
+#define CMD1 0x1 //GAME MODE SWITCH
+#define CMD2 0x0 //
+#define CMD3 0x0 //
+#define CMD4 0x0 //
+#define CMD5 0x0 //
+#define CMD6 0x0 //
 int fts_wait_tp_to_valid(void)
 {
 	int ret = 0;
@@ -90,7 +91,7 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -1511,7 +1512,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -1634,7 +1635,7 @@ static int fts_ts_suspend(struct device *dev)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -1686,7 +1687,7 @@ static int fts_ts_resume(struct device *dev)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -1884,7 +1885,7 @@ static void fts_restore_mode_value(int mode, int value_type)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -1916,7 +1917,7 @@ static void fts_restore_normal_mode(void)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -1939,7 +1940,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	u8 mode_set_value = 0;
 	u8 mode_addr = 0;
 	bool game_mode_state_change = false;
-	u8 cmd[7] = { 0xc1, CMD1, CMD2, CMD3, CMD4, CMD5, CMD6 };
+	u8 cmd[7] = { CMD0, CMD1, CMD2, CMD3, CMD4, CMD5, CMD6 };
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 	if (ts_data && ts_data->pm_suspend) {
 		FTS_ERROR(
@@ -1952,7 +1953,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	fts_config_game_mode_cmd(ts_data, cmd, ts_data->is_expert_mode);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -2105,7 +2106,7 @@ static int fts_reset_mode(int mode)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
@@ -2159,7 +2160,7 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
 	{
 		u8 cmd[7];
-		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[0] = CMD0;
 		cmd[1] = CMD1;
 		cmd[2] = CMD2;
 		cmd[3] = CMD3;
