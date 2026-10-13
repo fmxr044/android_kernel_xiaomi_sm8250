@@ -1950,6 +1950,16 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	pm_stay_awake(ts_data->dev);
 	mutex_lock(&ts_data->cmd_update_mutex);
 	fts_config_game_mode_cmd(ts_data, cmd, ts_data->is_expert_mode);
+	{
+		u8 cmd[7];
+		cmd[0] = FTS_REG_GAMEMODE;
+		cmd[1] = CMD1;
+		cmd[2] = CMD2;
+		cmd[3] = CMD3;
+		cmd[4] = CMD4;
+		cmd[5] = CMD5;
+		cmd[6] = CMD6;
+		//fts_write(cmd, sizeof(cmd));
 	ret = fts_write(cmd, sizeof(cmd));
 	if (ret < 0) {
 		FTS_ERROR("write game mode parameter failed\n");
@@ -1957,6 +1967,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 		FTS_INFO(
 			"update game mode cmd: %02X,%02X,%02X,%02X,%02X,%02X,%02X",
 			cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], cmd[5], cmd[6]);
+	}
 		for (mode = Touch_Game_Mode; mode <= Touch_Expert_Mode;
 		     mode++) {
 			if (mode == Touch_Game_Mode &&
