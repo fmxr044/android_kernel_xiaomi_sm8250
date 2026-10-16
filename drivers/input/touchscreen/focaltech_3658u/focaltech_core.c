@@ -2027,6 +2027,33 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
+	{
+		u8 cmd[7];
+		cmd[0] = CMD0;
+		cmd[1] = CMD1;
+		cmd[2] = CMD2;
+		cmd[3] = CMD3;
+		cmd[4] = CMD4;
+		cmd[5] = CMD5;
+		cmd[6] = CMD6;
+		fts_write(cmd, sizeof(cmd));
+	}
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
+	fts_data->gamemode_enabled = true;
+	fts_data->is_expert_mode = true;
+	ts_data->glove_mode = true;
+	ts_data->charger_mode = false;
+	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("reg rewrite sucess");
 	mutex_unlock(&ts_data->cmd_update_mutex);
 	pm_relax(ts_data->dev);
 }
