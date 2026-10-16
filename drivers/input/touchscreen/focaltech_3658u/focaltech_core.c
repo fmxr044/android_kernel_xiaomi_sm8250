@@ -108,6 +108,7 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("fts_tp_state_recovery called and reg rewrite success");
 	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
 	FTS_FUNC_EXIT();
 }
@@ -1529,6 +1530,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("fts_ts_probe_entry called and reg rewrite success");
 	FTS_FUNC_EXIT();
 	return 0;
 err_irq_req:
@@ -1652,6 +1654,7 @@ static int fts_ts_suspend(struct device *dev)
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("fts_ts_suspend called and reg rewrite success");
 	FTS_FUNC_EXIT();
 	return 0;
 }
@@ -1704,6 +1707,7 @@ static int fts_ts_resume(struct device *dev)
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("fts_ts_resume called and reg rewrite success");
 	FTS_FUNC_EXIT();
 	return 0;
 }
@@ -1744,13 +1748,13 @@ static void fts_read_palm_data(u8 reg_value)
 static int fts_palm_sensor_cmd(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	FTS_INFO("fts_palm_sensor_cmd called");
+	FTS_INFO("fts_palm_sensor_cmd called and reg rewrite success");
 	return 0;
 }
 static int fts_palm_sensor_write(int value)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	FTS_INFO("fts_palm_sensor_write called");
+	FTS_INFO("fts_palm_sensor_write called and reg rewrite success");
 	return 0;
 }
 static u8 fts_panel_vendor_read(void)
@@ -1899,7 +1903,7 @@ static void fts_restore_mode_value(int mode, int value_type)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	FTS_INFO("fts_restore_mode_value called");
+	FTS_INFO("fts_restore_mode_value called and reg rewrite success");
 }
 static void fts_restore_normal_mode(void)
 {
@@ -1931,7 +1935,7 @@ static void fts_restore_normal_mode(void)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	FTS_INFO("fts_restore_normal_mode called");
+	FTS_INFO("fts_restore_normal_mode called and reg rewrite success");
 }
 static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 {
@@ -2053,7 +2057,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
-	FTS_INFO("reg rewrite sucess");
+	FTS_INFO("fts_update_touchmode_data called and reg rewrite success");
 	mutex_unlock(&ts_data->cmd_update_mutex);
 	pm_relax(ts_data->dev);
 }
@@ -2147,6 +2151,7 @@ static int fts_reset_mode(int mode)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
+	FTS_INFO("fts_reset_mode called and reg rewrite success");
 	return 0;
 }
 static int fts_get_mode_value(int mode, int value_type)
@@ -2204,10 +2209,13 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 	ts_data->glove_mode = true;
 	ts_data->charger_mode = false;
 	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("fts_game_mode_recovery called and reg rewrite success");
 }
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data)
 {
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_data->palm_sensor_switch = 0;
+	ts_data->palm_sensor_switch = 0;
     return;
 }
 static int fts_get_touch_super_resolution_factor(void)
