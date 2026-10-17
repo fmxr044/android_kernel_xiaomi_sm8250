@@ -925,7 +925,7 @@ int blk_register_queue(struct gendisk *disk)
 	wbt_enable_default(q);
 	
 	if (q && q->backing_dev_info) {
-		q->backing_dev_info->ra_pages = 256;
+		q->backing_dev_info->ra_pages = 1024;
 		blk_queue_flag_set(QUEUE_FLAG_SAME_COMP, q);
 		blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, q);
 	}
