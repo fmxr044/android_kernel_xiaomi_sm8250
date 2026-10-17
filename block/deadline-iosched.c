@@ -17,10 +17,10 @@
 /*
  * See Documentation/block/deadline-iosched.txt
  */
-static const int read_expire = (HZ * 80) / 1000;  /* max time before a read is submitted. */
+static const int read_expire = (HZ * 10) / 1000;  /* max time before a read is submitted. */
 static const int write_expire = 15 * HZ; /* ditto for writes, these limits are SOFT! */
-static const int writes_starved = 16;    /* max times reads can starve a write */
-static const int fifo_batch = 64;       /* # of sequential requests treated as one
+static const int writes_starved = 64;    /* max times reads can starve a write */
+static const int fifo_batch = 256;       /* # of sequential requests treated as one
 				     by the above parameters. For throughput. */
 
 struct deadline_data {
@@ -127,25 +127,25 @@ static void deadline_remove_request(struct request_queue *q, struct request *rq)
 static enum elv_merge
 deadline_merge(struct request_queue *q, struct request **req, struct bio *bio)
 {
-	struct deadline_data *dd = q->elevator->elevator_data;
-	struct request *__rq;
+	//struct deadline_data *dd = q->elevator->elevator_data;
+	//struct request *__rq;
 
 	/*
 	 * check for front merge
 	 */
-	if (dd->front_merges) {
-		sector_t sector = bio_end_sector(bio);
+	//if (dd->front_merges) {
+		//sector_t sector = bio_end_sector(bio);
 
-		__rq = elv_rb_find(&dd->sort_list[bio_data_dir(bio)], sector);
-		if (__rq) {
-			BUG_ON(sector != blk_rq_pos(__rq));
+		//__rq = elv_rb_find(&dd->sort_list[bio_data_dir(bio)], sector);
+		//if (__rq) {
+			//BUG_ON(sector != blk_rq_pos(__rq));
 
-			if (elv_bio_merge_ok(__rq, bio)) {
-				*req = __rq;
-				return ELEVATOR_FRONT_MERGE;
-			}
-		}
-	}
+			//if (elv_bio_merge_ok(__rq, bio)) {
+				//*req = __rq;
+				//return ELEVATOR_FRONT_MERGE;
+			//}
+		//}
+	//}
 
 	return ELEVATOR_NO_MERGE;
 }
@@ -338,12 +338,32 @@ static int deadline_dispatch_requests(struct request_queue *q, int force)
 		 * 【核心魔改】只要队列里有读请求，且读请求连续插队没超过 16 次（writes_starved），
 		 * 写请求就绝对不准插队！即使写请求饿死了，也必须先服务原神的读盘需求。
 		 */
-		if (deadline_fifo_request(dd, WRITE) &&
-		    (dd->starved >= dd->writes_starved)) {
+		//if (deadline_fifo_request(dd, WRITE) &&
+		    //(dd->starved >= dd->writes_starved)) {
 			// 只有极度饥饿时才分发写，分发后计数器清零
-			dd->starved = 0; 
-			goto dispatch_writes;
-		}
+			//dd->starved = 0; 
+			//goto dispatch_writes;
+		//}
+		
+		if (deadline_fifo_request(dd, WRITE) &&
+            (dd->starved >= dd->writes_starved)) {
+	
+	    /* 
+	     * 【终极降维魔改 2】：只要读盘链路上还有游戏文件（如原神、崩铁贴图）在泵出，
+	     * 不管系统后台的垃圾写盘请求饿死了多少次，一律无条件截断！
+	     * 剥夺写请求在游戏期间的一切插队特权，直通游戏的读请求最高绿色通道！
+	     */
+	    if (reads) {
+		    dd->starved++;
+		    data_dir = READ;
+		goto dispatch_find_request;
+	    }
+
+	    // 只有当游戏的读盘队列彻底空闲（reads 为假）时，才准极度吝啬地放行一次写操作
+	    dd->starved = 0;
+	    goto dispatch_writes;
+    }
+
 
 		// 正常情况下，无条件强制赋予读请求最高优先级
 		dd->starved++; 
