@@ -2079,37 +2079,33 @@ static ssize_t ufshcd_clkscale_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	u32 value;
 	int err;
 
-	if (kstrtou32(buf, 0, &value))
-		return -EINVAL;
-
-	value = !!value;
-	if (value == hba->clk_scaling.is_allowed)
-		goto out;
-
+	/* 【极限魔改】：强行拿 runtime PM 锁，准备进行底层物理锁频 */
 	pm_runtime_get_sync(hba->dev);
 	ufshcd_hold(hba, false);
 
+	/* 彻底干掉可能在后台排队的异步挂起和恢复工作 */
 	cancel_work_sync(&hba->clk_scaling.suspend_work);
 	cancel_work_sync(&hba->clk_scaling.resume_work);
 
-	hba->clk_scaling.is_allowed = value;
+	/* 核心防线 1：全天候强行关闭调频开关，任何人都别想再让闪存降频省电 */
+	hba->clk_scaling.is_allowed = false;
 
-	if (value) {
-		ufshcd_resume_clkscaling(hba);
-	} else {
-		ufshcd_suspend_clkscaling(hba);
-		err = ufshcd_devfreq_scale(hba, true);
-		if (err)
-			dev_err(hba->dev, "%s: failed to scale clocks up %d\n",
-					__func__, err);
-	}
+	/* 核心防线 2：无视外部状态，立刻强制暂停动态调频器 */
+	ufshcd_suspend_clkscaling(hba);
 
+	/* 核心防线 3：物理层强行拉满！直接将 UFS 档位和总线时钟飚到硬件物理最大值（scale_up = true） */
+	err = ufshcd_devfreq_scale(hba, true);
+	if (err)
+		dev_err(hba->dev, "%s: 【魔改报错】强行拉满闪存最高性能档位失败 %d\n",
+				__func__, err);
+
+	/* 释放 runtime PM */
 	ufshcd_release(hba, false);
 	pm_runtime_put_sync(hba->dev);
-out:
+
+	/* 欺骗系统，假装写入成功 */
 	return count;
 }
 
@@ -6215,9 +6211,9 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 		 * 那么对应的块设备软件蓄水池上限，在这里直接强制焊死为 256！
 		 * 完美对齐公式 (can_queue * 4 = 256)，消灭内核的一切降级防御重置
 		 */
-		q->nr_requests = 256;
-		q->nr_congestion_on = 224;
-		q->nr_congestion_off = 200;
+		q->nr_requests = 512;
+		q->nr_congestion_on = 448;
+		q->nr_congestion_off = 400;
 	}
 
 	return 0;
