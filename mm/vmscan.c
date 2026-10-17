@@ -176,9 +176,7 @@ int kswapd_threads_current = DEF_KSWAPD_THREADS_PER_NODE;
 /*
  * From 0 .. 100.  Higher means more swappy.
  */
-int vm_swappiness = 0;
-int sysctl_swappiness = 0; // 顺手把源头的默认初始值直接从 60 或 100 改写为 0！
-EXPORT_SYMBOL(sysctl_swappiness);
+int vm_swappiness = 60;
 /*
  * The total number of pages which are beyond the high watermark within all
  * zones.
