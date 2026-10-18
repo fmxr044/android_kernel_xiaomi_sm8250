@@ -1012,28 +1012,28 @@ static ssize_t comp_algorithm_show(struct device *dev,
 static ssize_t comp_algorithm_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct zram *zram = dev_to_zram(dev);
-	char compressor[ARRAY_SIZE(zram->compressor)];
-	size_t sz;
+	//struct zram *zram = dev_to_zram(dev);
+	//char compressor[ARRAY_SIZE(zram->compressor)];
+	//size_t sz;
 
-	strlcpy(compressor, buf, sizeof(compressor));
+	//strlcpy(compressor, buf, sizeof(compressor));
 	/* ignore trailing newline */
-	sz = strlen(compressor);
-	if (sz > 0 && compressor[sz - 1] == '\n')
-		compressor[sz - 1] = 0x00;
+	//sz = strlen(compressor);
+	//if (sz > 0 && compressor[sz - 1] == '\n')
+		//compressor[sz - 1] = 0x00;
 
-	if (!zcomp_available_algorithm(compressor))
-		return -EINVAL;
+	//if (!zcomp_available_algorithm(compressor))
+		//return -EINVAL;
 
-	down_write(&zram->init_lock);
-	if (init_done(zram)) {
-		up_write(&zram->init_lock);
-		pr_info("Can't change algorithm for initialized device\n");
-		return -EBUSY;
-	}
+	//down_write(&zram->init_lock);
+	//if (init_done(zram)) {
+		//up_write(&zram->init_lock);
+		//pr_info("Can't change algorithm for initialized device\n");
+		//return -EBUSY;
+	//}
 
-	strcpy(zram->compressor, compressor);
-	up_write(&zram->init_lock);
+	//strcpy(zram->compressor, compressor);
+	//up_write(&zram->init_lock);
 	return len;
 }
 
@@ -1840,50 +1840,50 @@ static void zram_reset_device(struct zram *zram)
 static ssize_t disksize_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
-	u64 disksize;
-	struct zcomp *comp;
-	struct zram *zram = dev_to_zram(dev);
-	int err;
+	//u64 disksize;
+	//struct zcomp *comp;
+	//struct zram *zram = dev_to_zram(dev);
+	//int err;
 
-	disksize = memparse(buf, NULL);
-	if (!disksize)
-		return -EINVAL;
+	//disksize = memparse(buf, NULL);
+	//if (!disksize)
+		//return -EINVAL;
 
-	down_write(&zram->init_lock);
-	if (init_done(zram)) {
-		pr_info("Cannot change disksize for initialized device\n");
-		err = -EBUSY;
-		goto out_unlock;
-	}
+	//down_write(&zram->init_lock);
+	//if (init_done(zram)) {
+		//pr_info("Cannot change disksize for initialized device\n");
+		//err = -EBUSY;
+		//goto out_unlock;
+	//}
 
-	disksize = PAGE_ALIGN(disksize);
-	if (!zram_meta_alloc(zram, disksize)) {
-		err = -ENOMEM;
-		goto out_unlock;
-	}
+	//disksize = PAGE_ALIGN(disksize);
+	//if (!zram_meta_alloc(zram, disksize)) {
+		//err = -ENOMEM;
+		//goto out_unlock;
+	//}
 
-	comp = zcomp_create(zram->compressor);
-	if (IS_ERR(comp)) {
-		pr_err("Cannot initialise %s compressing backend\n",
-				zram->compressor);
-		err = PTR_ERR(comp);
-		goto out_free_meta;
-	}
+	//comp = zcomp_create(zram->compressor);
+	//if (IS_ERR(comp)) {
+		//pr_err("Cannot initialise %s compressing backend\n",
+				//zram->compressor);
+		//err = PTR_ERR(comp);
+		//goto out_free_meta;
+	//}
 
-	zram->comp = comp;
-	zram->disksize = disksize;
-	set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
+	//zram->comp = comp;
+	//zram->disksize = disksize;
+	//set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
 
-	revalidate_disk(zram->disk);
-	up_write(&zram->init_lock);
+	//revalidate_disk(zram->disk);
+	//up_write(&zram->init_lock);
 
 	return len;
 
-out_free_meta:
-	zram_meta_free(zram, disksize);
-out_unlock:
-	up_write(&zram->init_lock);
-	return err;
+//out_free_meta:
+	//zram_meta_free(zram, disksize);
+//out_unlock:
+	//up_write(&zram->init_lock);
+	//return err;
 }
 
 static ssize_t reset_store(struct device *dev,
@@ -2086,16 +2086,30 @@ static int zram_add(void)
 	 * size.  So we can't ensure that all discarded logical blocks are
 	 * zeroed.
 	 */
-	if (ZRAM_LOGICAL_BLOCK_SIZE == PAGE_SIZE)
+		if (ZRAM_LOGICAL_BLOCK_SIZE == PAGE_SIZE)
 		blk_queue_max_write_zeroes_sectors(zram->disk->queue, UINT_MAX);
 
-	zram->disk->queue->backing_dev_info->capabilities |=
-			(BDI_CAP_STABLE_WRITES | BDI_CAP_SYNCHRONOUS_IO);
-	disk_to_dev(zram->disk)->groups = zram_disk_attr_groups;
+	{
+		u64 forced_disksize = 8ULL * 1024 * 1024 * 1024; // 8GB
+		struct zcomp *forced_comp;
+		strlcpy(zram->compressor, "zstd", sizeof(zram->compressor));
+		if (zram_meta_alloc(zram, forced_disksize)) {
+			forced_comp = zcomp_create(zram->compressor);
+			if (!IS_ERR(forced_comp)) {
+				zram->comp = forced_comp;
+				zram->disksize = forced_disksize;
+				set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
+				pr_info("zram: [SUCCESS] 8GB metadata and zstd backend forced successfully!\n");
+			} else {
+				zram_meta_free(zram, forced_disksize);
+				pr_err("zram: [ERROR] Forced hardcode failed at zcomp_create!\n");
+			}
+		} else {
+			pr_err("zram: [ERROR] Forced hardcode failed at zram_meta_alloc!\n");
+		}
+	}
 	add_disk(zram->disk);
-
-	strlcpy(zram->compressor, default_compressor, sizeof(zram->compressor));
-
+	
 	zram_debugfs_register(zram);
 	pr_info("Added device: %s\n", zram->disk->disk_name);
 	return device_id;
