@@ -41,7 +41,7 @@ static DEFINE_IDR(zram_index_idr);
 static DEFINE_MUTEX(zram_index_mutex);
 
 static int zram_major;
-static const char *default_compressor = "lz4";
+static const char *default_compressor = "zstd";
 
 /* Module params (documentation at end) */
 static unsigned int num_devices = 1;
@@ -2089,15 +2089,10 @@ static int zram_add(void)
 	if (ZRAM_LOGICAL_BLOCK_SIZE == PAGE_SIZE)
 		blk_queue_max_write_zeroes_sectors(zram->disk->queue, UINT_MAX);
 
-	    zram->disk->queue->backing_dev_info->capabilities |=
-            (BDI_CAP_STABLE_WRITES | BDI_CAP_SYNCHRONOUS_IO);
-        
-        /* 强行焊死 ZRAM 容量为 8GB (8 * 1024 * 1024 * 1024 字节) */
-        zram->disksize = 8ULL * 1024 * 1024 * 1024;
-        set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
-
-    add_disk(zram->disk);
-
+	zram->disk->queue->backing_dev_info->capabilities |=
+			(BDI_CAP_STABLE_WRITES | BDI_CAP_SYNCHRONOUS_IO);
+	disk_to_dev(zram->disk)->groups = zram_disk_attr_groups;
+	add_disk(zram->disk);
 
 	strlcpy(zram->compressor, default_compressor, sizeof(zram->compressor));
 
