@@ -3086,7 +3086,7 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 		/* 🟢 【新增修改】当值恢复为 0（或其他非1、2值）时，重置并撤销 3A 限制 */
 		vote(chg->fcc_votable, BYPASS_VOTER, false, 0);
 		vote(chg->usb_icl_votable, BYPASS_VOTER, false, 0);
-		bypass 0;
+		bypass = 0;
 		bypass_charging = 0;
 	}
 
