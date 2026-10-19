@@ -73,7 +73,7 @@ static void zram_slot_unlock(struct zram *zram, u32 index)
 
 static inline bool init_done(struct zram *zram)
 {
-	return zram->disksize;
+	return zram->disksize && zram->comp;
 }
 
 static inline struct zram *dev_to_zram(struct device *dev)
@@ -242,6 +242,32 @@ static ssize_t disksize_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct zram *zram = dev_to_zram(dev);
+	u64 forced_disksize = 8ULL * 1024 * 1024 * 1024; // 8GB
+
+	/* 
+	 * 🛡️ 究极热挂载拦截：当内核或系统首次试图查看 ZRAM 大小时，
+	 * 如果底层还没初始化，我们以最合规的顺序在此时将其物理拉起并焊死。
+	 */
+	if (!zram->disksize || !zram->comp) {
+		down_write(&zram->init_lock);
+		
+		/* 1. 确保算法强制写死为 zstd */
+		strlcpy(zram->compressor, "zstd", sizeof(zram->compressor));
+		
+		/* 2. 在合规上下文安全分配 8GB 索引表格 */
+		if (zram_meta_alloc(zram, forced_disksize)) {
+			struct zcomp *forced_comp = zcomp_create(zram->compressor);
+			if (!IS_ERR(forced_comp)) {
+				zram->comp = forced_comp;
+				zram->disksize = forced_disksize;
+				set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
+				pr_info("zram: [SUCCESS] 8GB ZSTD dynamic injection running fine!\n");
+			} else {
+				zram_meta_free(zram, forced_disksize);
+			}
+		}
+		up_write(&zram->init_lock);
+	}
 
 	return scnprintf(buf, PAGE_SIZE, "%llu\n", zram->disksize);
 }
@@ -1001,6 +1027,24 @@ static ssize_t comp_algorithm_show(struct device *dev,
 {
 	size_t sz;
 	struct zram *zram = dev_to_zram(dev);
+	u64 forced_disksize = 8ULL * 1024 * 1024 * 1024;
+
+	/* 🛡️ 同步热挂载拦截：双保险，确保算法查询时也是完美挂载状态 */
+	if (!zram->disksize || !zram->comp) {
+		down_write(&zram->init_lock);
+		strlcpy(zram->compressor, "zstd", sizeof(zram->compressor));
+		if (zram_meta_alloc(zram, forced_disksize)) {
+			struct zcomp *forced_comp = zcomp_create(zram->compressor);
+			if (!IS_ERR(forced_comp)) {
+				zram->comp = forced_comp;
+				zram->disksize = forced_disksize;
+				set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
+			} else {
+				zram_meta_free(zram, forced_disksize);
+			}
+		}
+		up_write(&zram->init_lock);
+	}
 
 	down_read(&zram->init_lock);
 	sz = zcomp_available_show(zram->compressor, buf);
@@ -2086,30 +2130,16 @@ static int zram_add(void)
 	 * size.  So we can't ensure that all discarded logical blocks are
 	 * zeroed.
 	 */
-		if (ZRAM_LOGICAL_BLOCK_SIZE == PAGE_SIZE)
+	if (ZRAM_LOGICAL_BLOCK_SIZE == PAGE_SIZE)
 		blk_queue_max_write_zeroes_sectors(zram->disk->queue, UINT_MAX);
 
-	{
-		u64 forced_disksize = 8ULL * 1024 * 1024 * 1024; // 8GB
-		struct zcomp *forced_comp;
-		strlcpy(zram->compressor, "zstd", sizeof(zram->compressor));
-		if (zram_meta_alloc(zram, forced_disksize)) {
-			forced_comp = zcomp_create(zram->compressor);
-			if (!IS_ERR(forced_comp)) {
-				zram->comp = forced_comp;
-				zram->disksize = forced_disksize;
-				set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
-				pr_info("zram: [SUCCESS] 8GB metadata and zstd backend forced successfully!\n");
-			} else {
-				zram_meta_free(zram, forced_disksize);
-				pr_err("zram: [ERROR] Forced hardcode failed at zcomp_create!\n");
-			}
-		} else {
-			pr_err("zram: [ERROR] Forced hardcode failed at zram_meta_alloc!\n");
-		}
-	}
+	zram->disk->queue->backing_dev_info->capabilities |=
+			(BDI_CAP_STABLE_WRITES | BDI_CAP_SYNCHRONOUS_IO);
+	disk_to_dev(zram->disk)->groups = zram_disk_attr_groups;
 	add_disk(zram->disk);
-	
+
+	strlcpy(zram->compressor, default_compressor, sizeof(zram->compressor));
+
 	zram_debugfs_register(zram);
 	pr_info("Added device: %s\n", zram->disk->disk_name);
 	return device_id;
