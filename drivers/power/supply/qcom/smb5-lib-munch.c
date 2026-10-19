@@ -38,7 +38,6 @@
 bool off_charge_flag;
 static bool first_boot_flag;
 static int bypass_charging = 0;
-static int bypass = 0;
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
 static int smblib_dc_therm_charging(struct smb_charger *chg,
@@ -3062,31 +3061,38 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 		return rc;
 	}
 
-	if (val->intval == 1) {
+	//if (val->intval == 1) {
+          	//rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
+          	//bypass_charging = 0;
+      	//} else if (val->intval == 2) {
+          	//rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	//bypass_charging = 1;
+      	//} else {
+          	//rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	//bypass_charging = 0;
+      	//}
+      	
+    if (val->intval == 1) {
 		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-		
-		/* 🟢 顺手撤销 2 档可能遗留的 3A 限制，防止干扰纯停充状态 */
-		vote(chg->fcc_votable, BYPASS_VOTER, false, 0);
-		vote(chg->usb_icl_votable, BYPASS_VOTER, false, 0);
-		bypass = 1;
+		vote(chg->fcc_votable, BYPASS_VOTER, true, 6500000);
+		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 6500000);
+		chg->system_temp_level = MAX_TEMP_LEVEL;
+		chg->voltage_min_uv = 12000000;
+        rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
 		bypass_charging = 0;
 	} else if (val->intval == 2) {
 		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-		
-		/* 🟢 【新增修改】当值为 2 时，在这里直接操作全局限流 3000mA (3A) */
-		/* 1. 限制流入电池的充电电流（FCC）最高 3000mA */
-		vote(chg->fcc_votable, BYPASS_VOTER, true, 3000000);
-		/* 2. 限制接口的总输入电流（ICL）最高 3000mA */
-		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 3000000);
-		bypass = 0;
+		vote(chg->fcc_votable, BYPASS_VOTER, true, 2500000);
+		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 2500000);
+		chg->system_temp_level = 0;
 		bypass_charging = 1;
 	} else {
 		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-		
-		/* 🟢 【新增修改】当值恢复为 0（或其他非1、2值）时，重置并撤销 3A 限制 */
-		vote(chg->fcc_votable, BYPASS_VOTER, false, 0);
-		vote(chg->usb_icl_votable, BYPASS_VOTER, false, 0);
-		bypass = 0;
+		vote(chg->fcc_votable, BYPASS_VOTER, true, 6500000);
+		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 6500000);
+		chg->system_temp_level = MAX_TEMP_LEVEL;
+		chg->voltage_min_uv = 12000000;
+        rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
 		bypass_charging = 0;
 	}
 
@@ -3399,18 +3405,100 @@ int smblib_set_prop_dc_temp_level(struct smb_charger *chg,
 
 static int smblib_therm_charging(struct smb_charger *chg)
 {
-	/* 如果开启了 1 档（纯旁路），直接跳过温控，防止误触导致主板断电 */
-	if (bypass) {
-		vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
-		vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
+	int thermal_icl_ua = 0;
+	int thermal_fcc_ua = 0;
+	int rc;
+	
+	return 0;
+
+#ifdef CONFIG_D8G_SERVICE
+	if (skip_thermal || bypass_charging)
+		chg->system_temp_level = 0;
+#endif
+
+	if (chg->system_temp_level >= MAX_TEMP_LEVEL)
 		return 0;
+
+	switch (chg->real_charger_type) {
+	case POWER_SUPPLY_TYPE_USB_HVDCP:
+		thermal_icl_ua = chg->thermal_mitigation_qc2[chg->system_temp_level];
+		break;
+	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
+		if (get_client_vote_locked(chg->usb_icl_votable, THERMAL_DAEMON_VOTER) != 0) {
+			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+			if (rc < 0)
+				pr_err("Couldn't disable USB thermal ICL vote rc=%d\n", rc);
+		}
+
+		if (chg->use_bq_pump) {
+			if (chg->is_qc_class_a)
+				thermal_fcc_ua =
+					chg->thermal_fcc_qc3_cp[chg->system_temp_level];
+			else
+				thermal_fcc_ua =
+					chg->thermal_fcc_qc3_classb_cp[chg->system_temp_level];
+		} else {
+			thermal_fcc_ua =
+				chg->thermal_fcc_qc3_normal[chg->system_temp_level];
+		}
+		thermal_icl_ua = thermal_fcc_ua;
+		break;
+	case POWER_SUPPLY_TYPE_USB_HVDCP_3P5:
+		thermal_fcc_ua =
+			chg->thermal_fcc_qc3_cp[chg->system_temp_level];
+		break;
+	case POWER_SUPPLY_TYPE_USB_PD:
+		if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
+			if (chg->pps_thermal_level < 0)
+				chg->pps_thermal_level = chg->system_temp_level;
+			thermal_fcc_ua =
+				chg->thermal_fcc_pps_cp[chg->pps_thermal_level];
+		} else {
+			thermal_icl_ua =
+				chg->thermal_mitigation_icl[chg->system_temp_level];
+			thermal_fcc_ua =
+				chg->thermal_mitigation_pd_base[chg->system_temp_level];
+		}
+		break;
+	case POWER_SUPPLY_TYPE_USB_DCP:
+	default:
+		thermal_icl_ua = chg->thermal_mitigation_dcp[chg->system_temp_level];
+		thermal_fcc_ua = chg->thermal_mitigation[chg->system_temp_level];
+		break;
 	}
 
-	/* 如果没开启旁路（包括常规模式和 2 档限流模式），直接 return 0 让路 */
-	/* 这样 2 档的限流就由入口的 3000000uA 投票绝对说了算，温控不会去覆盖它 */
-	return 0; 
+	pr_info("###thermal_icl_ua is %d, chg->system_temp_level: %d, thermal_fcc_ua is %d, charger type = %d\n",
+				thermal_icl_ua, chg->system_temp_level, thermal_fcc_ua, chg->real_charger_type);
+	if (chg->system_temp_level == 0) {
+		/* if therm_lvl_sel is 0, clear thermal voter */
+		rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+		if (rc < 0)
+			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
+				rc);
+		rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
+		if (rc < 0)
+			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
+				rc);
+	} else {
+		pr_info("thermal_icl_ua is %d, chg->system_temp_level: %d, thermal_fcc_ua is %d, charger type = %d\n",
+				thermal_icl_ua, chg->system_temp_level, thermal_fcc_ua, chg->real_charger_type);
+		if (thermal_icl_ua > 0) {
+			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
+					thermal_icl_ua);
+			if (rc < 0)
+				pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
+					rc);
+		}
+		if (thermal_fcc_ua > 0) {
+			rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
+					thermal_fcc_ua);
+			if (rc < 0)
+				pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
+						rc);
+		}
+	}
+	return rc;
 }
-
 
 static void smblib_thermal_setting_work(struct work_struct *work)
 {
@@ -7708,50 +7796,48 @@ unsuspend_input:
 		chg->qc2_max_pulses = (max_pulses &
 				HVDCP_PULSE_COUNT_MAX_QC2_MASK);
 
-		//if (stat & QC_12V_BIT) {
-			//chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_12V;
-			//rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
-					//HVDCP_PULSE_COUNT_MAX_QC2_MASK,
-					//HVDCP_PULSE_COUNT_MAX_QC2_9V);
-			//if (rc < 0)
-				//smblib_err(chg, "Couldn't force max pulses to 9V rc=%d\n",
-						//rc);
+		if (stat & QC_12V_BIT) {
+			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_12V;
+			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					HVDCP_PULSE_COUNT_MAX_QC2_9V);
+			if (rc < 0)
+				smblib_err(chg, "Couldn't force max pulses to 9V rc=%d\n",
+						rc);
 
-		//} else if (stat & QC_9V_BIT) {
-			//chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_9V;
-			//rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
-					//HVDCP_PULSE_COUNT_MAX_QC2_MASK,
-					//HVDCP_PULSE_COUNT_MAX_QC2_5V);
-			//if (rc < 0)
-				//smblib_err(chg, "Couldn't force max pulses to 5V rc=%d\n",
-						//rc);
+		} else if (stat & QC_9V_BIT) {
+			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_9V;
+			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					HVDCP_PULSE_COUNT_MAX_QC2_5V);
+			if (rc < 0)
+				smblib_err(chg, "Couldn't force max pulses to 5V rc=%d\n",
+						rc);
 
-		//}
+		}
 
-		//rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
-				//SUSPEND_ON_COLLAPSE_USBIN_BIT,
-				//0);
-		//if (rc < 0)
-			//smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
-					//rc);
+		rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				SUSPEND_ON_COLLAPSE_USBIN_BIT,
+				0);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
+					rc);
 
-		//smblib_rerun_apsd(chg);
+		smblib_rerun_apsd(chg);
 
-		//pr_info("qc2_unsupported charger detected\n");
-		//rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
-		//if (rc < 0)
-			//pr_err("Failed to force 5V\n");
-		//rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_5V);
-		//if (rc < 0)
-			//pr_err("Failed to set adapter allowance to 5V\n");
-		//rc = smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
-		//if (rc < 0)
-			//pr_err("Failed to set chg_freq.freq_5V\n");
-		//vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
-				//QC2_UNSUPPORTED_UA);
-		//chg->qc2_unsupported = true;
-		chg->qc2_unsupported_voltage = QC2_COMPLIANT;
-		chg->qc2_unsupported = false;
+		pr_info("qc2_unsupported charger detected\n");
+		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		if (rc < 0)
+			pr_err("Failed to force 5V\n");
+		rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_5V);
+		if (rc < 0)
+			pr_err("Failed to set adapter allowance to 5V\n");
+		rc = smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
+		if (rc < 0)
+			pr_err("Failed to set chg_freq.freq_5V\n");
+		vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
+				QC2_UNSUPPORTED_UA);
+		chg->qc2_unsupported = true;
 	}
 
 	return IRQ_HANDLED;
@@ -8659,7 +8745,7 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 				power_supply_changed(chg->usb_psy);
 		}
 skip:
-		//rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
 		if (rc < 0)
 			pr_err("Failed to force 5V\n");
 		if (chg->is_qc_class_a)
