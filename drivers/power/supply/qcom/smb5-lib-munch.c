@@ -38,6 +38,7 @@
 bool off_charge_flag;
 static bool first_boot_flag;
 static int bypass_charging = 0;
+static int status_bypass = 0;
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
 static int smblib_dc_therm_charging(struct smb_charger *chg,
@@ -1193,6 +1194,16 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 {
 	int rc, aicl_threshold;
 	u8 vbus_allowance;
+	
+	if (status_bypass == 1) {
+		min_allowed_uv = 12000000;
+		chg->voltage_min_uv = 12000000; // 顺手把结构体里存的变量也死锁在 9V
+		
+		if (max_allowed_uv < 12000000) {
+			max_allowed_uv = 12000000;
+			chg->voltage_max_uv = 12000000;
+		}
+	}
 
 	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
 		vbus_allowance = CONTINUOUS;
@@ -3077,23 +3088,30 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 		vote(chg->fcc_votable, BYPASS_VOTER, true, 6500000);
 		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 6500000);
 		chg->system_temp_level = MAX_TEMP_LEVEL;
+		chg->voltage_max_uv = 12000000;
 		chg->voltage_min_uv = 12000000;
         rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
 		bypass_charging = 0;
+		status_bypass= 1;
 	} else if (val->intval == 2) {
 		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
 		vote(chg->fcc_votable, BYPASS_VOTER, true, 2500000);
 		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 2500000);
+		chg->voltage_max_uv = 5000000;
+		chg->voltage_min_uv = 5000000;
 		chg->system_temp_level = 0;
 		bypass_charging = 1;
+		status_bypass= 0;
 	} else {
 		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
 		vote(chg->fcc_votable, BYPASS_VOTER, true, 6500000);
 		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 6500000);
 		chg->system_temp_level = MAX_TEMP_LEVEL;
+		chg->voltage_max_uv = 12000000;
 		chg->voltage_min_uv = 12000000;
         rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
 		bypass_charging = 0;
+		status_bypass= 0;
 	}
 
  	if (rc < 0) {
