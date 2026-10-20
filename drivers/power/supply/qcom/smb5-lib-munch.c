@@ -7828,10 +7828,10 @@ unsuspend_input:
 		//vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
 				//QC2_UNSUPPORTED_UA);
 		//chg->qc2_unsupported = true;
-	//}
 	
-	chg->qc2_unsupported_voltage = QC2_COMPLIANT;
-	chg->qc2_unsupported = false;
+	    chg->qc2_unsupported_voltage = QC2_COMPLIANT;
+	    chg->qc2_unsupported = false;
+	}
 
 	return IRQ_HANDLED;
 }
