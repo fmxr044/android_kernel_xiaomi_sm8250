@@ -6529,7 +6529,7 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 	/* fall through */
 	default:
-		rp_ua = DCP_CURRENT_UA;
+		rp_ua = 4000000;
 	}
 
 	return rp_ua;
@@ -7300,7 +7300,7 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		case DCP_CHARGER_BIT:
 		case OCP_CHARGER_BIT:
 		case FLOAT_CHARGER_BIT:
-			current_ua = DCP_CURRENT_UA;
+			current_ua = 4000000;
 			break;
 		default:
 			current_ua = 0;
@@ -9081,21 +9081,18 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1400000);
-		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 3000000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_FLOAT:
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 100000);
-		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	default:
 		if (smblib_handle_wireless_by_usbin_charge(chg))
 			break;
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 100000);
-		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
 		break;
 	}
 }
