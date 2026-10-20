@@ -7287,7 +7287,7 @@ int smblib_get_charge_current(struct smb_charger *chg,
 
 	/* QC 2.0/3.0 adapter */
 	if (apsd_result->bit & (QC_3P0_BIT | QC_2P0_BIT)) {
-		*total_current_ua = HV6000000;
+		*total_current_ua = 6000000;
 		return 0;
 	}
 
@@ -8721,8 +8721,7 @@ skip:
 		if (chg->is_qc_class_a)
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 		else {
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-				HV6000000);
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 
 			if (!is_client_vote_enabled(chg->fcc_votable,
 						PD_VERIFED_VOTER))
@@ -8969,7 +8968,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 			hvdcp_ua = (chg->real_charger_type ==
 					POWER_SUPPLY_TYPE_USB_HVDCP) ?
 					chg->chg_param.hvdcp2_max_icl_ua :
-					HV6000000;
+					6000000;
 
 			/* enable HDC and ICL irq for QC2/3 charger */
 			vote(chg->limited_irq_disable_votable,
@@ -8979,12 +8978,11 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 			if (!chg->raise_vbus_to_detect
 					&& chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3P5) {
 				if (chg->is_qc_class_a)
-					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, HVDCP_CLASS_A_MAX_UA);
+					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 				else if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP)
 					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 				else
-					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-						HV6000000);
+					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 			}
 		} else {
 			/* A plain DCP, enforce DCP ICL if specified */
