@@ -4163,8 +4163,7 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 		if (chg->is_qc_class_a && chg->sec_cp_present) {
 			if (chg->pulse_cnt >= HIGH_NUM_PULSE_THR
 					 && !chg->high_vbus_detected) {
-				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, true,
-					HVDCP_CLASS_A_FOR_CP_UA);
+				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, true, 6000000);
 				chg->high_vbus_detected = true;
 			}
 		}
@@ -4364,8 +4363,7 @@ int smblib_dp_dm_bq(struct smb_charger *chg, int val)
 		if (chg->is_qc_class_a && chg->use_bq_pump) {
 			if (chg->pulse_cnt >= HIGH_NUM_PULSE_THR
 					 && !chg->high_vbus_detected) {
-				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, true,
-					HVDCP_CLASS_A_FOR_CP_UA);
+				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, true, 6000000);
 				chg->high_vbus_detected = true;
 			}
 		}
@@ -6529,7 +6527,7 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 	/* fall through */
 	default:
-		rp_ua = 4000000;
+		rp_ua = 6000000;
 	}
 
 	return rp_ua;
@@ -6602,7 +6600,8 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 				if (rc < 0)
 					return rc;
 			} else {
-				rc = vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 4000000);
+				rc = vote(chg->usb_icl_votable,
+					SW_ICL_MAX_VOTER, true, 6000000);
 				if (rc < 0)
 					return rc;
 			}
@@ -7288,7 +7287,7 @@ int smblib_get_charge_current(struct smb_charger *chg,
 
 	/* QC 2.0/3.0 adapter */
 	if (apsd_result->bit & (QC_3P0_BIT | QC_2P0_BIT)) {
-		*total_current_ua = HVDCP_CURRENT_UA;
+		*total_current_ua = HV6000000;
 		return 0;
 	}
 
@@ -7300,10 +7299,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		case DCP_CHARGER_BIT:
 		case OCP_CHARGER_BIT:
 		case FLOAT_CHARGER_BIT:
-			current_ua = 4000000;
+			current_ua = 6000000;
 			break;
 		default:
-			current_ua = 4000000;
+			current_ua = 6000000;
 			break;
 		}
 
@@ -7320,10 +7319,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		case DCP_CHARGER_BIT:
 		case OCP_CHARGER_BIT:
 		case FLOAT_CHARGER_BIT:
-			current_ua = 4000000;
+			current_ua = 6000000;
 			break;
 		default:
-			current_ua = 4000000;
+			current_ua = 6000000;
 			break;
 		}
 		break;
@@ -8649,7 +8648,8 @@ static int smblib_hvdcp3_raise_fsw(struct smb_charger *chg, int pulse_count)
 static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 {
 	union power_supply_propval val = {0, };
-	int i, usb_present = 0;
+	int i, usb_present = 0, vbus_now = 0;
+	int vol_qc_ab_thr = 0;
 	int rc;
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 						raise_qc3_vbus_work.work);
@@ -8662,77 +8662,92 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 
 	usb_present = val.intval;
 	if (usb_present) {
-		/* 进入测试，临时开启引脚占用 */
 		chg->raise_vbus_to_detect = true;
+		if (chg->no_raise_vbus_status == true) {
+			smblib_hvdcp3_raise_fsw(chg, MAX_PULSE);
+			chg->is_qc_class_a = true;
+			vote(chg->fcc_votable, CLASSA_QC_FCC_VOTER, true, 6000000);
+			goto skip;
+		}
 
-		/* 稍微放宽脉冲间隔时间（45ms），包容慢速充电宝芯片 */
 		for (i = 0; i < MAX_PULSE; i++) {
-			msleep(45);
+			msleep(40);
 			smblib_hvdcp3_raise_fsw(chg, i);
 			rc = smblib_dp_pulse(chg);
 		}
 		chg->after_raise_vbus_time = ktime_get();
 
-		/* 给充电宝和原厂充电器 300ms 的电压沉淀响应期 */
-		msleep(300);
-		
-		/* 强行下发硬件强升 9V 指令 */
-		rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT); 
-		if (rc < 0)
-			pr_err("Failed to force VBUS to 9V\n");
-
-		/* 直接假装 Class A 通过认证 */
-		chg->is_qc_class_a = true;
-		chg->is_qc_class_b = false;
-		
-		if (chg->usb_psy)
-			power_supply_changed(chg->usb_psy);
-
-skip:
-		/* 注释掉强制复位 5V 的干扰指令 */
-		// rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
-
-		/* 锁定高压对应的开关频率（FSW）与 9V 底层硬件计数 */
-		smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_9V);
-		chg->pulse_cnt = 20; 
-
-		/* 放开 ICL 通路至 3.0A 电流带宽 */
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 4000000);
-
-		if (!is_client_vote_enabled(chg->fcc_votable, PD_VERIFED_VOTER))
-			vote(chg->fcc_votable, PD_VERIFED_VOTER, false, 0);
-
-		if (chg->six_pin_step_charge_enable) {
-			queue_delayed_work(system_power_efficient_wq, &chg->six_pin_batt_step_chg_work,
-					msecs_to_jiffies(STEP_CHG_DELAYED_START_MS));
+		msleep(200);
+		rc = smblib_get_prop_usb_present(chg, &val);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
+			return;
 		}
 
-		vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
-		vote(chg->fcc_votable, HVDCP2_FCC_VOTER, true, 4000000);
+		usb_present = val.intval;
+		pr_info("usb_present is %d\n", usb_present);
+		if (!usb_present) {
+			chg->raise_vbus_to_detect = false;
+			rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+			if (rc < 0)
+				pr_err("Failed to force 5V\n");
+			return;
+		}
 
-		/* 强行激活次级直充通路（电荷泵芯片接管） */
+		rc = smblib_get_usb_in_voltage_now(chg, &val);
+		if (rc < 0)
+			pr_err("Couldn't get usb voltage rc=%d\n", rc);
+		vbus_now = val.intval;
+		pr_info("vbus_now is %d\n", vbus_now);
+		if (chg->snk_debug_acc_detected && usb_present)
+			vol_qc_ab_thr = VOL_THR_FOR_QC_CLASS_AB
+							+ COMP_FOR_LOW_RESISTANCE_CABLE;
+		else
+			vol_qc_ab_thr = VOL_THR_FOR_QC_CLASS_AB;
+		if (vbus_now <= vol_qc_ab_thr) {
+			pr_info("qc_class_a charger is detected\n");
+			chg->is_qc_class_a = true;
+			vote(chg->fcc_votable, CLASSA_QC_FCC_VOTER, true, 6000000);
+		} else {
+			pr_info("qc_class_b charger is detected\n");
+			chg->is_qc_class_b = true;
+			if (chg->usb_psy)
+				power_supply_changed(chg->usb_psy);
+		}
+skip:
+		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		if (rc < 0)
+			pr_err("Failed to force 5V\n");
+		if (chg->is_qc_class_a)
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
+		else {
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+				HV6000000);
+
+			if (!is_client_vote_enabled(chg->fcc_votable,
+						PD_VERIFED_VOTER))
+				vote(chg->fcc_votable,
+						PD_VERIFED_VOTER, false, 0);
+
+			if (chg->six_pin_step_charge_enable) {
+				/* start six pin step charge monitor work */
+				queue_delayed_work(system_power_efficient_wq, &chg->six_pin_batt_step_chg_work,
+						msecs_to_jiffies(STEP_CHG_DELAYED_START_MS));
+			}
+		}
+		/* select charge pump as second charger */
 		if (chg->sec_cp_present){
 			rc = smblib_select_sec_charger(chg, POWER_SUPPLY_CHARGER_SEC_CP,
 							POWER_SUPPLY_CP_HVDCP3, false);
 			if (rc < 0)
-					dev_err(chg->dev, "Couldn't enable secondary CP chargers rc=%d\n", rc);
+					dev_err(chg->dev,
+						"Couldn't enable secondary chargers  rc=%d\n", rc);
 		}
 
-		/* 🟢 最核心修复：将测试状态和伪装标志绝对清空！！！ */
-		/* 🟢 彻底疏通 smblib_dp_dm 引脚拦截，允许后续的电压步进心跳包在 D+/D- 上高频发送 */
-		chg->raise_vbus_to_detect = false; 
-		chg->fake_usb_insertion = false;   
-		
-		/* 锁定快充完结标志，阻止后续温控回弹 */
-		chg->qc3_raise_done = true;
-		chg->qc2_unsupported = false;
-		chg->qc2_unsupported_voltage = QC2_COMPLIANT;
-		
 		smblib_therm_charging(chg);
-		power_supply_changed(chg->usb_psy);
+		chg->raise_vbus_to_detect = false;
 	}
 }
-
 
 struct quick_charge adapter_cap[11] = {
 	{ POWER_SUPPLY_TYPE_USB,        QUICK_CHARGE_NORMAL },
@@ -8937,8 +8952,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 			rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT);
 			if (rc < 0)
 				pr_err("Failed to force 9V\n");
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-					HVDCP2_CURRENT_UA);
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 	}
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: hvdcp-3p0-auth-done rising; %s detected\n",
 		   apsd_result->name);
@@ -8955,7 +8969,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 			hvdcp_ua = (chg->real_charger_type ==
 					POWER_SUPPLY_TYPE_USB_HVDCP) ?
 					chg->chg_param.hvdcp2_max_icl_ua :
-					HVDCP_CURRENT_UA;
+					HV6000000;
 
 			/* enable HDC and ICL irq for QC2/3 charger */
 			vote(chg->limited_irq_disable_votable,
@@ -8965,14 +8979,12 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 			if (!chg->raise_vbus_to_detect
 					&& chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3P5) {
 				if (chg->is_qc_class_a)
-					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-						HVDCP_CLASS_A_MAX_UA);
+					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, HVDCP_CLASS_A_MAX_UA);
 				else if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP)
-					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-						HVDCP2_CURRENT_UA);
+					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 				else
 					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-						HVDCP_CURRENT_UA);
+						HV6000000);
 			}
 		} else {
 			/* A plain DCP, enforce DCP ICL if specified */
@@ -9050,30 +9062,29 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 		 * USB_PSY will vote to increase the current to 500/900mA once
 		 * enumeration is done.
 		 */
-		if (!is_client_vote_enabled(chg->usb_icl_votable,
-						USB_PSY_VOTER)) {
-			vote(chg->usb_icl_votable, USB_PSY_VOTER, true, SDP_CURRENT_UA);
+		if (!is_client_vote_enabled(chg->usb_icl_votable, USB_PSY_VOTER)) {
+			vote(chg->usb_icl_votable, USB_PSY_VOTER, true, 6000000);
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 		} else if ((chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
 				&& (val.intval == 1))
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, SDP_CURRENT_UA);
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 		else
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1400000);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 4000000);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_FLOAT:
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 4000000);
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 6000000);
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	default:
 		if (smblib_handle_wireless_by_usbin_charge(chg))
 			break;
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 4000000);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, SDP_100_MA);
 		break;
 	}
 }
