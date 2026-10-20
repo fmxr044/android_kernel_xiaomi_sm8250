@@ -7303,7 +7303,7 @@ int smblib_get_charge_current(struct smb_charger *chg,
 			current_ua = 4000000;
 			break;
 		default:
-			current_ua = 0;
+			current_ua = 4000000;
 			break;
 		}
 
@@ -7320,10 +7320,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		case DCP_CHARGER_BIT:
 		case OCP_CHARGER_BIT:
 		case FLOAT_CHARGER_BIT:
-			current_ua = chg->default_icl_ua;
+			current_ua = 4000000;
 			break;
 		default:
-			current_ua = 0;
+			current_ua = 4000000;
 			break;
 		}
 		break;
