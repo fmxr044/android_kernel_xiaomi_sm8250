@@ -37,9 +37,7 @@
 #define BYPASS_VOTER		"BYPASS_VOTER"
 bool off_charge_flag;
 static bool first_boot_flag;
-static int bypass_charging_a = 0;
-static int bypass_charging_b = 0;
-static int bypass_charging_c = 0;
+static int bypass_charging = 0;
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
 static int smblib_dc_therm_charging(struct smb_charger *chg,
@@ -2285,7 +2283,7 @@ int smblib_get_prop_input_suspend(struct smb_charger *chg,
 {
 	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
 		val->intval = 1;
-	} else if (bypass_charging_a) {
+	} else if (bypass_charging) {
 		val->intval = 2;
 	} else {
 		val->intval = 0;
@@ -2297,13 +2295,8 @@ int smblib_get_prop_input_suspend(struct smb_charger *chg,
 int smblib_get_prop_battery_input_suspend(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
-	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
-		val->intval = 1;
-	} else if (bypass_charging_b) {
-		val->intval = 2;
-	} else {
-		val->intval = 0;
-	}
+	val->intval
+		= (get_client_vote(chg->fcc_votable, USER_VOTER) == 0);
 	return 0;
 }
 
@@ -2449,12 +2442,20 @@ int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
 					union power_supply_propval *val)
 {
 	int icl = 0;
-	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
-		val->intval = 1;
-	} else if (bypass_charging_c) {
-		val->intval = 2;
-	} else {
-		val->intval = 0;
+	if (chg->is_qc_class_a && !chg->qc3_raise_done)
+		icl = MAIN_ICL_MIN;
+
+	if (chg->six_pin_step_charge_enable) {
+		val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER)
+				== MAIN_ICL_MIN);
+	}
+	else {
+		if (chg->power_good_en)
+			val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER)
+					== MAIN_CHG_SUSPEND_ICL);
+		else
+			val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER)
+					== icl);
 	}
 	return 0;
 }
@@ -3052,24 +3053,31 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
 	}
+
 	rc = vote(chg->dc_suspend_votable, USER_VOTER, false, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s DC rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
 	}
+
 	if (val->intval == 1) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-          	bypass_charging_a = 0;
+          	bypass_charging = 0;
       	} else if (val->intval == 2) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging_a = 1;
+          	bypass_charging = 1;
       	} else {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging_a = 0;
+          	bypass_charging = 0;
       	}
+
+ 	if (rc < 0) {
+  		smblib_err(chg, "Couldn't vote to %d input_suspend rc=%d\n",
+  			val->intval, rc);
   		return rc;
   	}
+
 	power_supply_changed(chg->batt_psy);
 	return rc;
 }
@@ -3080,24 +3088,13 @@ int smblib_set_prop_battery_input_suspend(struct smb_charger *chg,
 	int rc;
 
 	/* vote 0mA when battery suspended */
-	rc = vote(chg->fcc_votable, USER_VOTER, false, 0);
+	rc = vote(chg->fcc_votable, USER_VOTER, (bool)val->intval, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s fcc rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
 	}
-	if (val->intval == 1) {
-          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-          	bypass_charging_b = 0;
-      	} else if (val->intval == 2) {
-          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging_b = 1;
-      	} else {
-          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging_b = 0;
-      	}
-  		return rc;
-  	}
+
 	power_supply_changed(chg->batt_psy);
 	return rc;
 }
@@ -3389,7 +3386,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 	int rc;
 
 #ifdef CONFIG_D8G_SERVICE
-	if (skip_thermal || bypass_charging_a || bypass_charging_b)
+	if (skip_thermal || bypass_charging)
 		chg->system_temp_level = 0;
 #endif
 
@@ -3482,7 +3479,7 @@ static void smblib_thermal_setting_work(struct work_struct *work)
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 			thermal_setting_work.work);
 
-	if (bypass_charging_a || bypass_charging_b || bypass_charging_c)
+	if (bypass_charging)
 		chg->pps_thermal_level = 0;
 
 	if (chg->pps_thermal_level > chg->system_temp_level) {
@@ -3544,7 +3541,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 #endif
 
-	if (bypass_charging_a || bypass_charging_b || bypass_charging_c)
+	if (bypass_charging)
 		chg->system_temp_level = 0;
 
 	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE)
@@ -3565,15 +3562,15 @@ int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
 	if (val->intval == 0) {
 		if (chg->six_pin_step_charge_enable) {
 			vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
-						false, 0);
+						true, MAIN_ICL_MIN);
 		}
 		else {
 			if (chg->power_good_en)
 				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
-						false, 0);
+						true, MAIN_CHG_SUSPEND_ICL);
 			else
 				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
-						false, 0);
+						true, icl);
 		}
 		
 #if (!defined CONFIG_FUEL_GAUGE_BQ27Z561_MUNCH) && (!defined CONFIG_DUAL_FUEL_GAUGE_BQ27Z561)
@@ -3596,19 +3593,6 @@ int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
 		cancel_delayed_work_sync(&chg->reduce_fcc_work);
 #endif
 	}
-	
-	if (val->intval == 0) {
-          	vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-          	bypass_charging_c = 1;
-      	} else if (val->intval == 1) {
-          	vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging_c = 0;
-      	} else {
-          	vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging_c = 0;
-      	}
-  		return 0;
-  	}
 
 	return 0;
 }
@@ -6618,8 +6602,7 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 				if (rc < 0)
 					return rc;
 			} else {
-				rc = vote(chg->usb_icl_votable,
-					SW_ICL_MAX_VOTER, true, DCP_CURRENT_UA);
+				rc = vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 4000000);
 				if (rc < 0)
 					return rc;
 			}
@@ -9082,26 +9065,37 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 	switch (pst) {
 	case POWER_SUPPLY_TYPE_USB:
 		smblib_get_prop_usb_present(chg, &val);
-	    vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1500000);
+		/*
+		 * USB_PSY will vote to increase the current to 500/900mA once
+		 * enumeration is done.
+		 */
+		if (!is_client_vote_enabled(chg->usb_icl_votable,
+						USB_PSY_VOTER)) {
+			vote(chg->usb_icl_votable, USB_PSY_VOTER, true, SDP_CURRENT_UA);
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
+		} else if ((chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
+				&& (val.intval == 1))
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, SDP_CURRENT_UA);
+		else
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
-	    vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1400000);
+		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 10000000);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 3000000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_FLOAT:
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 100000);
 		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1400000);
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	default:
 		if (smblib_handle_wireless_by_usbin_charge(chg))
 			break;
-		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 100000);
+		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
 		break;
 	}
 }
