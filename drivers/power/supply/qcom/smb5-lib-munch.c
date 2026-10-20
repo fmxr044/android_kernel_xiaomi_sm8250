@@ -37,7 +37,9 @@
 #define BYPASS_VOTER		"BYPASS_VOTER"
 bool off_charge_flag;
 static bool first_boot_flag;
-static int bypass_charging = 0;
+static int bypass_charging_a = 0;
+static int bypass_charging_b = 0;
+static int bypass_charging_c = 0;
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
 static int smblib_dc_therm_charging(struct smb_charger *chg,
@@ -1193,7 +1195,7 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 {
 	int rc, aicl_threshold;
 	u8 vbus_allowance;
-	
+
 	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
 		vbus_allowance = CONTINUOUS;
 	} else if (min_allowed_uv == MICRO_5V && max_allowed_uv == MICRO_5V) {
@@ -2283,7 +2285,7 @@ int smblib_get_prop_input_suspend(struct smb_charger *chg,
 {
 	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
 		val->intval = 1;
-	} else if (bypass_charging) {
+	} else if (bypass_charging_a) {
 		val->intval = 2;
 	} else {
 		val->intval = 0;
@@ -2295,8 +2297,13 @@ int smblib_get_prop_input_suspend(struct smb_charger *chg,
 int smblib_get_prop_battery_input_suspend(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
-	val->intval
-		= (get_client_vote(chg->fcc_votable, USER_VOTER) == 0);
+	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
+		val->intval = 1;
+	} else if (bypass_charging_b) {
+		val->intval = 2;
+	} else {
+		val->intval = 0;
+	}
 	return 0;
 }
 
@@ -2442,20 +2449,12 @@ int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
 					union power_supply_propval *val)
 {
 	int icl = 0;
-	if (chg->is_qc_class_a && !chg->qc3_raise_done)
-		icl = MAIN_ICL_MIN;
-
-	if (chg->six_pin_step_charge_enable) {
-		val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER)
-				== MAIN_ICL_MIN);
-	}
-	else {
-		if (chg->power_good_en)
-			val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER)
-					== MAIN_CHG_SUSPEND_ICL);
-		else
-			val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER)
-					== icl);
+	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
+		val->intval = 1;
+	} else if (bypass_charging_c) {
+		val->intval = 2;
+	} else {
+		val->intval = 0;
 	}
 	return 0;
 }
@@ -3053,31 +3052,24 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
 	}
-
 	rc = vote(chg->dc_suspend_votable, USER_VOTER, false, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s DC rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
 	}
-
 	if (val->intval == 1) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-          	bypass_charging = 0;
+          	bypass_charging_a = 0;
       	} else if (val->intval == 2) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging = 1;
+          	bypass_charging_a = 1;
       	} else {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	bypass_charging = 0;
+          	bypass_charging_a = 0;
       	}
-
- 	if (rc < 0) {
-  		smblib_err(chg, "Couldn't vote to %d input_suspend rc=%d\n",
-  			val->intval, rc);
   		return rc;
   	}
-
 	power_supply_changed(chg->batt_psy);
 	return rc;
 }
@@ -3088,13 +3080,24 @@ int smblib_set_prop_battery_input_suspend(struct smb_charger *chg,
 	int rc;
 
 	/* vote 0mA when battery suspended */
-	rc = vote(chg->fcc_votable, USER_VOTER, (bool)val->intval, 0);
+	rc = vote(chg->fcc_votable, USER_VOTER, false, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s fcc rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
 	}
-
+	if (val->intval == 1) {
+          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
+          	bypass_charging_b = 0;
+      	} else if (val->intval == 2) {
+          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	bypass_charging_b = 1;
+      	} else {
+          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	bypass_charging_b = 0;
+      	}
+  		return rc;
+  	}
 	power_supply_changed(chg->batt_psy);
 	return rc;
 }
@@ -3386,7 +3389,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 	int rc;
 
 #ifdef CONFIG_D8G_SERVICE
-	if (skip_thermal || bypass_charging)
+	if (skip_thermal || bypass_charging_a || bypass_charging_b)
 		chg->system_temp_level = 0;
 #endif
 
@@ -3479,7 +3482,7 @@ static void smblib_thermal_setting_work(struct work_struct *work)
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 			thermal_setting_work.work);
 
-	if (bypass_charging)
+	if (bypass_charging_a || bypass_charging_b || bypass_charging_c)
 		chg->pps_thermal_level = 0;
 
 	if (chg->pps_thermal_level > chg->system_temp_level) {
@@ -3541,7 +3544,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 #endif
 
-	if (bypass_charging)
+	if (bypass_charging_a || bypass_charging_b || bypass_charging_c)
 		chg->system_temp_level = 0;
 
 	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE)
@@ -3562,15 +3565,15 @@ int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
 	if (val->intval == 0) {
 		if (chg->six_pin_step_charge_enable) {
 			vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER,
-						true, MAIN_ICL_MIN);
+						false, 0);
 		}
 		else {
 			if (chg->power_good_en)
 				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
-						true, MAIN_CHG_SUSPEND_ICL);
+						false, 0);
 			else
 				vote(chg->usb_icl_votable, MAIN_CHG_SUSPEND_VOTER,
-						true, icl);
+						false, 0);
 		}
 		
 #if (!defined CONFIG_FUEL_GAUGE_BQ27Z561_MUNCH) && (!defined CONFIG_DUAL_FUEL_GAUGE_BQ27Z561)
@@ -3593,6 +3596,19 @@ int smblib_set_prop_battery_charging_enabled(struct smb_charger *chg,
 		cancel_delayed_work_sync(&chg->reduce_fcc_work);
 #endif
 	}
+	
+	if (val->intval == 0) {
+          	vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
+          	bypass_charging_c = 1;
+      	} else if (val->intval == 1) {
+          	vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	bypass_charging_c = 0;
+      	} else {
+          	vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	bypass_charging_c = 0;
+      	}
+  		return 0;
+  	}
 
 	return 0;
 }
@@ -4364,9 +4380,9 @@ int smblib_dp_dm_bq(struct smb_charger *chg, int val)
 		if (chg->is_qc_class_a && chg->use_bq_pump) {
 			if (chg->pulse_cnt >= HIGH_NUM_PULSE_THR
 					 && !chg->high_vbus_detected) {
-				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false,
-					0);
-				chg->high_vbus_detected = false;
+				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, true,
+					HVDCP_CLASS_A_FOR_CP_UA);
+				chg->high_vbus_detected = true;
 			}
 		}
 		break;
@@ -7770,51 +7786,48 @@ unsuspend_input:
 		chg->qc2_max_pulses = (max_pulses &
 				HVDCP_PULSE_COUNT_MAX_QC2_MASK);
 
-		//if (stat & QC_12V_BIT) {
-			//chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_12V;
-			//rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
-					//HVDCP_PULSE_COUNT_MAX_QC2_MASK,
-					//HVDCP_PULSE_COUNT_MAX_QC2_9V);
-			//if (rc < 0)
-				//smblib_err(chg, "Couldn't force max pulses to 9V rc=%d\n",
-						//rc);
+		if (stat & QC_12V_BIT) {
+			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_12V;
+			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					HVDCP_PULSE_COUNT_MAX_QC2_9V);
+			if (rc < 0)
+				smblib_err(chg, "Couldn't force max pulses to 9V rc=%d\n",
+						rc);
 
-		//} else if (stat & QC_9V_BIT) {
-			//chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_9V;
-			//rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
-					//HVDCP_PULSE_COUNT_MAX_QC2_MASK,
-					//HVDCP_PULSE_COUNT_MAX_QC2_5V);
-			//if (rc < 0)
-				//smblib_err(chg, "Couldn't force max pulses to 5V rc=%d\n",
-						//rc);
+		} else if (stat & QC_9V_BIT) {
+			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_9V;
+			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					HVDCP_PULSE_COUNT_MAX_QC2_5V);
+			if (rc < 0)
+				smblib_err(chg, "Couldn't force max pulses to 5V rc=%d\n",
+						rc);
 
-		//}
+		}
 
-		//rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
-				//SUSPEND_ON_COLLAPSE_USBIN_BIT,
-				//0);
-		//if (rc < 0)
-			//smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
-					//rc);
+		rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				SUSPEND_ON_COLLAPSE_USBIN_BIT,
+				0);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
+					rc);
 
-		//smblib_rerun_apsd(chg);
+		smblib_rerun_apsd(chg);
 
-		//pr_info("qc2_unsupported charger detected\n");
-		//rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
-		//if (rc < 0)
-			//pr_err("Failed to force 5V\n");
-		//rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_5V);
-		//if (rc < 0)
-			//pr_err("Failed to set adapter allowance to 5V\n");
-		//rc = smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
-		//if (rc < 0)
-			//pr_err("Failed to set chg_freq.freq_5V\n");
-		//vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
-				//QC2_UNSUPPORTED_UA);
-		//chg->qc2_unsupported = true;
-	
-	    chg->qc2_unsupported_voltage = QC2_COMPLIANT;
-	    chg->qc2_unsupported = false;
+		pr_info("qc2_unsupported charger detected\n");
+		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		if (rc < 0)
+			pr_err("Failed to force 5V\n");
+		rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_5V);
+		if (rc < 0)
+			pr_err("Failed to set adapter allowance to 5V\n");
+		rc = smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
+		if (rc < 0)
+			pr_err("Failed to set chg_freq.freq_5V\n");
+		vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
+				QC2_UNSUPPORTED_UA);
+		chg->qc2_unsupported = true;
 	}
 
 	return IRQ_HANDLED;
@@ -8722,9 +8735,9 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 				power_supply_changed(chg->usb_psy);
 		}
 skip:
-		//rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
-		//if (rc < 0)
-			//pr_err("Failed to force 5V\n");
+		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		if (rc < 0)
+			pr_err("Failed to force 5V\n");
 		if (chg->is_qc_class_a)
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					HVDCP_CLASS_A_MAX_UA);
@@ -9069,52 +9082,26 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 	switch (pst) {
 	case POWER_SUPPLY_TYPE_USB:
 		smblib_get_prop_usb_present(chg, &val);
-		/*
-		 * USB_PSY will vote to increase the current to 500/900mA once
-		 * enumeration is done.
-		 */
-		if (!is_client_vote_enabled(chg->usb_icl_votable,
-						USB_PSY_VOTER)) {
-			vote(chg->usb_icl_votable, USB_PSY_VOTER, true, SDP_CURRENT_UA);
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
-		} else if ((chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
-				&& (val.intval == 1))
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, SDP_CURRENT_UA);
-		else
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
+	    vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1500000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-					CDP_CURRENT_UA);
+	    vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1400000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-                    DCP_CURRENT_UA);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 10000000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_FLOAT:
-		/*
-		 * limit ICL to 100mA, the USB driver will enumerate to check
-		 * if this is a SDP and appropriately set the current
-		 */
-
-		if (smblib_handle_wireless_by_usbin_charge(chg))
-			break;
-
-		if (!chg->recheck_charger)
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-					SDP_100_MA);
-		else
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-					FLOAT_CHARGER_UA);
-
+		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 1400000);
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	default:
 		if (smblib_handle_wireless_by_usbin_charge(chg))
 			break;
-
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-					SDP_100_MA);
+		vote(chg->chg_disable_votable, SW_ICL_MAX_VOTER, 1, 0);
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 100000);
 		break;
 	}
 }
