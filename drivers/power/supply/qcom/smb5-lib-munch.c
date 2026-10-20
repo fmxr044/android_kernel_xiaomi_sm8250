@@ -38,7 +38,6 @@
 bool off_charge_flag;
 static bool first_boot_flag;
 static int bypass_charging = 0;
-static int status_bypass = 0;
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
 static int smblib_dc_therm_charging(struct smb_charger *chg,
@@ -1195,9 +1194,9 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 	int rc, aicl_threshold;
 	u8 vbus_allowance;
 	
-	if (status_bypass == 1) {
+	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
 		min_allowed_uv = 12000000;
-		chg->voltage_min_uv = 12000000; // 顺手把结构体里存的变量也死锁在 9V
+		chg->voltage_min_uv = 12000000;
 		
 		if (max_allowed_uv < 12000000) {
 			max_allowed_uv = 12000000;
@@ -3072,47 +3071,22 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 		return rc;
 	}
 
-	//if (val->intval == 1) {
-          	//rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-          	//bypass_charging = 0;
-      	//} else if (val->intval == 2) {
-          	//rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	//bypass_charging = 1;
-      	//} else {
-          	//rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	//bypass_charging = 0;
-      	//}
-      	
-    if (val->intval == 1) {
-		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-		vote(chg->fcc_votable, BYPASS_VOTER, true, 6500000);
-		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 6500000);
-		chg->system_temp_level = MAX_TEMP_LEVEL;
-		chg->voltage_max_uv = 12000000;
-		chg->voltage_min_uv = 12000000;
-        rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
-		bypass_charging = 0;
-		status_bypass= 1;
-	} else if (val->intval == 2) {
-		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-		vote(chg->fcc_votable, BYPASS_VOTER, true, 2500000);
-		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 2500000);
-		chg->voltage_max_uv = 5000000;
-		chg->voltage_min_uv = 5000000;
-		chg->system_temp_level = 0;
-		bypass_charging = 1;
-		status_bypass= 0;
-	} else {
-		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-		vote(chg->fcc_votable, BYPASS_VOTER, true, 6500000);
-		vote(chg->usb_icl_votable, BYPASS_VOTER, true, 6500000);
-		chg->system_temp_level = MAX_TEMP_LEVEL;
-		chg->voltage_max_uv = 12000000;
-		chg->voltage_min_uv = 12000000;
-        rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
-		bypass_charging = 0;
-		status_bypass= 0;
-	}
+	if (val->intval == 1) {
+          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
+          	chg->voltage_max_uv = 12000000;
+		    chg->voltage_min_uv = 12000000;
+            rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
+          	bypass_charging = 0;
+      	} else if (val->intval == 2) {
+          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	chg->voltage_max_uv = 12000000;
+		    chg->voltage_min_uv = 12000000;
+            rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
+          	bypass_charging = 1;
+      	} else {
+          	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+          	bypass_charging = 0;
+      	}
 
  	if (rc < 0) {
   		smblib_err(chg, "Couldn't vote to %d input_suspend rc=%d\n",
@@ -3426,8 +3400,6 @@ static int smblib_therm_charging(struct smb_charger *chg)
 	int thermal_icl_ua = 0;
 	int thermal_fcc_ua = 0;
 	int rc;
-	
-	return 0;
 
 #ifdef CONFIG_D8G_SERVICE
 	if (skip_thermal || bypass_charging)
@@ -4408,9 +4380,9 @@ int smblib_dp_dm_bq(struct smb_charger *chg, int val)
 		if (chg->is_qc_class_a && chg->use_bq_pump) {
 			if (chg->pulse_cnt >= HIGH_NUM_PULSE_THR
 					 && !chg->high_vbus_detected) {
-				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, true,
-					HVDCP_CLASS_A_FOR_CP_UA);
-				chg->high_vbus_detected = true;
+				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false,
+					0);
+				chg->high_vbus_detected = false;
 			}
 		}
 		break;
@@ -7814,49 +7786,52 @@ unsuspend_input:
 		chg->qc2_max_pulses = (max_pulses &
 				HVDCP_PULSE_COUNT_MAX_QC2_MASK);
 
-		if (stat & QC_12V_BIT) {
-			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_12V;
-			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
-					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
-					HVDCP_PULSE_COUNT_MAX_QC2_9V);
-			if (rc < 0)
-				smblib_err(chg, "Couldn't force max pulses to 9V rc=%d\n",
-						rc);
+		//if (stat & QC_12V_BIT) {
+			//chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_12V;
+			//rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					//HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					//HVDCP_PULSE_COUNT_MAX_QC2_9V);
+			//if (rc < 0)
+				//smblib_err(chg, "Couldn't force max pulses to 9V rc=%d\n",
+						//rc);
 
-		} else if (stat & QC_9V_BIT) {
-			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_9V;
-			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
-					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
-					HVDCP_PULSE_COUNT_MAX_QC2_5V);
-			if (rc < 0)
-				smblib_err(chg, "Couldn't force max pulses to 5V rc=%d\n",
-						rc);
+		//} else if (stat & QC_9V_BIT) {
+			//chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_9V;
+			//rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					//HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					//HVDCP_PULSE_COUNT_MAX_QC2_5V);
+			//if (rc < 0)
+				//smblib_err(chg, "Couldn't force max pulses to 5V rc=%d\n",
+						//rc);
 
-		}
+		//}
 
-		rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
-				SUSPEND_ON_COLLAPSE_USBIN_BIT,
-				0);
-		if (rc < 0)
-			smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
-					rc);
+		//rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				//SUSPEND_ON_COLLAPSE_USBIN_BIT,
+				//0);
+		//if (rc < 0)
+			//smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
+					//rc);
 
-		smblib_rerun_apsd(chg);
+		//smblib_rerun_apsd(chg);
 
-		pr_info("qc2_unsupported charger detected\n");
-		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
-		if (rc < 0)
-			pr_err("Failed to force 5V\n");
-		rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_5V);
-		if (rc < 0)
-			pr_err("Failed to set adapter allowance to 5V\n");
-		rc = smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
-		if (rc < 0)
-			pr_err("Failed to set chg_freq.freq_5V\n");
-		vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
-				QC2_UNSUPPORTED_UA);
-		chg->qc2_unsupported = true;
-	}
+		//pr_info("qc2_unsupported charger detected\n");
+		//rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		//if (rc < 0)
+			//pr_err("Failed to force 5V\n");
+		//rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_5V);
+		//if (rc < 0)
+			//pr_err("Failed to set adapter allowance to 5V\n");
+		//rc = smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
+		//if (rc < 0)
+			//pr_err("Failed to set chg_freq.freq_5V\n");
+		//vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
+				//QC2_UNSUPPORTED_UA);
+		//chg->qc2_unsupported = true;
+	//}
+	
+	chg->qc2_unsupported_voltage = QC2_COMPLIANT;
+	chg->qc2_unsupported = false;
 
 	return IRQ_HANDLED;
 }
@@ -8763,9 +8738,9 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 				power_supply_changed(chg->usb_psy);
 		}
 skip:
-		rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
-		if (rc < 0)
-			pr_err("Failed to force 5V\n");
+		//rc = smblib_force_vbus_voltage(chg, FORCE_5V_BIT);
+		//if (rc < 0)
+			//pr_err("Failed to force 5V\n");
 		if (chg->is_qc_class_a)
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					HVDCP_CLASS_A_MAX_UA);
