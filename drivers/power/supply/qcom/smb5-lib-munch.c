@@ -1195,16 +1195,6 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 	u8 vbus_allowance;
 	
 	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
-		min_allowed_uv = 9000000;
-		chg->voltage_min_uv = 9000000;
-		
-		if (max_allowed_uv < 9000000) {
-			max_allowed_uv = 9000000;
-			chg->voltage_max_uv = 9000000;
-		}
-	}
-
-	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
 		vbus_allowance = CONTINUOUS;
 	} else if (min_allowed_uv == MICRO_5V && max_allowed_uv == MICRO_5V) {
 		vbus_allowance = FORCE_5V;
@@ -3073,15 +3063,9 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 
 	if (val->intval == 1) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-          	chg->voltage_max_uv = 9000000;
-		    chg->voltage_min_uv = 9000000;
-            rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
           	bypass_charging = 0;
       	} else if (val->intval == 2) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	chg->voltage_max_uv = 9000000;
-		    chg->voltage_min_uv = 9000000;
-            rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv, chg->voltage_max_uv);
           	bypass_charging = 1;
       	} else {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
