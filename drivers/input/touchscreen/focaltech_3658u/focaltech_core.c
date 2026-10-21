@@ -17,8 +17,8 @@
 #endif
 #include "focaltech_core.h"
 #define FTS_DRIVER_NAME "fts_ts"
-#define INTERVAL_READ_REG 5 //stock 200 /* unit:ms */
-#define TIMEOUT_READ_REG 50 //stock 1000 /* unit:ms */
+#define INTERVAL_READ_REG 200 //stock 200 /* unit:ms */
+#define TIMEOUT_READ_REG 1000 //stock 1000 /* unit:ms */
 #if FTS_POWER_SOURCE_CUST_EN
 #define FTS_VTG_MIN_UV 3200000
 #define FTS_VTG_MAX_UV 3200000
@@ -369,76 +369,57 @@ static int fts_input_report_key(struct fts_ts_data *data, int index)
 }
 
 #if FTS_MT_PROTOCOL_B_EN
+/* ======= 极致优化：最终修正激进版 (解决编译冲突与隐藏死锁) ======= */
 static int fts_input_report_b(struct fts_ts_data *data)
 {
 	int i = 0;
-	int uppoint = 0;
 	int touchs = 0;
 	bool va_reported = false;
 	u32 max_touch_num = data->pdata->max_touch_number;
 	struct ts_event *events = data->events;
+
 	for (i = 0; i < data->touch_point; i++) {
+		int id = events[i].id;
+		if (unlikely(id >= FTS_MAX_POINTS_SUPPORT)) continue;
+
 		va_reported = true;
-		input_mt_slot(data->input_dev, events[i].id);
+		
+		/* 机器码直接寻址卡槽 */
+		input_mt_slot(data->input_dev, id);
+
 		if (EVENT_DOWN(events[i].flag)) {
-			input_mt_report_slot_state(data->input_dev,
-						   MT_TOOL_FINGER, true);
-#if FTS_REPORT_PRESSURE_EN
-			if (events[i].p <= 0) {
-				events[i].p = 0x3f;
-			}
-			input_report_abs(data->input_dev, ABS_MT_PRESSURE,
-					 events[i].p);
-#endif
-			if (events[i].area <= 0) {
-				events[i].area = 0x09;
-			}
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X,
-					 events[i].x);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
-					 events[i].y);
-			touchs |= BIT(events[i].id);
-			data->touchs |= BIT(events[i].id);
-			if ((data->log_level >= 2) ||
-			    ((1 == data->log_level) &&
-			     (FTS_TOUCH_DOWN == events[i].flag))) {
-				FTS_DEBUG("[B]P%d DOWN!", events[i].id);
-			}
+			input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, true);
+
+			/* 零死区，只报最纯粹的 X/Y 坐标，彻底放行一像素微调 */
+			input_report_abs(data->input_dev, ABS_MT_POSITION_X, events[i].x);
+			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, events[i].y);
+			
+			touchs |= BIT(id);
+			data->touchs |= BIT(id);
 		} else {
-			uppoint++;
-			input_mt_report_slot_state(data->input_dev,
-						   MT_TOOL_FINGER, false);
-			data->touchs &= ~BIT(events[i].id);
-			if (data->log_level >= 1) {
-				FTS_DEBUG("[B]P%d UP!", events[i].id);
-			}
+			input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, false);
+			data->touchs &= ~BIT(id);
 		}
 	}
+
+	/* 架构级大剪枝优化：用精准按位异或清空幽灵点 */
 	if (unlikely(data->touchs ^ touchs)) {
 		for (i = 0; i < max_touch_num; i++) {
 			if (BIT(i) & (data->touchs ^ touchs)) {
-				if (data->log_level >= 1) {
-					FTS_DEBUG("[B]P%d UP!", i);
-				}
 				va_reported = true;
 				input_mt_slot(data->input_dev, i);
-				input_mt_report_slot_state(
-					data->input_dev, MT_TOOL_FINGER, false);
+				input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, false);
 			}
 		}
 	}
+	
 	data->touchs = touchs;
+	
 	if (va_reported) {
-		/* touchs==0, there's no point but key */
-		if (EVENT_NO_DOWN(data) || (!touchs)) {
-			if (data->log_level >= 1) {
-				FTS_DEBUG("[B]Points All Up!");
-			}
-			input_report_key(data->input_dev, BTN_TOUCH, 0);
-		} else {
-			input_report_key(data->input_dev, BTN_TOUCH, 1);
-		}
+		/* 修正：抛弃引起冲突的旧宏，直接根据本轮实时计算的二进制 touchs 状态上报全局屏幕开关 */
+		input_report_key(data->input_dev, BTN_TOUCH, touchs ? 1 : 0);
 	}
+	
 	input_sync(data->input_dev);
 	return 0;
 }
@@ -717,25 +698,21 @@ static void fts_irq_read_report(void)
 static irqreturn_t fts_irq_handler(int irq, void *data)
 {
 	struct fts_ts_data *ts_data = fts_data;
-	int parse_ret;
-#if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
-	int ret = 0;
-	if ((ts_data->suspended) && (ts_data->pm_suspend)) {
-		ret = wait_for_completion_timeout(
-			&ts_data->pm_completion,
-			msecs_to_jiffies(FTS_TIMEOUT_COMERR_PM));
-		if (!ret) {
-			FTS_ERROR("Bus don't resume from pm(deep),timeout,skip irq");
-			return IRQ_HANDLED;
-		}
-	}
-#endif
+
+	/* 仅触发持锁，告诉电源管理别睡死 */
 	pm_stay_awake(ts_data->dev);
+
+	/* 瞬间返回，通知内核立刻去唤醒底半部专用线程 */
+	return IRQ_WAKE_THREAD; 
+}
+static irqreturn_t fts_irq_thread_fn(int irq, void *data)
+{
+	struct fts_ts_data *ts_data = fts_data;
+	int parse_ret;
+
+	/* 在独立的内核线程中执行前人优化完的极限展开解析 */
 	parse_ret = fts_read_parse_touchdata(ts_data);
-	if (parse_ret == 1) {
-		pm_relax(ts_data->dev);
-		return IRQ_HANDLED;
-	}
+
 	if (likely(parse_ret == 0)) {
 		mutex_lock(&ts_data->report_mutex);
 #if FTS_MT_PROTOCOL_B_EN
@@ -745,6 +722,8 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 #endif
 		mutex_unlock(&ts_data->report_mutex);
 	}
+
+	/* 处理完毕，允许电源休眠 */
 	pm_relax(ts_data->dev);
 	return IRQ_HANDLED;
 }
@@ -753,10 +732,16 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 	int ret = 0;
 	struct fts_ts_platform_data *pdata = ts_data->pdata;
 	ts_data->irq = gpio_to_irq(pdata->irq_gpio);
+	
+	/* 开启 ONE_SHOT，防止在线程解析完当前数据前重复触发硬中断造成队列拥堵 */
 	pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
-	FTS_INFO("irq:%d, flag:%x", ts_data->irq, pdata->irq_gpio_flags);
-	ret = request_threaded_irq(ts_data->irq, NULL, fts_irq_handler,
-				   pdata->irq_gpio_flags, FTS_DRIVER_NAME,
+	
+	/* 传入 fts_irq_handler 作为顶半部，fts_irq_thread_fn 作为底半部线程 */
+	ret = request_threaded_irq(ts_data->irq, 
+				   fts_irq_handler,     
+				   fts_irq_thread_fn,   
+				   pdata->irq_gpio_flags, 
+				   FTS_DRIVER_NAME,
 				   ts_data);
 	return ret;
 }
