@@ -3063,24 +3063,24 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 
 	if (val->intval == 1) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-          	if (chg->usb_icl_votable) {
+          	//if (chg->usb_icl_votable) {
 			vote(chg->usb_icl_votable, USER_VOTER, false, 0);
 			vote_override(chg->usb_icl_votable, BYPASS_VOTER, true, 12400000);
-		}
+		//}
           	bypass_charging = 0;
       	} else if (val->intval == 2) {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	if (chg->usb_icl_votable) {
+          	//if (chg->usb_icl_votable) {
 			vote(chg->usb_icl_votable, USER_VOTER, false, 0);
 			vote_override(chg->usb_icl_votable, BYPASS_VOTER, false, 0);
-		}
+		//}
           	bypass_charging = 1;
       	} else {
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-          	if (chg->usb_icl_votable) {
+          	//if (chg->usb_icl_votable) {
 			vote(chg->usb_icl_votable, USER_VOTER, false, 0);
 			vote_override(chg->usb_icl_votable, BYPASS_VOTER, false, 0);
-		}
+		//}
           	bypass_charging = 0;
       	}
 
