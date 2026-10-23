@@ -2807,7 +2807,10 @@ static void fg_monitor_workfunc(struct work_struct *work)
 			fg_update_charge_full(bq);
 		}
 	}
-	schedule_delayed_work(&bq->monitor_work, 1 * HZ);
+	//魔改
+	//schedule_delayed_work(&bq->monitor_work, 1 * HZ);
+	//schedule_delayed_work(&bq->monitor_work, HZ / 5);
+	queue_delayed_work_on(0, system_highpri_wq, &bq->monitor_work, HZ / 5);
 }
 static int bq_parse_dt(struct bq_fg_chip *bq)
 {
