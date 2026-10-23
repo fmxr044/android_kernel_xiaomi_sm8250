@@ -524,6 +524,7 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	}	
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;	
 	data->touch_point = 0;
+	
 	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
 	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
 		FTS_DEBUG("touch buff is 0xff, need recovery state");
@@ -531,156 +532,144 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 		fts_tp_state_recovery(data);
 		return -EIO;
 	}
-	if (unlikely(data->point_num > max_touch_num)) {
-		FTS_INFO("invalid point_num(%d)", data->point_num);
-		return -EIO;
-	}
-	// --- i = 0 ---
-	do {
-		if (unlikely(0 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 0;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[0].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[0].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[0].x = ((events[0].x << 2) + events[0].x) >> 3; events[0].y = ((events[0].y << 2) + events[0].y) >> 3;
-		events[0].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[0].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[0].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[0].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 1 ---
-	do {
-		if (unlikely(1 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 1;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[1].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[1].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[1].x = ((events[1].x << 2) + events[1].x) >> 3; events[1].y = ((events[1].y << 2) + events[1].y) >> 3;
-		events[1].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[1].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[1].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[1].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 2 ---
-	do {
-		if (unlikely(2 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 2;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[2].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[2].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[2].x = ((events[2].x << 2) + events[2].x) >> 3; events[2].y = ((events[2].y << 2) + events[2].y) >> 3;
-		events[2].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[2].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[2].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[2].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 3 ---
-	do {
-		if (unlikely(3 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 3;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[3].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[3].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[3].x = ((events[3].x << 2) + events[3].x) >> 3; events[3].y = ((events[3].y << 2) + events[3].y) >> 3;
-		events[3].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[3].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[3].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[3].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 4 ---
-	do {
-		if (unlikely(4 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 4;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[4].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[4].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[4].x = ((events[4].x << 2) + events[4].x) >> 3; events[4].y = ((events[4].y << 2) + events[4].y) >> 3;
-		events[4].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[4].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[4].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[4].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 5 ---
-	do {
-		if (unlikely(5 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 5;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[5].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[5].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[5].x = ((events[5].x << 2) + events[5].x) >> 3; events[5].y = ((events[5].y << 2) + events[5].y) >> 3;
-		events[5].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[5].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[5].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[5].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 6 ---
-	do {
-		if (unlikely(6 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 6;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[6].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[6].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[6].x = ((events[6].x << 2) + events[6].x) >> 3; events[6].y = ((events[6].y << 2) + events[6].y) >> 3;
-		events[6].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[6].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[6].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[6].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 7 ---
-	do {
-		if (unlikely(7 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 7;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[7].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[7].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[7].x = ((events[7].x << 2) + events[7].x) >> 3; events[7].y = ((events[7].y << 2) + events[7].y) >> 3;
-		events[7].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[7].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[7].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[7].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-	// --- i = 8 ---
-	do {
-		if (unlikely(8 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 8;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[8].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[8].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[8].x = ((events[8].x << 2) + events[8].x) >> 3; events[8].y = ((events[8].y << 2) + events[8].y) >> 3;
-		events[8].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[8].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[8].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[8].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-    // --- i = 9 ---
-    do {
-		if (unlikely(9 >= max_touch_num)) goto loop_exit;
-		base = FTS_ONE_TCH_LEN * 9;
-		pointid = (buf[FTS_TOUCH_ID_POS + base]) >> 4;
-		if (pointid >= FTS_MAX_ID) goto loop_exit;
-		else if (unlikely(pointid >= max_touch_num)) { FTS_ERROR("ID(%d) beyond max_touch_number", pointid); return -EINVAL; }
-		data->touch_point++;
-		events[9].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
-		events[9].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
-		events[9].x = ((events[9].x << 2) + events[9].x) >> 3; events[9].y = ((events[9].y << 2) + events[9].y) >> 3;
-		events[9].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; events[9].id = buf[FTS_TOUCH_ID_POS + base] >> 4; events[9].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		if (EVENT_DOWN(events[9].flag) && (data->point_num == 0)) { FTS_INFO("abnormal touch data from fw"); return -EIO; }
-	} while(0);
-    loop_exit:   
-    i = 10;      
-    if (unlikely(data->touch_point == 0)) {
-        return -EIO;
+	if (data->point_num == 0) {
+        return 0; 
     }
+	if (unlikely(data->point_num > max_touch_num)) return -EIO;
+	// --- i = 0 ---
+	base = FTS_ONE_TCH_LEN * 0;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[0].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[0].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[0].x = ((events[0].x << 2) + events[0].x) >> 3; 
+        events[0].y = ((events[0].y << 2) + events[0].y) >> 3;
+        events[0].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[0].id = pointid; 
+        events[0].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 1 ---
+	base = FTS_ONE_TCH_LEN * 1;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[1].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[1].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[1].x = ((events[1].x << 2) + events[1].x) >> 3; 
+        events[1].y = ((events[1].y << 2) + events[1].y) >> 3;
+        events[1].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[1].id = pointid; 
+        events[1].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 2 ---
+	base = FTS_ONE_TCH_LEN * 2;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[2].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[2].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[2].x = ((events[2].x << 2) + events[2].x) >> 3; 
+        events[2].y = ((events[2].y << 2) + events[2].y) >> 3;
+        events[2].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[2].id = pointid; 
+        events[2].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 3 ---
+	base = FTS_ONE_TCH_LEN * 3;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[3].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[3].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[3].x = ((events[3].x << 2) + events[3].x) >> 3; 
+        events[3].y = ((events[3].y << 2) + events[3].y) >> 3;
+        events[3].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[3].id = pointid; 
+        events[3].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 4 ---
+	base = FTS_ONE_TCH_LEN * 4;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[4].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[4].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[4].x = ((events[4].x << 2) + events[4].x) >> 3; 
+        events[4].y = ((events[4].y << 2) + events[4].y) >> 3;
+        events[4].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[4].id = pointid; 
+        events[4].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 5 ---
+	base = FTS_ONE_TCH_LEN * 5;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[5].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[5].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[5].x = ((events[5].x << 2) + events[5].x) >> 3; 
+        events[5].y = ((events[5].y << 2) + events[5].y) >> 3;
+        events[5].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[5].id = pointid; 
+        events[5].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 6 ---
+	base = FTS_ONE_TCH_LEN * 6;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[6].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[6].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[6].x = ((events[6].x << 2) + events[6].x) >> 3; 
+        events[6].y = ((events[6].y << 2) + events[6].y) >> 3;
+        events[6].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[6].id = pointid; 
+        events[6].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 7 ---
+	base = FTS_ONE_TCH_LEN * 7;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[7].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[7].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[7].x = ((events[7].x << 2) + events[7].x) >> 3; 
+        events[7].y = ((events[7].y << 2) + events[7].y) >> 3;
+        events[7].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[7].id = pointid; 
+        events[7].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+	// --- i = 8 ---
+	base = FTS_ONE_TCH_LEN * 8;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[8].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[8].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[8].x = ((events[8].x << 2) + events[8].x) >> 3; 
+        events[8].y = ((events[8].y << 2) + events[8].y) >> 3;
+        events[8].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[8].id = pointid; 
+        events[8].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+    // --- i = 9 ---
+    base = FTS_ONE_TCH_LEN * 9;
+    pointid = buf[FTS_TOUCH_ID_POS + base] >> 4;
+    if (pointid < FTS_MAX_ID && pointid < max_touch_num) {
+        data->touch_point++;
+        events[9].x = ((buf[FTS_TOUCH_PRE_POS + base] & 0xF0) >> 4) + (buf[FTS_TOUCH_X_L_POS + base] << 4) + ((buf[FTS_TOUCH_X_H_POS + base] & 0x0F) << 12);
+        events[9].y = (buf[FTS_TOUCH_PRE_POS + base] & 0x0F) + (buf[FTS_TOUCH_Y_L_POS + base] << 4) + ((buf[FTS_TOUCH_Y_H_POS + base] & 0x0F) << 12);
+        events[9].x = ((events[9].x << 2) + events[9].x) >> 3; 
+        events[9].y = ((events[9].y << 2) + events[9].y) >> 3;
+        events[9].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6; 
+        events[9].id = pointid; 
+        events[9].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
+    }
+    if (likely(data->touch_point > 0)) {
         return 0;
+    }
+    return -EIO; 
 }
 static void fts_irq_read_report(void)
 {
@@ -698,21 +687,14 @@ static void fts_irq_read_report(void)
 static irqreturn_t fts_irq_handler(int irq, void *data)
 {
 	struct fts_ts_data *ts_data = fts_data;
-
-	/* 仅触发持锁，告诉电源管理别睡死 */
 	pm_stay_awake(ts_data->dev);
-
-	/* 瞬间返回，通知内核立刻去唤醒底半部专用线程 */
 	return IRQ_WAKE_THREAD; 
 }
 static irqreturn_t fts_irq_thread_fn(int irq, void *data)
 {
 	struct fts_ts_data *ts_data = fts_data;
 	int parse_ret;
-
-	/* 在独立的内核线程中执行前人优化完的极限展开解析 */
 	parse_ret = fts_read_parse_touchdata(ts_data);
-
 	if (likely(parse_ret == 0)) {
 		mutex_lock(&ts_data->report_mutex);
 #if FTS_MT_PROTOCOL_B_EN
@@ -722,8 +704,6 @@ static irqreturn_t fts_irq_thread_fn(int irq, void *data)
 #endif
 		mutex_unlock(&ts_data->report_mutex);
 	}
-
-	/* 处理完毕，允许电源休眠 */
 	pm_relax(ts_data->dev);
 	return IRQ_HANDLED;
 }
@@ -732,11 +712,7 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 	int ret = 0;
 	struct fts_ts_platform_data *pdata = ts_data->pdata;
 	ts_data->irq = gpio_to_irq(pdata->irq_gpio);
-	
-	/* 开启 ONE_SHOT，防止在线程解析完当前数据前重复触发硬中断造成队列拥堵 */
-	pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
-	
-	/* 传入 fts_irq_handler 作为顶半部，fts_irq_thread_fn 作为底半部线程 */
+	pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;	
 	ret = request_threaded_irq(ts_data->irq, 
 				   fts_irq_handler,     
 				   fts_irq_thread_fn,   
