@@ -32,9 +32,6 @@
 #include <linux/seq_file.h>
 #include <linux/poll.h>
 
-#include <linux/udp.h>
-#include <linux/bpf-cgroup.h>
-
 /**
  *	struct udp_skb_cb  -  UDP(-Lite) private variables
  *
@@ -176,6 +173,7 @@ typedef struct sock *(*udp_lookup_t)(struct sk_buff *skb, __be16 sport,
 struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
 				struct udphdr *uh, udp_lookup_t lookup);
 int udp_gro_complete(struct sk_buff *skb, int nhoff, udp_lookup_t lookup);
+void udp_v6_early_demux(struct sk_buff *skb);
 
 struct sk_buff *__udp_gso_segment(struct sk_buff *gso_skb,
 				  netdev_features_t features);
@@ -295,7 +293,7 @@ struct sk_buff *skb_udp_tunnel_segment(struct sk_buff *skb,
 int udp_lib_getsockopt(struct sock *sk, int level, int optname,
 		       char __user *optval, int __user *optlen);
 int udp_lib_setsockopt(struct sock *sk, int level, int optname,
-		       char __user *optval, unsigned int optlen,
+		       sockptr_t optval, unsigned int optlen,
 		       int (*push_pending_frames)(struct sock *));
 struct sock *udp4_lib_lookup(struct net *net, __be32 saddr, __be16 sport,
 			     __be32 daddr, __be16 dport, int dif);
@@ -436,6 +434,7 @@ struct udp_seq_afinfo {
 struct udp_iter_state {
 	struct seq_net_private  p;
 	int			bucket;
+	struct udp_seq_afinfo	*bpf_seq_afinfo;
 };
 
 void *udp_seq_start(struct seq_file *seq, loff_t *pos);
@@ -487,42 +486,9 @@ static inline struct sk_buff *udp_rcv_segment(struct sock *sk,
 	return segs;
 }
 
-#if IS_ENABLED(CONFIG_BPF)
-static inline int udp_call_bpf(struct sock *sk, int op, u32 nargs, u32 *args)
-{
-	struct bpf_sock_ops_kern sock_ops;
-	int ret;
-
-	memset(&sock_ops, 0, offsetof(struct bpf_sock_ops_kern, temp));
-	if (sk_fullsock(sk)) {
-		sock_ops.is_fullsock = 1;
-		sock_owned_by_me(sk);
-	}
-
-	sock_ops.sk = sk;
-	sock_ops.op = op;
-	if (nargs > 0)
-		memcpy(sock_ops.args, args, nargs * sizeof(*args));
-
-	ret = BPF_CGROUP_RUN_PROG_SOCK_OPS(&sock_ops);
-	if (ret == 0)
-		ret = sock_ops.reply;
-	else
-		ret = -1;
-	return ret;
-}
-
-#else
-static inline int udp_call_bpf(struct sock *sk, int op, u32 nargs, u32 *args)
-{
-	return -EPERM;
-}
-
+#ifdef CONFIG_BPF_SYSCALL
+struct sk_psock;
+struct proto *udp_bpf_get_proto(struct sock *sk, struct sk_psock *psock);
 #endif
-
-static inline void udp_state_bpf(struct sock *sk)
-{
-	udp_call_bpf(sk, BPF_SOCK_OPS_VOIP_CB, 0, NULL);
-}
 
 #endif	/* _UDP_H */
