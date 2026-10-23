@@ -3079,7 +3079,7 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
           	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
           	if (chg->usb_icl_votable) {
 			vote(chg->usb_icl_votable, USER_VOTER, false, 0);
-			vote_override(chg->usb_icl_votable, USER_BYPASS_VOTER, false, 0);
+			vote_override(chg->usb_icl_votable, BYPASS_VOTER, false, 0);
 		}
           	bypass_charging = 0;
       	}

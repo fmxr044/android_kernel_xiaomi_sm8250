@@ -2598,20 +2598,17 @@ out:
 #define FG_REPORT_FULL_SOC_DEVICE	9500
 #define FG_OPTIMIZ_FULL_TIME		64000
 #define FG_LOG_TIME			60000
-
 static int FG_REPORT_FULL_SOC;
 struct ffc_smooth {
 	int curr_lim;
 	int time;
 };
-
 struct ffc_smooth ffc_dischg_smooth[FFC_SMOOTH_LEN] = {
 	{0,    300000},
 	{300,  150000},
 	{600,   72000},
 	{1000,  50000},
 };
-
 static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 		int raw_soc, int batt_soc, int batt_temp, int batt_ma)
 {
@@ -2634,7 +2631,6 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 	static int last_raw_soc[FG_MAX_INDEX];
 	union power_supply_propval pval = {0, };
 	int batt_ma_avg, i;
-
 	if (bq->optimiz_soc > 0) {
 		bq->ffc_smooth = true;
 		last_batt_soc[bq->fg_index] = bq->optimiz_soc;
@@ -2642,7 +2638,6 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 		last_change_time[bq->fg_index] = ktime_get();
 		bq->optimiz_soc = 0;
 	}
-
 	if (!bq->usb_psy || !bq->batt_psy) {
 		bq->usb_psy = power_supply_get_by_name("usb");
 		if (!bq->usb_psy) {
@@ -2653,13 +2648,10 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 			return batt_soc;
 		}
 	}
-
 	if (last_batt_soc[bq->fg_index] < 0)
 		last_batt_soc[bq->fg_index] = batt_soc;
-
 	if (raw_soc == FG_RAW_SOC_FULL)
 		bq->ffc_smooth = false;
-
 	if (bq->ffc_smooth) {
 		rc = power_supply_get_property(bq->batt_psy,
 				POWER_SUPPLY_PROP_STATUS, &pval);
@@ -2679,7 +2671,6 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 			last_status[bq->fg_index] = status;
 		}
 	}
-
 	if (bq->fast_mode && raw_soc >= FG_REPORT_FULL_SOC && raw_soc != FG_RAW_SOC_FULL) {
 		if (last_optimiz_time[bq->fg_index] == 0)
 			last_optimiz_time[bq->fg_index] = ktime_get();
@@ -2708,7 +2699,6 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 		last_raw_soc[bq->fg_index] = raw_soc;
 		last_optimiz_time[bq->fg_index] = ktime_get();
 	}
-
 	calc_delta_time(last_change_time[bq->fg_index], &change_delta);
 	fg_read_avg_current(bq, &bq->avg_current);
 	batt_ma_avg = bq->avg_current;
@@ -2745,7 +2735,6 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 		if (!bq->ffc_smooth)
 			bq->update_now = true;
 	}
-
 	if (last_batt_soc[bq->fg_index] < batt_soc && batt_ma < 0)
 		/* Battery in charging status
 		 * update the soc when resuming device
@@ -2760,17 +2749,14 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 			batt_soc : last_batt_soc[bq->fg_index] - soc_changed;
 	}
 	bq->update_now = false;
-
 	if (system_soc[bq->fg_index] != last_batt_soc[bq->fg_index]) {
 		system_soc[bq->fg_index] = last_batt_soc[bq->fg_index];
 		last_change_time[bq->fg_index] = ktime_get();
 	}
-
 	if (log_time == 0)
 		log_time = ktime_get();
 	calc_delta_time(log_time, &change_delta);
 	delta_time = change_delta / FG_LOG_TIME;
-
 	if (abs(delta_time - last_log_time) >= 1) {
 		last_log_time = delta_time;
 		bq_dbg(PR_OEM, "batt_ma_avg:%d, batt_ma:%d, cold_smooth:%d, optimiz_soc:%d",
@@ -2781,7 +2767,6 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 				" bq->fast_mode:%d",
 				raw_soc, batt_soc, last_batt_soc[bq->fg_index], system_soc[bq->fg_index], bq->fast_mode);
 	}
-
 	return system_soc[bq->fg_index];
 }
 static int fg_check_full_status(struct bq_fg_chip *bq)
@@ -2815,8 +2800,6 @@ static void fg_monitor_workfunc(struct work_struct *work)
 	int period = MONITOR_WORK_10S;
 	if (!bq->old_hw) {
 		rc = fg_dump_registers(bq);
-		/*if (rc < 0)
-			return;*/
 		fg_update_status(bq);
 		if (bq->usb_in) {
 			bq->plugout_update_count = 0;
@@ -2824,21 +2807,12 @@ static void fg_monitor_workfunc(struct work_struct *work)
 			fg_update_charge_full(bq);
 		}
 	}
-	//if (!bq->usb_in) {
-		//if (bq->plugout_update_count >= 4) {
-			//period = MONITOR_WORK_10S*2;
-		//} else {
-			//period = MONITOR_WORK_2S;
-			//bq->plugout_update_count++;
-		//}
-	//}
 	schedule_delayed_work(&bq->monitor_work, 1 * HZ);
 }
 static int bq_parse_dt(struct bq_fg_chip *bq)
 {
 	struct device_node *node = bq->dev->of_node;
 	int ret, size;
-
 	ret = of_property_read_u32(node, "bq,charge-full-design",
 			&bq->batt_dc);
 	if (ret < 0) {
@@ -2846,7 +2820,6 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 		bq->batt_dc = DEFUALT_FULL_DESIGN;
 		return ret;
 	}
-
 	ret = of_property_read_u32(node, "bq,recharge-voltage",
 			&bq->batt_recharge_vol);
 	if (ret < 0) {
@@ -2854,16 +2827,12 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 		bq->batt_recharge_vol = -EINVAL;
 		return ret;
 	}
-
 	bq->ignore_digest_for_debug = of_property_read_bool(node,
 				"bq,ignore-digest-debug");
-
 	bq->shutdown_delay_enable = of_property_read_bool(node,
 						"bq,shutdown-delay-enable");
-
 	bq->force_soc_enable = of_property_read_bool(node,
 						"bq,force-soc-enable");
-
 	size = 0;
 	of_get_property(node, "bq,soc_decimal_rate", &size);
 	if (size) {
@@ -2884,7 +2853,6 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 			bq_dbg(PR_OEM, "error allocating memory for dec_rate_seq\n");
 		}
 	}
-
 	size = 0;
 	of_get_property(node, "bq,cold_thermal_seq", &size);
 	if (size) {
@@ -2906,35 +2874,26 @@ static int bq_parse_dt(struct bq_fg_chip *bq)
 			bq_dbg(PR_OEM, "error allocating memory for cold thermal seq\n");
 		}
 	}
-
-
-
 	return 0;
 }
-
 static struct regmap_config i2c_bq27z561_regmap_config = {
 	.reg_bits  = 8,
 	.val_bits  = 8,
 	.max_register  = 0xFFFF,
 };
-
 static int bq_fg_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	int ret;
 	struct bq_fg_chip *bq;
 	u8 *regs;
-
 	bq = devm_kzalloc(&client->dev, sizeof(*bq), GFP_DMA);
-
 	if (!bq)
 		return -ENOMEM;
-	
 	bq->dev = &client->dev;
 	bq->client = client;
 	bq->chip = id->driver_data;
 	bq->model_name = (char *)id->name;
-
 	bq->batt_soc	= -ENODATA;
 	bq->batt_fcc	= -ENODATA;
 	bq->batt_rm	= -ENODATA;
@@ -2948,7 +2907,6 @@ static int bq_fg_probe(struct i2c_client *client,
 	bq->raw_soc = -ENODATA;
 	bq->last_soc = -EINVAL;
 	bq->cell_ov_check = 0;
-
 	bq->fake_soc	= -EINVAL;
 	bq->fake_temp	= -EINVAL;
 	bq->fake_volt	= -EINVAL;
@@ -2967,7 +2925,6 @@ static int bq_fg_probe(struct i2c_client *client,
 #else
 	FG_REPORT_FULL_SOC = FG_REPORT_FULL_SOC_PHONE;
 #endif
-
 	if (bq->chip == BQ27Z561 || bq->chip == BQ27Z561_MASTER || bq->chip == BQ27Z561_SLAVE) {
 		regs = bq27z561_regs;
 	} else {
@@ -2980,92 +2937,65 @@ static int bq_fg_probe(struct i2c_client *client,
 		bq->fg_index = 0;
 	}
 	memcpy(bq->regs, regs, NUM_REGS);
-
 	i2c_set_clientdata(client, bq);
-
 	bq_parse_dt(bq);
-
 	bq->regmap = devm_regmap_init_i2c(client, &i2c_bq27z561_regmap_config);
 	if (!bq->regmap)
 		return -ENODEV;
-
 	fg_get_manufacture_data(bq);
 	fg_set_fastcharge_mode(bq, false);
-
 	mutex_init(&bq->i2c_rw_lock);
 	mutex_init(&bq->data_lock);
 	device_init_wakeup(bq->dev, 1);
-
 	fg_psy_register(bq);
 	fg_update_status(bq);
-
 	ret = sysfs_create_group(&bq->dev->kobj, &fg_attr_group);
 	if (ret)
 		bq_dbg(PR_OEM, "Failed to register sysfs, err:%d\n", ret);
-
 	INIT_DELAYED_WORK(&bq->monitor_work, fg_monitor_workfunc);
 	schedule_delayed_work(&bq->monitor_work,10 * HZ);
-
 	bq_dbg(PR_OEM, "bq fuel gauge probe successfully, %s\n",
 			device2str[bq->chip]);
-
 	return 0;
 }
-
-
 static int bq_fg_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bq_fg_chip *bq = i2c_get_clientdata(client);
-
 	cancel_delayed_work_sync(&bq->monitor_work);
 	bq->skip_reads = true;
 	do_gettimeofday(&bq->suspend_time);
-
 	return 0;
 }
 #define BQ_RESUME_UPDATE_TIME	600
-
 static int bq_fg_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bq_fg_chip *bq = i2c_get_clientdata(client);
 	int delta_time;
-
 	bq->skip_reads = false;
 	calc_suspend_time(&bq->suspend_time, &delta_time);
-
 	if (delta_time > BQ_RESUME_UPDATE_TIME) {
 		bq_dbg(PR_OEM, "suspend more than %d, update soc now\n",
 				BQ_RESUME_UPDATE_TIME);
 		bq->update_now = true;
 	}
-
 	schedule_delayed_work(&bq->monitor_work, HZ);
-
 	return 0;
 }
-
 static int bq_fg_remove(struct i2c_client *client)
 {
 	struct bq_fg_chip *bq = i2c_get_clientdata(client);
-
 	fg_psy_unregister(bq);
-
 	mutex_destroy(&bq->data_lock);
 	mutex_destroy(&bq->i2c_rw_lock);
-
 	sysfs_remove_group(&bq->dev->kobj, &fg_attr_group);
-
 	return 0;
-
 }
-
 static void bq_fg_shutdown(struct i2c_client *client)
 {
 	bq_dbg(PR_OEM, "bq fuel gauge driver shutdown!\n");
 }
-
 static struct of_device_id bq_fg_match_table[] = {
 	{.compatible = "ti,bq27z561_master",},
 	{.compatible = "ti,bq27z561_slave",},
@@ -3074,7 +3004,6 @@ static struct of_device_id bq_fg_match_table[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(of, bq_fg_match_table);
-
 static const struct i2c_device_id bq_fg_id[] = {
 	{ "bq27z561_master", BQ27Z561_MASTER },
 	{ "bq27z561_slave", BQ27Z561_SLAVE },
@@ -3083,12 +3012,10 @@ static const struct i2c_device_id bq_fg_id[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(i2c, bq_fg_id);
-
 static const struct dev_pm_ops bq_fg_pm_ops = {
 	.resume		= bq_fg_resume,
 	.suspend	= bq_fg_suspend,
 };
-
 static struct i2c_driver bq_fg_driver = {
 	.driver	= {
 		.name   = "bq_fg",
@@ -3097,16 +3024,11 @@ static struct i2c_driver bq_fg_driver = {
 		.pm     = &bq_fg_pm_ops,
 	},
 	.id_table       = bq_fg_id,
-
 	.probe          = bq_fg_probe,
 	.remove		= bq_fg_remove,
 	.shutdown	= bq_fg_shutdown,
-
 };
-
 module_i2c_driver(bq_fg_driver);
-
 MODULE_DESCRIPTION("TI BQ27Z561 Driver");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Texas Instruments");
-
