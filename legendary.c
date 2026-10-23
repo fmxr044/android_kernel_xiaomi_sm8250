@@ -15,24 +15,19 @@
 #include "linux/lsm_audit.h" // IWYU pragma: keep
 #include "xfrm.h"
 #include "infra/symbol_resolver.h"
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_SELINUX_POLICY_STRUCT)
 #define SELINUX_POLICY_INSTEAD_SELINUX_SS
-
 struct selinux_policy *backup_sepolicy;
 #else
 struct policydb *backup_policydb;
 struct sidtab *backup_sidtab;
 #endif
-
 #define ALL NULL
-
 #if ((!defined(KSU_COMPAT_USE_SELINUX_STATE)) || LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))
 extern int avc_ss_reset(u32 seqno);
 #else
 extern int avc_ss_reset(struct selinux_avc *avc, u32 seqno);
 #endif
-// reset avc cache table, otherwise the new rules will not take effect if already denied
 static void reset_avc_cache()
 {
 #if ((!defined(KSU_COMPAT_USE_SELINUX_STATE)) || LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))
@@ -47,13 +42,10 @@ static void reset_avc_cache()
 #endif
     selinux_xfrm_notify_policyload();
 }
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0) && !defined(KSU_COMPAT_HAS_POLICY_MUTEX)
-
 static struct policydb *get_policydb(void)
 {
     struct policydb *db;
-// selinux_state does not exists before 4.19
 #ifdef KSU_COMPAT_USE_SELINUX_STATE
 #ifdef SELINUX_POLICY_INSTEAD_SELINUX_SS
 #error It should not happen!
@@ -66,10 +58,8 @@ static struct policydb *get_policydb(void)
 #endif
     return db;
 }
-
 #if defined(KSU_COMPAT_USE_SELINUX_STATE) && !defined(SELINUX_POLICY_INSTEAD_SELINUX_SS)
 extern struct vfsmount *selinuxfs_mount;
-
 struct selinux_fs_info {
     struct dentry *bool_dir;
     unsigned int bool_num;
@@ -85,68 +75,51 @@ struct selinux_fs_info {
     struct super_block *sb;
 };
 #endif
-
 #ifndef KSU_COMPAT_USE_SELINUX_STATE
 static struct mutex *ksu_sel_mutex_ptr = NULL;
 rwlock_t *ksu_policy_rwlock_ptr = NULL;
-#endif // #ifndef KSU_COMPAT_USE_SELINUX_STATE
-
+#endif
 static inline void ksu_lock_sel_mutex_legacy(void)
 {
-// 4.14 - 5.10
 #if defined(KSU_COMPAT_USE_SELINUX_STATE) && !defined(SELINUX_POLICY_INSTEAD_SELINUX_SS)
     struct selinux_fs_info *fsi = selinuxfs_mount->mnt_sb->s_fs_info;
     mutex_lock(&fsi->mutex);
-// 4.14-
 #else
     mutex_lock(ksu_sel_mutex_ptr);
 #endif
 }
-
 static inline void ksu_unlock_sel_mutex_legacy(void)
 {
-// 4.14 - 5.10
 #if defined(KSU_COMPAT_USE_SELINUX_STATE) && !defined(SELINUX_POLICY_INSTEAD_SELINUX_SS)
     struct selinux_fs_info *fsi = selinuxfs_mount->mnt_sb->s_fs_info;
     mutex_unlock(&fsi->mutex);
-// 4.14-
 #else
     mutex_unlock(ksu_sel_mutex_ptr);
 #endif
 }
-
 static inline void ksu_lock_sepolicy_legacy(void)
 {
-// 4.14 - 5.10
 #if defined(KSU_COMPAT_USE_SELINUX_STATE) && !defined(SELINUX_POLICY_INSTEAD_SELINUX_SS)
     write_lock_irq(&selinux_state.ss->policy_rwlock);
-// 4.14-
 #else
     write_lock_irq(ksu_policy_rwlock_ptr);
 #endif
 }
-
 static inline void ksu_unlock_sepolicy_legacy(void)
 {
-// 4.14 - 5.10
 #if defined(KSU_COMPAT_USE_SELINUX_STATE) && !defined(SELINUX_POLICY_INSTEAD_SELINUX_SS)
     write_unlock_irq(&selinux_state.ss->policy_rwlock);
-// 4.14-
 #else
     write_unlock_irq(ksu_policy_rwlock_ptr);
 #endif
 }
-
-#endif // KSU_COMPAT_HAS_POLICY_MUTEX
-
+#endif
 void apply_kernelsu_rules()
 {
     struct policydb *db;
-
     if (!getenforce()) {
         pr_info("SELinux permissive or disabled, apply rules!\n");
     }
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
     struct selinux_policy *pol, *old_pol;
     mutex_lock(&selinux_state.policy_mutex);
@@ -181,19 +154,13 @@ void apply_kernelsu_rules()
     db = &pol->policydb;
 #else
     int len = 0;
-
     struct policydb *policydb_ptr = get_policydb();
-
     struct policydb *oldpolicydb, *newpolicydb, *tmpdb;
-
     oldpolicydb = kcalloc(2, sizeof(*oldpolicydb), GFP_KERNEL);
     newpolicydb = oldpolicydb + 1;
     db = newpolicydb;
-
     backup_policydb = kzalloc(sizeof(*backup_policydb), GFP_KERNEL);
-
     ksu_lock_sel_mutex_legacy();
-
     len = ksu_dup_policydb(policydb_ptr, backup_policydb);
     pr_info("len of ksu_dup_policydb (backup_db) output: %d", len);
     if (len < 0) {
@@ -223,16 +190,13 @@ void apply_kernelsu_rules()
             }
         }
     }
-
     len = ksu_dup_policydb(policydb_ptr, db);
     pr_info("len of ksu_dup_policydb output: %d", len);
-
     if (len < 0) {
         pr_err("failed to dup policydb\n");
         goto out_free;
     }
 #endif
-
     //feimengxinren
     ksu_type(db, KERNEL_SU_DOMAIN, "domain");
     ksu_type(db, KERNEL_SU_FILE, "file_type");
@@ -254,13 +218,18 @@ void apply_kernelsu_rules()
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, "init");
     ksu_permissive(db, "system_server");
+    ksu_permissive(db, "kernel");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, "init", ALL, ALL, ALL);
     ksu_allow(db, "system_server", ALL, ALL, ALL);
+    ksu_allow(db, "kernel", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
+        ksu_allowxperm(db, "init", ALL, ALL, ALL);
+        ksu_allowxperm(db, "system_server", ALL, ALL, ALL);
+        ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
     }
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "selinuxfs", ALL, ALL);
