@@ -348,6 +348,7 @@ out:
 int tcp_set_congestion_control(struct sock *sk, const char *name, bool load,
 			       bool reinit, bool cap_net_admin)
 {
+    bool cap_net_admin = capable(CAP_NET_ADMIN); // 在函数体内部第一行补充这句定义，维持内部原逻辑
 	struct inet_connection_sock *icsk = inet_csk(sk);
 	const struct tcp_congestion_ops *ca;
 	int err = 0;
