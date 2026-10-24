@@ -161,7 +161,7 @@ void tcp_assign_congestion_control(struct sock *sk)
 
 	rcu_read_lock();
 	ca = rcu_dereference(net->ipv4.tcp_congestion_control);
-	if (unlikely(!try_module_get(ca->owner)))
+	if (unlikely(!bpf_try_module_get(ca, ca->owner)))
 		ca = &tcp_reno;
 	icsk->icsk_ca_ops = ca;
 	rcu_read_unlock();
@@ -212,7 +212,7 @@ void tcp_cleanup_congestion_control(struct sock *sk)
 
 	if (icsk->icsk_ca_ops->release)
 		icsk->icsk_ca_ops->release(sk);
-	module_put(icsk->icsk_ca_ops->owner);
+	bpf_module_put(icsk->icsk_ca_ops, icsk->icsk_ca_ops->owner);
 }
 
 /* Used by sysctl to change default congestion control */
@@ -226,7 +226,7 @@ int tcp_set_default_congestion_control(struct net *net, const char *name)
 	ca = tcp_ca_find_autoload(net, name);
 	if (!ca) {
 		ret = -ENOENT;
-	} else if (!try_module_get(ca->owner)) {
+	} else if (!bpf_try_module_get(ca, ca->owner)) {
 		ret = -EBUSY;
 	} else if (!net_eq(net, &init_net) &&
 			!(ca->flags & TCP_CONG_NON_RESTRICTED)) {
@@ -235,7 +235,7 @@ int tcp_set_default_congestion_control(struct net *net, const char *name)
 	} else {
 		prev = xchg(&net->ipv4.tcp_congestion_control, ca);
 		if (prev)
-			module_put(prev->owner);
+			bpf_module_put(prev, prev->owner);
 
 		ca->flags |= TCP_CONG_NON_RESTRICTED;
 		ret = 0;
@@ -261,8 +261,6 @@ void tcp_get_available_congestion_control(char *buf, size_t maxlen)
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(ca, &tcp_cong_list, list) {
-		if (!strcmp(ca->name, "reno"))
-			continue;
 		offs += snprintf(buf + offs, maxlen - offs,
 				 "%s%s",
 				 offs == 0 ? "" : " ", ca->name);
@@ -290,8 +288,6 @@ void tcp_get_allowed_congestion_control(char *buf, size_t maxlen)
 	*buf = '\0';
 	rcu_read_lock();
 	list_for_each_entry_rcu(ca, &tcp_cong_list, list) {
-		if (!strcmp(ca->name, "reno"))
-			continue;
 		if (!(ca->flags & TCP_CONG_NON_RESTRICTED))
 			continue;
 		offs += snprintf(buf + offs, maxlen - offs,
@@ -346,9 +342,8 @@ out:
  * already initialized.
  */
 int tcp_set_congestion_control(struct sock *sk, const char *name, bool load,
-			       bool reinit)
+			       bool cap_net_admin)
 {
-    bool cap_net_admin = capable(CAP_NET_ADMIN); // 在函数体内部第一行补充这句定义，维持内部原逻辑
 	struct inet_connection_sock *icsk = inet_csk(sk);
 	const struct tcp_congestion_ops *ca;
 	int err = 0;
@@ -371,21 +366,14 @@ int tcp_set_congestion_control(struct sock *sk, const char *name, bool load,
 	if (!ca) {
 		err = -ENOENT;
 	} else if (!load) {
-		const struct tcp_congestion_ops *old_ca = icsk->icsk_ca_ops;
-
-		if (try_module_get(ca->owner)) {
-			if (reinit) {
-				tcp_reinit_congestion_control(sk, ca);
-			} else {
-				icsk->icsk_ca_ops = ca;
-				module_put(old_ca->owner);
-			}
+		if (bpf_try_module_get(ca, ca->owner)) {
+			tcp_reinit_congestion_control(sk, ca);
 		} else {
 			err = -EBUSY;
 		}
 	} else if (!((ca->flags & TCP_CONG_NON_RESTRICTED) || cap_net_admin)) {
 		err = -EPERM;
-	} else if (!try_module_get(ca->owner)) {
+	} else if (!bpf_try_module_get(ca, ca->owner)) {
 		err = -EBUSY;
 	} else {
 		tcp_reinit_congestion_control(sk, ca);
