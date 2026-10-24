@@ -20,7 +20,7 @@ static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
 
 /* Simple linear search, don't expect many entries! */
-static struct tcp_congestion_ops *tcp_ca_find(const char *name)
+struct tcp_congestion_ops *tcp_ca_find(const char *name)
 {
 	struct tcp_congestion_ops *e;
 
@@ -346,7 +346,7 @@ out:
  * already initialized.
  */
 int tcp_set_congestion_control(struct sock *sk, const char *name, bool load,
-			       bool reinit, bool cap_net_admin)
+			       bool reinit)
 {
     bool cap_net_admin = capable(CAP_NET_ADMIN); // 在函数体内部第一行补充这句定义，维持内部原逻辑
 	struct inet_connection_sock *icsk = inet_csk(sk);
