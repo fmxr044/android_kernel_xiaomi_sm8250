@@ -201,7 +201,7 @@ static struct tcp_congestion_ops tcp_westwood __read_mostly = {
 	.cwnd_event	= tcp_westwood_event,
 	.get_info	= tcp_westwood_info,
 	.owner		= THIS_MODULE,
-	.name		= "westwood-sub"
+	.name		= "westwood"
 };
 
 static int __init tcp_westwood_register(void)
