@@ -1118,7 +1118,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_min_rtt_wlen",
 		.data		= &init_net.ipv4.sysctl_tcp_min_rtt_wlen,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &one_day_secs
@@ -1152,7 +1152,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_pacing_ca_ratio",
 		.data		= &init_net.ipv4.sysctl_tcp_pacing_ca_ratio,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 044,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &thousand,
@@ -1161,7 +1161,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_wmem",
 		.data		= &init_net.ipv4.sysctl_tcp_wmem,
 		.maxlen		= sizeof(init_net.ipv4.sysctl_tcp_wmem),
-		.mode		= 0644,
+		.mode		= 044,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &one,
 	},
@@ -1169,7 +1169,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_rmem",
 		.data		= &init_net.ipv4.sysctl_tcp_rmem,
 		.maxlen		= sizeof(init_net.ipv4.sysctl_tcp_rmem),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &one,
 	},
@@ -1263,9 +1263,18 @@ static __init int sysctl_ipv4_init(void)
 {
 	struct ctl_table_header *hdr;
 	
-	init_net.ipv4.sysctl_tcp_ecn = 1;          // 强制开机即在内存最底层死锁 ECN 双向开启！
-	init_net.ipv4.sysctl_tcp_ecn_fallback = 1; // 强制死锁开启 ECN 安全回退（防黑洞）
-
+	init_net.ipv4.sysctl_tcp_ecn = 1;
+	init_net.ipv4.sysctl_tcp_ecn_fallback = 1;
+	init_net.ipv4.sysctl_max_syn_backlog = 4096;
+	init_net.ipv4.sysctl_tcp_pacing_ca_ratio = 110;
+	init_net.ipv4.sysctl_tcp_min_rtt_wlen = 60;
+	sysctl_tcp_wmem[0] = 4096;
+	sysctl_tcp_wmem[1] = 87380;
+	sysctl_tcp_wmem[2] = 16777216;
+	sysctl_tcp_rmem[0] = 4096;
+	sysctl_tcp_rmem[1] = 87380;
+	sysctl_tcp_rmem[2] = 16777216; 
+	
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
 	if (!hdr)
 		return -ENOMEM;
