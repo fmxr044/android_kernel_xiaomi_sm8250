@@ -617,6 +617,9 @@ static __init int sysctl_core_init(void)
 	extern int netdev_max_backlog;
 	sysctl_wmem_max = 16777216U;
 	sysctl_rmem_max = 16777216U;
+	
+	init_net.core.sysctl_wmem_max = 16777216U;
+	init_net.core.sysctl_rmem_max = 16777216U;
 	register_net_sysctl(&init_net, "net/core", net_core_table);
 	return register_pernet_subsys(&sysctl_core_ops);
 }
