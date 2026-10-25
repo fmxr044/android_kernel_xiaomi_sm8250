@@ -315,7 +315,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "wmem_max",
 		.data		= &sysctl_wmem_max,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_sndbuf,
 	},
@@ -323,7 +323,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "rmem_max",
 		.data		= &sysctl_rmem_max,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_rcvbuf,
 	},
@@ -331,7 +331,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "wmem_default",
 		.data		= &sysctl_wmem_default,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_sndbuf,
 	},
@@ -339,7 +339,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "rmem_default",
 		.data		= &sysctl_rmem_default,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_rcvbuf,
 	},
@@ -615,8 +615,8 @@ static __init int sysctl_core_init(void)
     extern __u32 sysctl_wmem_max;
 	extern __u32 sysctl_rmem_max;
 	extern int netdev_max_backlog;
-	sysctl_wmem_max = 8388608U;
-	sysctl_rmem_max = 8388608U;
+	sysctl_wmem_max = 16777216U;
+	sysctl_rmem_max = 16777216U;
 	register_net_sysctl(&init_net, "net/core", net_core_table);
 	return register_pernet_subsys(&sysctl_core_ops);
 }
