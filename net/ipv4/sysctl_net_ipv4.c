@@ -1262,6 +1262,9 @@ static __net_initdata struct pernet_operations ipv4_sysctl_ops = {
 static __init int sysctl_ipv4_init(void)
 {
 	struct ctl_table_header *hdr;
+	
+	init_net.ipv4.sysctl_tcp_ecn = 1;          // 强制开机即在内存最底层死锁 ECN 双向开启！
+	init_net.ipv4.sysctl_tcp_ecn_fallback = 1; // 强制死锁开启 ECN 安全回退（防黑洞）
 
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
 	if (!hdr)
