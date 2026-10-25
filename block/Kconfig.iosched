@@ -21,6 +21,15 @@ config IOSCHED_DEADLINE
 	  CSCAN service with FIFO expiration of requests, switching to
 	  a new point in the service tree and doing a batch of IO from there
 	  in case of expiry.
+	
+config IOSCHED_DEADLINE_HP
+	tristate "Deadline I/O scheduler plus high performance"
+	default y
+	help
+	  这是一个高性能deadline I/O调度器，
+	  它是完全服务于游戏的超级性能plus版本，
+	  如果需要更高性能或更激进调度也可在此基础上继续加码，
+	  但得考虑设备本身性能上限不可盲目拉数值。
 
 config IOSCHED_CFQ
 	tristate "CFQ I/O scheduler"
@@ -50,6 +59,9 @@ choice
 
 	config DEFAULT_DEADLINE
 		bool "Deadline" if IOSCHED_DEADLINE=y
+		
+	config DEFAULT_DEADLINE_HP
+		bool "Deadline" if IOSCHED_DEADLINE_HP=y
 
 	config DEFAULT_CFQ
 		bool "CFQ" if IOSCHED_CFQ=y
@@ -61,6 +73,7 @@ endchoice
 
 config DEFAULT_IOSCHED
 	string
+	default "deadline_hp" if DEFAULT_DEADLINE_HP
 	default "deadline" if DEFAULT_DEADLINE
 	default "cfq" if DEFAULT_CFQ
 	default "noop" if DEFAULT_NOOP
