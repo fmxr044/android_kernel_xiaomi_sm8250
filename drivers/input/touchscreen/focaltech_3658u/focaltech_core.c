@@ -81,9 +81,6 @@ void fts_reg_active(void)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = true;
 	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
 	FTS_INFO("active state reg rewrite success");
 }
 void fts_reg_idle(void)
@@ -114,9 +111,6 @@ void fts_reg_idle(void)
 	fts_data->palm_sensor_switch = 0;
 	fts_data->gamemode_enabled = false;
 	fts_data->is_expert_mode = false;
-	ts_data->glove_mode = false;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
 	FTS_INFO("idle state reg rewrite success");
 }
 int fts_wait_tp_to_valid(void)
