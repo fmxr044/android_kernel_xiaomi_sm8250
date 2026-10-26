@@ -86,7 +86,7 @@ void fts_reg_active(void)
 	ts_data->palm_sensor_switch = 0;
 	FTS_INFO("active state reg rewrite success");
 }
-void fts_reg_active(void)
+void fts_reg_idle(void)
 {
 	u8 current_cmd1 = 0;
 	int ret;
