@@ -26,7 +26,7 @@
 #define FTS_I2C_VTG_MIN_UV 1800000
 #define FTS_I2C_VTG_MAX_UV 1800000
 #endif
-#define SUPER_RESOLUTION_FACOTR 10
+#define SUPER_RESOLUTION_FACOTR 8
 struct fts_ts_data *fts_data;
 static int fts_ts_suspend(struct device *dev);
 static int fts_ts_resume(struct device *dev);
@@ -52,6 +52,73 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #define CMD4 0x0 //
 #define CMD5 0x0 //
 #define CMD6 0x0 //
+#define CMD7 0x0 // for idle state game mode
+void fts_reg_active(struct fts_ts_data *ts_data)
+{
+	u8 current_cmd1 = 0;
+	int ret;
+	if (!ts_data) return;
+	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	{
+		u8 cmd[7];
+		cmd[0] = CMD0;
+		cmd[1] = CMD1;
+		cmd[2] = CMD2;
+		cmd[3] = CMD3;
+		cmd[4] = CMD4;
+		cmd[5] = CMD5;
+		cmd[6] = CMD6;
+		fts_write(cmd, sizeof(cmd));
+	}
+	fts_data->glove_mode = true;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
+	fts_data->gamemode_enabled = true;
+	fts_data->is_expert_mode = true;
+	ts_data->glove_mode = true;
+	ts_data->charger_mode = false;
+	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("active state reg rewrite success");
+}
+void fts_reg_active(struct fts_ts_data *ts_data)
+{
+	u8 current_cmd1 = 0;
+	int ret;
+	if (!ts_data) return;
+	fts_write_reg(FTS_PALM_EN, 0);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	{
+		u8 cmd[7];
+		cmd[0] = CMD0;
+		cmd[1] = CMD7;
+		cmd[2] = CMD2;
+		cmd[3] = CMD3;
+		cmd[4] = CMD4;
+		cmd[5] = CMD5;
+		cmd[6] = CMD6;
+		fts_write(cmd, sizeof(cmd));
+	}
+	fts_data->glove_mode = false;
+	fts_data->charger_mode = false;
+	fts_data->palm_sensor_switch = 0;
+	fts_data->gamemode_enabled = false;
+	fts_data->is_expert_mode = false;
+	ts_data->glove_mode = false;
+	ts_data->charger_mode = false;
+	ts_data->palm_sensor_switch = 0;
+	FTS_INFO("idle state reg rewrite success");
+}
 int fts_wait_tp_to_valid(void)
 {
 	int ret = 0;
@@ -82,33 +149,8 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	fts_game_mode_recovery(ts_data);
 	fts_palm_mode_recovery(ts_data);
 	fts_gesture_recovery(ts_data);
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
-	FTS_INFO("fts_tp_state_recovery called and reg rewrite success");
+	fts_reg_active(ts_data);
+	FTS_INFO("fts_tp_state_recovery called");
 	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
 	FTS_FUNC_EXIT();
 }
@@ -367,9 +409,7 @@ static int fts_input_report_key(struct fts_ts_data *data, int index)
 	}
 	return -EINVAL;
 }
-
 #if FTS_MT_PROTOCOL_B_EN
-/* ======= 极致优化：最终修正激进版 (解决编译冲突与隐藏死锁) ======= */
 static int fts_input_report_b(struct fts_ts_data *data)
 {
 	int i = 0;
@@ -377,23 +417,15 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	bool va_reported = false;
 	u32 max_touch_num = data->pdata->max_touch_number;
 	struct ts_event *events = data->events;
-
 	for (i = 0; i < data->touch_point; i++) {
 		int id = events[i].id;
 		if (unlikely(id >= FTS_MAX_POINTS_SUPPORT)) continue;
-
-		va_reported = true;
-		
-		/* 机器码直接寻址卡槽 */
+		va_reported = true;	
 		input_mt_slot(data->input_dev, id);
-
 		if (EVENT_DOWN(events[i].flag)) {
 			input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, true);
-
-			/* 零死区，只报最纯粹的 X/Y 坐标，彻底放行一像素微调 */
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, events[i].x);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, events[i].y);
-			
+			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, events[i].y);		
 			touchs |= BIT(id);
 			data->touchs |= BIT(id);
 		} else {
@@ -401,8 +433,6 @@ static int fts_input_report_b(struct fts_ts_data *data)
 			data->touchs &= ~BIT(id);
 		}
 	}
-
-	/* 架构级大剪枝优化：用精准按位异或清空幽灵点 */
 	if (unlikely(data->touchs ^ touchs)) {
 		for (i = 0; i < max_touch_num; i++) {
 			if (BIT(i) & (data->touchs ^ touchs)) {
@@ -412,14 +442,10 @@ static int fts_input_report_b(struct fts_ts_data *data)
 			}
 		}
 	}
-	
 	data->touchs = touchs;
-	
 	if (va_reported) {
-		/* 修正：抛弃引起冲突的旧宏，直接根据本轮实时计算的二进制 touchs 状态上报全局屏幕开关 */
 		input_report_key(data->input_dev, BTN_TOUCH, touchs ? 1 : 0);
-	}
-	
+	}	
 	input_sync(data->input_dev);
 	return 0;
 }
@@ -524,7 +550,6 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 	}	
 	data->point_num = buf[FTS_TOUCH_POINT_NUM] & 0x0F;	
 	data->touch_point = 0;
-	
 	if (unlikely((data->point_num == 0x0F) && (buf[2] == 0xFF) && (buf[3] == 0xFF) &&
 	    (buf[4] == 0xFF) && (buf[5] == 0xFF) && (buf[6] == 0xFF))) {
 		FTS_DEBUG("touch buff is 0xff, need recovery state");
@@ -1465,33 +1490,8 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
 	power_supply_reg_notifier(&ts_data->power_supply_notifier);
 	fts_ex_mode_recovery(ts_data);
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
-	FTS_INFO("fts_ts_probe_entry called and reg rewrite success");
+	fts_reg_active(ts_data);
+	FTS_INFO("fts_ts_probe_entry called");
 	FTS_FUNC_EXIT();
 	return 0;
 err_irq_req:
@@ -1589,33 +1589,8 @@ static int fts_ts_suspend(struct device *dev)
 	}
 	fts_release_all_finger();
 	ts_data->suspended = true;
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
-	FTS_INFO("fts_ts_suspend called and reg rewrite success");
+	fts_reg_idle(ts_data);
+	FTS_INFO("fts_ts_suspend called");
 	FTS_FUNC_EXIT();
 	return 0;
 }
@@ -1642,33 +1617,8 @@ static int fts_ts_resume(struct device *dev)
 	}
 	ts_data->poweroff_on_sleep = false;	
 	ts_data->suspended = false;
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
-	FTS_INFO("fts_ts_resume called and reg rewrite success");
+	fts_reg_active(ts_data);
+	FTS_INFO("fts_ts_resume called");
 	FTS_FUNC_EXIT();
 	return 0;
 }
@@ -1708,13 +1658,13 @@ static void fts_read_palm_data(u8 reg_value)
 }
 static int fts_palm_sensor_cmd(int value)
 {
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_PALM_EN, 0);
 	FTS_INFO("fts_palm_sensor_cmd called and reg rewrite success");
 	return 0;
 }
 static int fts_palm_sensor_write(int value)
 {
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_PALM_EN, 0);
 	FTS_INFO("fts_palm_sensor_write called and reg rewrite success");
 	return 0;
 }
@@ -1841,30 +1791,8 @@ static void fts_restore_mode_value(int mode, int value_type)
 {
 	xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE] =
 		xiaomi_touch_interfaces.touch_mode[mode][value_type];
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	FTS_INFO("fts_restore_mode_value called and reg rewrite success");
+	fts_reg_active(ts_data);
+	FTS_INFO("fts_restore_mode_value called");
 }
 static void fts_restore_normal_mode(void)
 {
@@ -1873,30 +1801,8 @@ static void fts_restore_normal_mode(void)
 		if (i != Touch_Panel_Orientation)
 			fts_restore_mode_value(i, GET_DEF_VALUE);
 	}
-    fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	FTS_INFO("fts_restore_normal_mode called and reg rewrite success");
+    fts_reg_active(ts_data);
+	FTS_INFO("fts_restore_normal_mode called");
 }
 static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 {
@@ -1992,33 +1898,8 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
-	FTS_INFO("fts_update_touchmode_data called and reg rewrite success");
+	fts_reg_active(ts_data);
+	FTS_INFO("fts_update_touchmode_data called");
 	mutex_unlock(&ts_data->cmd_update_mutex);
 	pm_relax(ts_data->dev);
 }
@@ -2089,30 +1970,8 @@ static int fts_set_cur_value(int mode, int value)
 }
 static int fts_reset_mode(int mode)
 {
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	FTS_INFO("fts_reset_mode called and reg rewrite success");
+	fts_reg_active(ts_data);
+	FTS_INFO("fts_reset_mode called");
 	return 0;
 }
 static int fts_get_mode_value(int mode, int value_type)
@@ -2144,33 +2003,8 @@ static int fts_get_mode_all(int mode, int *value)
 static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 {
 	fts_update_touchmode_data(ts_data);
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
-	{
-		u8 cmd[7];
-		cmd[0] = CMD0;
-		cmd[1] = CMD1;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
-		fts_write(cmd, sizeof(cmd));
-	}
-	fts_data->glove_mode = true;
-	fts_data->charger_mode = false;
-	fts_data->palm_sensor_switch = 0;
-	fts_data->gamemode_enabled = true;
-	fts_data->is_expert_mode = true;
-	ts_data->glove_mode = true;
-	ts_data->charger_mode = false;
-	ts_data->palm_sensor_switch = 0;
-	FTS_INFO("fts_game_mode_recovery called and reg rewrite success");
+	fts_reg_active(ts_data);
+	FTS_INFO("fts_game_mode_recovery called");
 }
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data)
 {
