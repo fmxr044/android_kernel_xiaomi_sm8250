@@ -55,9 +55,7 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #define CMD7 0x0 // for idle state game mode
 void fts_reg_active(void)
 {
-	u8 current_cmd1 = 0;
 	int ret;
-	if (!ts_data) return;
 	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
@@ -85,9 +83,7 @@ void fts_reg_active(void)
 }
 void fts_reg_idle(void)
 {
-	u8 current_cmd1 = 0;
 	int ret;
-	if (!ts_data) return;
 	fts_write_reg(FTS_PALM_EN, 0);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0);
