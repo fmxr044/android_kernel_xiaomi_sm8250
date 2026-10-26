@@ -53,7 +53,7 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #define CMD5 0x0 //
 #define CMD6 0x0 //
 #define CMD7 0x0 // for idle state game mode
-void fts_reg_active(struct fts_ts_data *ts_data)
+void fts_reg_active(void)
 {
 	u8 current_cmd1 = 0;
 	int ret;
@@ -86,7 +86,7 @@ void fts_reg_active(struct fts_ts_data *ts_data)
 	ts_data->palm_sensor_switch = 0;
 	FTS_INFO("active state reg rewrite success");
 }
-void fts_reg_active(struct fts_ts_data *ts_data)
+void fts_reg_active(void)
 {
 	u8 current_cmd1 = 0;
 	int ret;
@@ -149,7 +149,7 @@ void fts_tp_state_recovery(struct fts_ts_data *ts_data)
 	fts_game_mode_recovery(ts_data);
 	fts_palm_mode_recovery(ts_data);
 	fts_gesture_recovery(ts_data);
-	fts_reg_active(ts_data);
+	fts_reg_active();
 	FTS_INFO("fts_tp_state_recovery called");
 	queue_work(ts_data->ts_workqueue, &ts_data->power_supply_work);
 	FTS_FUNC_EXIT();
@@ -1490,7 +1490,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
 	power_supply_reg_notifier(&ts_data->power_supply_notifier);
 	fts_ex_mode_recovery(ts_data);
-	fts_reg_active(ts_data);
+	fts_reg_active();
 	FTS_INFO("fts_ts_probe_entry called");
 	FTS_FUNC_EXIT();
 	return 0;
@@ -1589,7 +1589,7 @@ static int fts_ts_suspend(struct device *dev)
 	}
 	fts_release_all_finger();
 	ts_data->suspended = true;
-	fts_reg_idle(ts_data);
+	fts_reg_idle();
 	FTS_INFO("fts_ts_suspend called");
 	FTS_FUNC_EXIT();
 	return 0;
@@ -1617,7 +1617,7 @@ static int fts_ts_resume(struct device *dev)
 	}
 	ts_data->poweroff_on_sleep = false;	
 	ts_data->suspended = false;
-	fts_reg_active(ts_data);
+	fts_reg_active();
 	FTS_INFO("fts_ts_resume called");
 	FTS_FUNC_EXIT();
 	return 0;
@@ -1791,7 +1791,7 @@ static void fts_restore_mode_value(int mode, int value_type)
 {
 	xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE] =
 		xiaomi_touch_interfaces.touch_mode[mode][value_type];
-	fts_reg_active(ts_data);
+	fts_reg_active();
 	FTS_INFO("fts_restore_mode_value called");
 }
 static void fts_restore_normal_mode(void)
@@ -1801,7 +1801,7 @@ static void fts_restore_normal_mode(void)
 		if (i != Touch_Panel_Orientation)
 			fts_restore_mode_value(i, GET_DEF_VALUE);
 	}
-    fts_reg_active(ts_data);
+    fts_reg_active();
 	FTS_INFO("fts_restore_normal_mode called");
 }
 static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
@@ -1898,7 +1898,7 @@ static void fts_update_touchmode_data(struct fts_ts_data *ts_data)
 				xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE];
 		}
 	}
-	fts_reg_active(ts_data);
+	fts_reg_active();
 	FTS_INFO("fts_update_touchmode_data called");
 	mutex_unlock(&ts_data->cmd_update_mutex);
 	pm_relax(ts_data->dev);
@@ -1970,7 +1970,7 @@ static int fts_set_cur_value(int mode, int value)
 }
 static int fts_reset_mode(int mode)
 {
-	fts_reg_active(ts_data);
+	fts_reg_active();
 	FTS_INFO("fts_reset_mode called");
 	return 0;
 }
@@ -2003,7 +2003,7 @@ static int fts_get_mode_all(int mode, int *value)
 static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 {
 	fts_update_touchmode_data(ts_data);
-	fts_reg_active(ts_data);
+	fts_reg_active();
 	FTS_INFO("fts_game_mode_recovery called");
 }
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data)
