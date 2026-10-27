@@ -315,7 +315,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "wmem_max",
 		.data		= &sysctl_wmem_max,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_sndbuf,
 	},
@@ -368,14 +368,14 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "netdev_max_backlog",
 		.data		= &netdev_max_backlog,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= shadow_backlog_sysctl
 	},
 	{
 		.procname	= "netdev_rss_key",
 		.data		= &netdev_rss_key,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_do_rss_key,
 	},
 #ifdef CONFIG_BPF_JIT
@@ -616,9 +616,9 @@ static __init int sysctl_core_init(void)
 	extern __u32 sysctl_rmem_max;
 	extern int netdev_max_backlog;
 	
-	sysctl_wmem_max = 16777216U;
+	//sysctl_wmem_max = 16777216U;
 	//sysctl_rmem_max = 16777216U;
-	netdev_max_backlog = 15000;
+	//netdev_max_backlog = 15000;
 	
 	register_net_sysctl(&init_net, "net/core", net_core_table);
 	return register_pernet_subsys(&sysctl_core_ops);
