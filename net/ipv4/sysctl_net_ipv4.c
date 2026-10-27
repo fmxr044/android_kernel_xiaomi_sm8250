@@ -419,7 +419,7 @@ static struct ctl_table ipv4_table[] = {
 		.procname	= "tcp_low_latency",
 		.data		= &sysctl_tcp_low_latency,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec
 	},
 #ifdef CONFIG_NETLABEL
@@ -988,7 +988,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_slow_start_after_idle",
 		.data		= &init_net.ipv4.sysctl_tcp_slow_start_after_idle,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec
 	},
 	{
@@ -1274,7 +1274,7 @@ static __init int sysctl_ipv4_init(void)
 	init_net.ipv4.sysctl_tcp_rmem[0] = 4096;
 	init_net.ipv4.sysctl_tcp_rmem[1] = 87380;
 	init_net.ipv4.sysctl_tcp_rmem[2] = 8388608;
-	init_net.ipv4.sysctl_tcp_low_latency = 0;
+	sysctl_tcp_low_latency = 0;
 	init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
 	
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
