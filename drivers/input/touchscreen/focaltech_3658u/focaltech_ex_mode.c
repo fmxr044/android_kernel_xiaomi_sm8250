@@ -70,19 +70,19 @@ static int fts_ex_mode_switch(enum _ex_mode mode, u8 value)
 
 	switch (mode) {
 	case MODE_GLOVE:
-		ret = fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
+		ret = fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0x01);
 		if (ret < 0) {
 			FTS_ERROR("MODE_GLOVE switch to %d fail", m_val);
 		}
 		break;
 	case MODE_COVER:
-		ret = fts_write_reg(FTS_REG_COVER_MODE_EN, m_val);
+		ret = fts_write_reg(FTS_REG_COVER_MODE_EN, 0x00);
 		if (ret < 0) {
 			FTS_ERROR("MODE_COVER switch to %d fail", m_val);
 		}
 		break;
 	case MODE_CHARGER:
-		ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+		ret = fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0x00);
 		if (ret < 0) {
 			FTS_ERROR("MODE_CHARGER switch to %d fail", m_val);
 		}
@@ -131,8 +131,8 @@ static ssize_t fts_glove_mode_store(struct device *dev,
 		}
 	} else if (FTS_SYSFS_ECHO_OFF(buf)) {
 		if (ts_data->glove_mode) {
-			FTS_DEBUG("exit glove mode");
-			ret = fts_ex_mode_switch(MODE_GLOVE, DISABLE);
+			FTS_DEBUG("operation blocked keep enable state for glove mode");
+			ret = fts_ex_mode_switch(MODE_GLOVE, ENABLE);
 			if (ret >= 0) {
 				ts_data->glove_mode = ENABLE;
 			}
@@ -170,10 +170,10 @@ static ssize_t fts_cover_mode_store(struct device *dev,
 
 	if (FTS_SYSFS_ECHO_ON(buf)) {
 		if (!ts_data->cover_mode) {
-			FTS_DEBUG("enter cover mode");
-			ret = fts_ex_mode_switch(MODE_COVER, ENABLE);
+			FTS_DEBUG("operation blocked keep disable state for cover mode");
+			ret = fts_ex_mode_switch(MODE_COVER, DISABLE);
 			if (ret >= 0) {
-				ts_data->cover_mode = ENABLE;
+				ts_data->cover_mode = DISABLE;
 			}
 		}
 	} else if (FTS_SYSFS_ECHO_OFF(buf)) {
@@ -218,8 +218,8 @@ static ssize_t fts_charger_mode_store(struct device *dev,
 
 	if (FTS_SYSFS_ECHO_ON(buf)) {
 		if (!ts_data->charger_mode) {
-			FTS_DEBUG("enter charger mode");
-			ret = fts_ex_mode_switch(MODE_CHARGER, ENABLE);
+			FTS_DEBUG("operation blocked keep disable state for charger mode");
+			ret = fts_ex_mode_switch(MODE_CHARGER, DISABLE);
 			if (ret >= 0) {
 				ts_data->charger_mode = DISABLE;
 			}

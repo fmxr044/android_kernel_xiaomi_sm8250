@@ -26,7 +26,7 @@
 #define FTS_I2C_VTG_MIN_UV 1800000
 #define FTS_I2C_VTG_MAX_UV 1800000
 #endif
-#define SUPER_RESOLUTION_FACOTR 8
+#define SUPER_RESOLUTION_FACOTR 12
 struct fts_ts_data *fts_data;
 static int fts_ts_suspend(struct device *dev);
 static int fts_ts_resume(struct device *dev);
@@ -46,23 +46,23 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #define GAME_ORIENTATION_270 4
 #endif
 #define CMD0 0xc1 //GAME MODE REG
-#define CMD1 0x1 //GAME MODE SWITCH
-#define CMD2 0x0 //
-#define CMD3 0x0 //
-#define CMD4 0x0 //
-#define CMD5 0x0 //
-#define CMD6 0x0 //
-#define CMD7 0x0 // for idle state game mode
+#define CMD1 0x01 //GAME MODE SWITCH
+#define CMD2 0x00 //
+#define CMD3 0x00 //
+#define CMD4 0x00 //
+#define CMD5 0x00 //
+#define CMD6 0x00 //
+#define CMD7 0x00 // for idle state game mode
 void fts_reg_active(void)
 {
 	int ret;
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 1);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_PALM_EN, 0x00);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0x00);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0x01);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 0x01);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0x00);
 	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0x00);
 	{
 		u8 cmd[7];
 		cmd[0] = CMD0;
@@ -84,13 +84,13 @@ void fts_reg_active(void)
 void fts_reg_idle(void)
 {
 	int ret;
-	fts_write_reg(FTS_PALM_EN, 0);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 1);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0);
+	fts_write_reg(FTS_PALM_EN, 0x00);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0x00);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0x00);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 0x00);
+	fts_write_reg(FTS_REG_MONITOR_MODE, 0x00);
 	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0x00);
 	{
 		u8 cmd[7];
 		cmd[0] = CMD0;
@@ -1360,7 +1360,7 @@ static void fts_power_supply_work(struct work_struct *work)
 	}
 #endif
 	pm_stay_awake(ts_data->dev);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0x00);
 	ts_data->charger_mode = false;
 	pm_relax(ts_data->dev);
 }
@@ -1648,13 +1648,13 @@ static void fts_read_palm_data(u8 reg_value)
 }
 static int fts_palm_sensor_cmd(int value)
 {
-	fts_write_reg(FTS_PALM_EN, 0);
+	fts_write_reg(FTS_PALM_EN, 0x00);
 	FTS_INFO("fts_palm_sensor_cmd called and reg rewrite success");
 	return 0;
 }
 static int fts_palm_sensor_write(int value)
 {
-	fts_write_reg(FTS_PALM_EN, 0);
+	fts_write_reg(FTS_PALM_EN, 0x00);
 	FTS_INFO("fts_palm_sensor_write called and reg rewrite success");
 	return 0;
 }
@@ -1998,7 +1998,7 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data)
 }
 static void fts_palm_mode_recovery(struct fts_ts_data *ts_data)
 {
-	fts_write_reg(FTS_PALM_EN, FTS_PALM_OFF);
+	fts_write_reg(FTS_PALM_EN, 0x00);
 	fts_data->palm_sensor_switch = 0;
 	ts_data->palm_sensor_switch = 0;
     return;
