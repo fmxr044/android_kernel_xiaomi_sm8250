@@ -1270,10 +1270,12 @@ static __init int sysctl_ipv4_init(void)
 	init_net.ipv4.sysctl_tcp_min_rtt_wlen = 60;
 	init_net.ipv4.sysctl_tcp_wmem[0] = 4096;
 	init_net.ipv4.sysctl_tcp_wmem[1] = 87380;
-	init_net.ipv4.sysctl_tcp_wmem[2] = 16777216;
+	init_net.ipv4.sysctl_tcp_wmem[2] = 8388608;
 	init_net.ipv4.sysctl_tcp_rmem[0] = 4096;
 	init_net.ipv4.sysctl_tcp_rmem[1] = 87380;
-	init_net.ipv4.sysctl_tcp_rmem[2] = 16777216; 
+	init_net.ipv4.sysctl_tcp_rmem[2] = 8388608;
+	init_net.ipv4.sysctl_tcp_low_latency = 0;
+	init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
 	
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
 	if (!hdr)
