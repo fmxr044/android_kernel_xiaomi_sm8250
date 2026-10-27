@@ -305,7 +305,7 @@ proc_dolongvec_minmax_bpf_restricted(struct ctl_table *table, int write,
 static int shadow_backlog_sysctl(struct ctl_table *table, int write,
 				 void *buffer, size_t *lenp, loff_t *ppos)
 {
-	netdev_max_backlog = 10000;
+	netdev_max_backlog = 15000;
 	return proc_dointvec(table, write, buffer, lenp, ppos);
 }
 
@@ -323,7 +323,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "rmem_max",
 		.data		= &sysctl_rmem_max,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_rcvbuf,
 	},
@@ -331,7 +331,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "wmem_default",
 		.data		= &sysctl_wmem_default,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_sndbuf,
 	},
@@ -339,7 +339,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "rmem_default",
 		.data		= &sysctl_rmem_default,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &min_rcvbuf,
 	},
@@ -368,7 +368,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "netdev_max_backlog",
 		.data		= &netdev_max_backlog,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= shadow_backlog_sysctl
 	},
 	{
@@ -617,7 +617,8 @@ static __init int sysctl_core_init(void)
 	extern int netdev_max_backlog;
 	
 	sysctl_wmem_max = 16777216U;
-	sysctl_rmem_max = 16777216U;
+	//sysctl_rmem_max = 16777216U;
+	netdev_max_backlog = 15000;
 	
 	register_net_sysctl(&init_net, "net/core", net_core_table);
 	return register_pernet_subsys(&sysctl_core_ops);
