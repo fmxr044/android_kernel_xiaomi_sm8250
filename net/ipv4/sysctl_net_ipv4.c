@@ -1276,7 +1276,7 @@ static __init int sysctl_ipv4_init(void)
 	//init_net.ipv4.sysctl_tcp_rmem[2] = 8388608;
 	sysctl_tcp_low_latency = 0;
 	init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
-	sysctl_tcp_adv_win_scale = 2;
+	init_net.ipv4.sysctl_tcp_adv_win_scale = 2;
 	
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
 	if (!hdr)
