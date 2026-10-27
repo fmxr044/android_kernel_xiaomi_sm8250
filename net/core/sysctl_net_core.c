@@ -368,7 +368,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "netdev_max_backlog",
 		.data		= &netdev_max_backlog,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= shadow_backlog_sysctl
 	},
 	{
@@ -513,7 +513,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "netdev_budget",
 		.data		= &netdev_budget,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec
 	},
 	{
@@ -536,7 +536,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "netdev_budget_usecs",
 		.data		= &netdev_budget_usecs,
 		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 	},
@@ -616,9 +616,11 @@ static __init int sysctl_core_init(void)
 	extern __u32 sysctl_rmem_max;
 	extern int netdev_max_backlog;
 	
-	//sysctl_wmem_max = 16777216U;
-	//sysctl_rmem_max = 16777216U;
-	//netdev_max_backlog = 15000;
+	//sysctl_wmem_max = 16777216;
+	//sysctl_rmem_max = 16777216;
+	netdev_max_backlog = 15000;
+	netdev_budget = 600;
+	netdev_budget_usecs = 4000;
 	
 	register_net_sysctl(&init_net, "net/core", net_core_table);
 	return register_pernet_subsys(&sysctl_core_ops);
