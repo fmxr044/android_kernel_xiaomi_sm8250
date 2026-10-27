@@ -419,7 +419,7 @@ static struct ctl_table ipv4_table[] = {
 		.procname	= "tcp_low_latency",
 		.data		= &sysctl_tcp_low_latency,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec
 	},
 #ifdef CONFIG_NETLABEL
@@ -455,7 +455,7 @@ static struct ctl_table ipv4_table[] = {
 	{
 		.procname	= "tcp_available_congestion_control",
 		.maxlen		= TCP_CA_BUF_MAX,
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler   = proc_tcp_available_congestion_control,
 	},
 	{
@@ -467,7 +467,7 @@ static struct ctl_table ipv4_table[] = {
 	{
 		.procname	= "tcp_available_ulp",
 		.maxlen		= TCP_ULP_BUF_MAX,
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler   = proc_tcp_available_ulp,
 	},
 	{
@@ -988,7 +988,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_slow_start_after_idle",
 		.data		= &init_net.ipv4.sysctl_tcp_slow_start_after_idle,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec
 	},
 	{
@@ -1263,19 +1263,19 @@ static __init int sysctl_ipv4_init(void)
 {
 	struct ctl_table_header *hdr;
 	
-	init_net.ipv4.sysctl_tcp_ecn = 1;
-	init_net.ipv4.sysctl_tcp_ecn_fallback = 1;
-	init_net.ipv4.sysctl_max_syn_backlog = 4096;
+	//init_net.ipv4.sysctl_tcp_ecn = 1;
+	//init_net.ipv4.sysctl_tcp_ecn_fallback = 1;
+	//init_net.ipv4.sysctl_max_syn_backlog = 4096;
 	//init_net.ipv4.sysctl_tcp_pacing_ca_ratio = 110;
-	init_net.ipv4.sysctl_tcp_min_rtt_wlen = 120;
+	//init_net.ipv4.sysctl_tcp_min_rtt_wlen = 120;
 	//init_net.ipv4.sysctl_tcp_wmem[0] = 4096;
 	//init_net.ipv4.sysctl_tcp_wmem[1] = 87380;
 	//init_net.ipv4.sysctl_tcp_wmem[2] = 8388608;
 	//init_net.ipv4.sysctl_tcp_rmem[0] = 4096;
 	//init_net.ipv4.sysctl_tcp_rmem[1] = 87380;
 	//init_net.ipv4.sysctl_tcp_rmem[2] = 8388608;
-	sysctl_tcp_low_latency = 0;
-	init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
+	//sysctl_tcp_low_latency = 0;
+	//init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
 	
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
 	if (!hdr)
