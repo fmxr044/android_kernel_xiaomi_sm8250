@@ -419,7 +419,7 @@ static struct ctl_table ipv4_table[] = {
 		.procname	= "tcp_low_latency",
 		.data		= &sysctl_tcp_low_latency,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec
 	},
 #ifdef CONFIG_NETLABEL
@@ -569,14 +569,14 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_ecn",
 		.data		= &init_net.ipv4.sysctl_tcp_ecn,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec
 	},
 	{
 		.procname	= "tcp_ecn_fallback",
 		.data		= &init_net.ipv4.sysctl_tcp_ecn_fallback,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec
 	},
 	{
@@ -988,7 +988,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_slow_start_after_idle",
 		.data		= &init_net.ipv4.sysctl_tcp_slow_start_after_idle,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec
 	},
 	{
@@ -1051,7 +1051,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_adv_win_scale",
 		.data		= &init_net.ipv4.sysctl_tcp_adv_win_scale,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &tcp_adv_win_scale_min,
 		.extra2		= &tcp_adv_win_scale_max,
@@ -1118,7 +1118,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_min_rtt_wlen",
 		.data		= &init_net.ipv4.sysctl_tcp_min_rtt_wlen,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &one_day_secs
@@ -1152,7 +1152,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_pacing_ca_ratio",
 		.data		= &init_net.ipv4.sysctl_tcp_pacing_ca_ratio,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &thousand,
@@ -1263,19 +1263,20 @@ static __init int sysctl_ipv4_init(void)
 {
 	struct ctl_table_header *hdr;
 	
-	//init_net.ipv4.sysctl_tcp_ecn = 1;
-	//init_net.ipv4.sysctl_tcp_ecn_fallback = 1;
-	//init_net.ipv4.sysctl_max_syn_backlog = 4096;
-	//init_net.ipv4.sysctl_tcp_pacing_ca_ratio = 110;
-	//init_net.ipv4.sysctl_tcp_min_rtt_wlen = 120;
+	init_net.ipv4.sysctl_tcp_ecn = 1;
+	init_net.ipv4.sysctl_tcp_ecn_fallback = 1;
+	init_net.ipv4.sysctl_max_syn_backlog = 4096;
+	init_net.ipv4.sysctl_tcp_pacing_ca_ratio = 110;
+	init_net.ipv4.sysctl_tcp_min_rtt_wlen = 20;
 	//init_net.ipv4.sysctl_tcp_wmem[0] = 4096;
 	//init_net.ipv4.sysctl_tcp_wmem[1] = 87380;
 	//init_net.ipv4.sysctl_tcp_wmem[2] = 8388608;
 	//init_net.ipv4.sysctl_tcp_rmem[0] = 4096;
 	//init_net.ipv4.sysctl_tcp_rmem[1] = 87380;
 	//init_net.ipv4.sysctl_tcp_rmem[2] = 8388608;
-	//sysctl_tcp_low_latency = 0;
-	//init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
+	sysctl_tcp_low_latency = 0;
+	init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
+	sysctl_tcp_adv_win_scale = 2;
 	
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
 	if (!hdr)
