@@ -1565,7 +1565,7 @@ static int fts_ts_suspend(struct device *dev)
 		FTS_INFO("Already in suspend state");
 		return 0;
 	}
-	cancel_delayed_work_sync(&ts_data->init_work);
+
 	if (ts_data->fw_loading) {
 		FTS_INFO("fw upgrade in process, can't suspend");
 		return 0;
@@ -1601,7 +1601,7 @@ static int fts_ts_resume(struct device *dev)
 		FTS_DEBUG("Already in awake state");
 		return 0;
 	}
-	cancel_delayed_work(&ts_data->init_work);
+
 	fts_release_all_finger();
 #if FTS_POWER_SOURCE_CUST_EN
 	if (!ts_data->ic_info.is_incell)
@@ -2024,7 +2024,7 @@ static ssize_t double_tap_show(struct kobject *kobj,
 	return sprintf(buf, "%d\n",
 		       fts_get_mode_value(Touch_Doubletap_Mode, GET_CUR_VALUE));
 }
-static ssize_t fts_double_tap_store(struct kobject *kobj,
+static ssize_t double_tap_store(struct kobject *kobj,
 				    struct kobj_attribute *attr,
 				    const char *buf, size_t count)
 {
