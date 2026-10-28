@@ -26,7 +26,7 @@
 #define FTS_I2C_VTG_MIN_UV 1800000
 #define FTS_I2C_VTG_MAX_UV 1800000
 #endif
-#define SUPER_RESOLUTION_FACOTR 12
+#define SUPER_RESOLUTION_FACOTR 15
 struct fts_ts_data *fts_data;
 static int fts_ts_suspend(struct device *dev);
 static int fts_ts_resume(struct device *dev);
@@ -47,12 +47,22 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #endif
 #define CMD0 0xc1 //GAME MODE REG
 #define CMD1 0x01 //GAME MODE SWITCH
-#define CMD2 0x00 //
-#define CMD3 0x00 //
-#define CMD4 0x00 //
-#define CMD5 0x00 //
-#define CMD6 0x00 //
-#define CMD7 0x00 // for idle state game mode
+#define CMD2 0x20 //TOUCH REPORT RATE
+#define CMD3 0x01 //TOUCH TOLERANCE
+#define CMD4 0x01 //TOUCH UP THRESHOLD
+#define CMD5 0x01 //TOUCH AIM SENSITIVITY
+#define CMD6 0x01 //TOUCH TAP Stability
+#define ZERO 0x00
+#define ONE 0x01
+#define TWO 0x02
+#define THREE 0x03
+#define FOUR 0x04
+#define FIVE 0x05
+#define SIX 0x06
+#define SEVEN 0x07
+#define EIGHT 0x08
+#define NINE 0x09
+#define TEN 0x0a
 void fts_reg_active(void)
 {
 	int ret;
@@ -84,22 +94,22 @@ void fts_reg_active(void)
 void fts_reg_idle(void)
 {
 	int ret;
-	fts_write_reg(FTS_PALM_EN, 0x00);
-	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0x00);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0x00);
-	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 0x00);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0x00);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0x00);
+	fts_write_reg(FTS_PALM_EN, ZERO);
+	fts_write_reg(FTS_REG_CHARGER_MODE_EN, ZERO);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, ZERO);
+	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, ONE);
+	fts_write_reg(FTS_REG_MONITOR_MODE, ONE);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, TEN);
+	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, ZERO);
 	{
 		u8 cmd[7];
 		cmd[0] = CMD0;
-		cmd[1] = CMD7;
-		cmd[2] = CMD2;
-		cmd[3] = CMD3;
-		cmd[4] = CMD4;
-		cmd[5] = CMD5;
-		cmd[6] = CMD6;
+		cmd[1] = ZERO;
+		cmd[2] = 0x1e;
+		cmd[3] = TEN;
+		cmd[4] = TEN;
+		cmd[5] = TEN;
+		cmd[6] = TEN;
 		fts_write(cmd, sizeof(cmd));
 	}
 	fts_data->glove_mode = false;
@@ -1579,7 +1589,7 @@ static int fts_ts_suspend(struct device *dev)
 	}
 	fts_release_all_finger();
 	ts_data->suspended = true;
-	fts_reg_idle();
+	fts_reg_active();
 	FTS_INFO("fts_ts_suspend called");
 	FTS_FUNC_EXIT();
 	return 0;
