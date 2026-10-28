@@ -99,7 +99,7 @@ void fts_reg_idle(void)
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, ZERO);
 	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, ONE);
 	fts_write_reg(FTS_REG_MONITOR_MODE, ONE);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, TEN);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, FIVE);
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, ZERO);
 	{
 		u8 cmd[7];
@@ -1565,19 +1565,19 @@ static int fts_ts_suspend(struct device *dev)
 		FTS_INFO("Already in suspend state");
 		return 0;
 	}
+	cancel_delayed_work_sync(&ts_data->init_work);
 	if (ts_data->fw_loading) {
 		FTS_INFO("fw upgrade in process, can't suspend");
 		return 0;
-	}	
-#ifdef CONFIG_FACTORY_BUILD
-	ts_data->poweroff_on_sleep = true;
-#endif
+	}
 	if (ts_data->gesture_mode && !ts_data->poweroff_on_sleep) {
 		fts_gesture_suspend(ts_data);
 	} else {
 		fts_irq_disable();
 		FTS_INFO("make TP enter into sleep mode");
-		fts_write_reg(FTS_REG_POWER_MODE, FTS_REG_POWER_MODE_SLEEP);		
+		ret = fts_write_reg(FTS_REG_POWER_MODE, FTS_REG_POWER_MODE_SLEEP);
+		if (ret < 0)
+			FTS_ERROR("set TP to sleep mode fail, ret=%d", ret);
 		if (!ts_data->ic_info.is_incell && ts_data->poweroff_on_sleep) {
 #if FTS_POWER_SOURCE_CUST_EN
 			ret = fts_power_source_suspend(ts_data);
@@ -1589,8 +1589,7 @@ static int fts_ts_suspend(struct device *dev)
 	}
 	fts_release_all_finger();
 	ts_data->suspended = true;
-	fts_reg_active();
-	FTS_INFO("fts_ts_suspend called");
+	fts_reg_idle();
 	FTS_FUNC_EXIT();
 	return 0;
 }
@@ -1602,27 +1601,26 @@ static int fts_ts_resume(struct device *dev)
 		FTS_DEBUG("Already in awake state");
 		return 0;
 	}
+	cancel_delayed_work(&ts_data->init_work);
 	fts_release_all_finger();
-	if (!ts_data->ic_info.is_incell) {
 #if FTS_POWER_SOURCE_CUST_EN
+	if (!ts_data->ic_info.is_incell)
 		fts_power_source_resume(ts_data);
 #endif
-		fts_reset_proc(200);
-	}
-	fts_wait_tp_to_valid();	
+	fts_reset_proc(200);
+	fts_wait_tp_to_valid();
+	fts_ex_mode_recovery(ts_data);
 	if (ts_data->gesture_mode && !ts_data->poweroff_on_sleep) {
 		fts_gesture_resume(ts_data);
 	} else {
 		fts_irq_enable();
 	}
-	ts_data->poweroff_on_sleep = false;	
+	ts_data->poweroff_on_sleep = false;
 	ts_data->suspended = false;
 	fts_reg_active();
-	FTS_INFO("fts_ts_resume called");
 	FTS_FUNC_EXIT();
 	return 0;
 }
-
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 static int fts_pm_suspend(struct device *dev)
 {
@@ -2026,15 +2024,19 @@ static ssize_t double_tap_show(struct kobject *kobj,
 	return sprintf(buf, "%d\n",
 		       fts_get_mode_value(Touch_Doubletap_Mode, GET_CUR_VALUE));
 }
-static ssize_t double_tap_store(struct kobject *kobj,
-				struct kobj_attribute *attr, const char *buf,
-				size_t count)
+static ssize_t fts_double_tap_store(struct kobject *kobj,
+				    struct kobj_attribute *attr,
+				    const char *buf, size_t count)
 {
 	int rc, val;
 	rc = kstrtoint(buf, 10, &val);
 	if (rc)
 		return -EINVAL;
-	fts_set_cur_value(Touch_Doubletap_Mode, !!val);
+	if (fts_data) {
+		fts_update_gesture_state(fts_data, GESTURE_DOUBLETAP, !!val);
+		if (fts_data->suspended && fts_data->gesture_mode)
+			fts_gesture_recovery(fts_data);
+	}
 	return count;
 }
 static struct tp_common_ops double_tap_ops = {
