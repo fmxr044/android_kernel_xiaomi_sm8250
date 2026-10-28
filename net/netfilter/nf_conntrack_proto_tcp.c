@@ -72,7 +72,7 @@ static const char *const tcp_conntrack_names[] = {
 static const unsigned int tcp_timeouts[TCP_CONNTRACK_TIMEOUT_MAX] = {
 	[TCP_CONNTRACK_SYN_SENT]	= 2 MINS,
 	[TCP_CONNTRACK_SYN_RECV]	= 60 SECS,
-	[TCP_CONNTRACK_ESTABLISHED]	= 5 DAYS,
+	[TCP_CONNTRACK_ESTABLISHED]	= 20 MINS,
 	[TCP_CONNTRACK_FIN_WAIT]	= 2 MINS,
 	[TCP_CONNTRACK_CLOSE_WAIT]	= 60 SECS,
 	[TCP_CONNTRACK_LAST_ACK]	= 30 SECS,
@@ -1471,7 +1471,7 @@ static struct ctl_table tcp_sysctl_table[] = {
 	{
 		.procname	= "nf_conntrack_tcp_timeout_established",
 		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_jiffies,
 	},
 	{
