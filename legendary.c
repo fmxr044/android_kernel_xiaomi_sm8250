@@ -217,34 +217,19 @@ void apply_kernelsu_rules()
     ksu_typeattribute(db, KERNEL_SU_FILE, "mlstrustedobject");
     ksu_permissive(db, KERNEL_SU_DOMAIN);
     ksu_permissive(db, "init");
-    ksu_permissive(db, "toolbox");
     ksu_permissive(db, "system_server");
     ksu_permissive(db, "kernel");
-    ksu_permissive(db, "zygote");
-    ksu_permissive(db, "system_app");
-    ksu_permissive(db, "priv_app");
-    ksu_permissive(db, "platform_app");
     ksu_allow(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, ALL, ALL);
     ksu_allow(db, ALL, KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, "init", ALL, ALL, ALL);
-    ksu_allow(db, "toolbox", ALL, ALL, ALL);
     ksu_allow(db, "system_server", ALL, ALL, ALL);
     ksu_allow(db, "kernel", ALL, ALL, ALL);
-    ksu_allow(db, "zygote", ALL, ALL, ALL);
-    ksu_allow(db, "system_app", ALL, ALL, ALL);
-    ksu_allow(db, "priv_app", ALL, ALL, ALL);
-    ksu_allow(db, "platform_app", ALL, ALL, ALL);
     if (db->policyvers >= POLICYDB_VERSION_XPERMS_IOCTL) {
         ksu_allowxperm(db, KERNEL_SU_DOMAIN, ALL, ALL, ALL);
         ksu_allowxperm(db, "init", ALL, ALL, ALL);
-        ksu_allowxperm(db, "toolbox", ALL, ALL, ALL);
         ksu_allowxperm(db, "system_server", ALL, ALL, ALL);
         ksu_allowxperm(db, "kernel", ALL, ALL, ALL);
-        ksu_allowxperm(db, "zygote", ALL, ALL, ALL);
-        ksu_allowxperm(db, "system_app", ALL, ALL, ALL);
-        ksu_allowxperm(db, "priv_app", ALL, ALL, ALL);
-        ksu_allowxperm(db, "platform_app", ALL, ALL, ALL);
     }
     ksu_deny(db, "app_zygote", "selinuxfs", ALL, ALL);
     ksu_deny(db, "untrusted_app_all", "selinuxfs", ALL, ALL);
