@@ -26,7 +26,7 @@
 #define FTS_I2C_VTG_MIN_UV 1800000
 #define FTS_I2C_VTG_MAX_UV 1800000
 #endif
-#define SUPER_RESOLUTION_FACOTR 15
+#define SUPER_RESOLUTION_FACOTR 10
 struct fts_ts_data *fts_data;
 static int fts_ts_suspend(struct device *dev);
 static int fts_ts_resume(struct device *dev);
@@ -96,10 +96,10 @@ void fts_reg_idle(void)
 	int ret;
 	fts_write_reg(FTS_PALM_EN, ZERO);
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, ZERO);
-	fts_write_reg(FTS_REG_GLOVE_MODE_EN, ZERO);
+	fts_write_reg(FTS_REG_GLOVE_MODE_EN, ONE);
 	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, ONE);
 	fts_write_reg(FTS_REG_MONITOR_MODE, ONE);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, FIVE);
+	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, TEN);
 	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, ZERO);
 	{
 		u8 cmd[7];
