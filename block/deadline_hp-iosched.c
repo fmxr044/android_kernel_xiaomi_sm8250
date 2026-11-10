@@ -1,5 +1,21 @@
 /*
- *  Deadline i/o scheduler.
+ *  deadline_hp - read-priority IO scheduler for gaming workloads.
+ *
+ *  Based on Jens Axboe's deadline elevator (single-queue interface),
+ *  retuned for game workloads where reads dominate and latency matters.
+ *
+ *  Design goals vs. stock deadline:
+ *    - Reads always win dispatch priority while a read backlog exists.
+ *    - A read request is dispatched within ~10ms of arrival (low read_expire).
+ *    - Sequential reads are batched (large fifo_batch) for UFS throughput.
+ *    - Front merges are intentionally DISABLED: UFS presents deep,
+ *      parallel hardware queues, so merging adjacent requests serializes
+ *      work that the device could process in parallel, and the rbtree
+ *      churn (del+reinsert under queue lock) costs CPU for no gain.
+ *    - Writes are NOT starved forever: after `writes_starved` read batches,
+ *      one write batch is served. This keeps journal/fsync from being
+ *      postponed indefinitely (the original "read absolute priority" hack
+ *      removed this and risked filesystem hangs under sustained reads).
  *
  *  Copyright (C) 2002 Jens Axboe <axboe@kernel.dk>
  */
@@ -15,39 +31,30 @@
 #include <linux/rbtree.h>
 
 /*
- * See Documentation/block/deadline-iosched.txt
+ * Tunables (game-tuned defaults)
+ *   read_expire : very short -> reads never wait long.
+ *   write_expire: kept short-ish; writes mainly gated by writes_starved.
+ *   writes_starved: generous -> reads keep priority, but writes DO get
+ *                   a turn eventually (no permanent starvation).
+ *   fifo_batch  : large -> sequential read streams batched for throughput.
  */
-static const int read_expire = (HZ * 10) / 1000;  /* max time before a read is submitted. */
-static const int write_expire = 15 * HZ; /* ditto for writes, these limits are SOFT! */
-static const int writes_starved = 64;    /* max times reads can starve a write */
-static const int fifo_batch = 256;       /* # of sequential requests treated as one
-				     by the above parameters. For throughput. */
+static const int read_expire = (HZ * 10) / 1000;  /* ~10ms */
+static const int write_expire = 3 * HZ;               /* ~1s  */
+static const int writes_starved = 64;             /* read batches before a write batch */
+static const int fifo_batch = 256;                /* sequential requests per batch */
 
 struct deadline_data {
-	/*
-	 * run time data
-	 */
-
-	/*
-	 * requests (deadline_rq s) are present on both sort_list and fifo_list
-	 */
-	struct rb_root sort_list[2];	
+	struct rb_root sort_list[2];
 	struct list_head fifo_list[2];
 
-	/*
-	 * next in sort order. read, write or both are NULL
-	 */
 	struct request *next_rq[2];
 	unsigned int batching;		/* number of sequential requests made */
 	unsigned int starved;		/* times reads have starved writes */
 
-	/*
-	 * settings that change how the i/o scheduler behaves
-	 */
+	/* tunables */
 	int fifo_expire[2];
 	int fifo_batch;
 	int writes_starved;
-	int front_merges;
 };
 
 static inline struct rb_root *
@@ -56,9 +63,6 @@ deadline_rb_root(struct deadline_data *dd, struct request *rq)
 	return &dd->sort_list[rq_data_dir(rq)];
 }
 
-/*
- * get the request after `rq' in sector-sorted order
- */
 static inline struct request *
 deadline_latter_request(struct request *rq)
 {
@@ -73,9 +77,7 @@ deadline_latter_request(struct request *rq)
 static void
 deadline_add_rq_rb(struct deadline_data *dd, struct request *rq)
 {
-	struct rb_root *root = deadline_rb_root(dd, rq);
-
-	elv_rb_add(root, rq);
+	elv_rb_add(deadline_rb_root(dd, rq), rq);
 }
 
 static inline void
@@ -89,33 +91,20 @@ deadline_del_rq_rb(struct deadline_data *dd, struct request *rq)
 	elv_rb_del(deadline_rb_root(dd, rq), rq);
 }
 
-/*
- * add rq to rbtree and fifo
- */
 static void
 deadline_add_request(struct request_queue *q, struct request *rq)
 {
 	struct deadline_data *dd = q->elevator->elevator_data;
 	const int data_dir = rq_data_dir(rq);
 
-	/*
-	 * This may be a requeue of a write request that has locked its
-	 * target zone. If it is the case, this releases the zone lock.
-	 */
 	blk_req_zone_write_unlock(rq);
 
 	deadline_add_rq_rb(dd, rq);
 
-	/*
-	 * set expire time and add to fifo list
-	 */
 	rq->fifo_time = jiffies + dd->fifo_expire[data_dir];
 	list_add_tail(&rq->queuelist, &dd->fifo_list[data_dir]);
 }
 
-/*
- * remove rq from rbtree and fifo.
- */
 static void deadline_remove_request(struct request_queue *q, struct request *rq)
 {
 	struct deadline_data *dd = q->elevator->elevator_data;
@@ -124,54 +113,23 @@ static void deadline_remove_request(struct request_queue *q, struct request *rq)
 	deadline_del_rq_rb(dd, rq);
 }
 
+/*
+ * No scheduler-level merging. UFS has deep parallel hardware queues;
+ * front merges would serialize independent requests and cost rbtree
+ * churn under the queue lock. Back merges still happen in the block
+ * layer's generic path (plug list), so nothing is lost for sequential
+ * streams.
+ */
 static enum elv_merge
 deadline_merge(struct request_queue *q, struct request **req, struct bio *bio)
 {
-	//struct deadline_data *dd = q->elevator->elevator_data;
-	//struct request *__rq;
-
-	/*
-	 * check for front merge
-	 */
-	//if (dd->front_merges) {
-		//sector_t sector = bio_end_sector(bio);
-
-		//__rq = elv_rb_find(&dd->sort_list[bio_data_dir(bio)], sector);
-		//if (__rq) {
-			//BUG_ON(sector != blk_rq_pos(__rq));
-
-			//if (elv_bio_merge_ok(__rq, bio)) {
-				//*req = __rq;
-				//return ELEVATOR_FRONT_MERGE;
-			//}
-		//}
-	//}
-
 	return ELEVATOR_NO_MERGE;
-}
-
-static void deadline_merged_request(struct request_queue *q,
-				    struct request *req, enum elv_merge type)
-{
-	struct deadline_data *dd = q->elevator->elevator_data;
-
-	/*
-	 * if the merge was a front merge, we need to reposition request
-	 */
-	if (type == ELEVATOR_FRONT_MERGE) {
-		elv_rb_del(deadline_rb_root(dd, req), req);
-		deadline_add_rq_rb(dd, req);
-	}
 }
 
 static void
 deadline_merged_requests(struct request_queue *q, struct request *req,
 			 struct request *next)
 {
-	/*
-	 * if next expires before rq, assign its expire time to rq
-	 * and move into next position (next will be deleted) in fifo
-	 */
 	if (!list_empty(&req->queuelist) && !list_empty(&next->queuelist)) {
 		if (time_before((unsigned long)next->fifo_time,
 				(unsigned long)req->fifo_time)) {
@@ -180,33 +138,18 @@ deadline_merged_requests(struct request_queue *q, struct request *req,
 		}
 	}
 
-	/*
-	 * kill knowledge of next, this one is a goner
-	 */
 	deadline_remove_request(q, next);
 }
 
-/*
- * move request from sort list to dispatch queue.
- */
 static inline void
 deadline_move_to_dispatch(struct deadline_data *dd, struct request *rq)
 {
-	struct request_queue *q = rq->q;
-
-	/*
-	 * For a zoned block device, write requests must write lock their
-	 * target zone.
-	 */
 	blk_req_zone_write_lock(rq);
 
-	deadline_remove_request(q, rq);
-	elv_dispatch_add_tail(q, rq);
+	deadline_remove_request(rq->q, rq);
+	elv_dispatch_add_tail(rq->q, rq);
 }
 
-/*
- * move an entry to dispatch queue
- */
 static void
 deadline_move_request(struct deadline_data *dd, struct request *rq)
 {
@@ -216,34 +159,16 @@ deadline_move_request(struct deadline_data *dd, struct request *rq)
 	dd->next_rq[WRITE] = NULL;
 	dd->next_rq[data_dir] = deadline_latter_request(rq);
 
-	/*
-	 * take it off the sort and fifo list, move
-	 * to dispatch queue
-	 */
 	deadline_move_to_dispatch(dd, rq);
 }
 
-/*
- * deadline_check_fifo returns 0 if there are no expired requests on the fifo,
- * 1 otherwise. Requires !list_empty(&dd->fifo_list[data_dir])
- */
 static inline int deadline_check_fifo(struct deadline_data *dd, int ddir)
 {
 	struct request *rq = rq_entry_fifo(dd->fifo_list[ddir].next);
 
-	/*
-	 * rq is expired!
-	 */
-	if (time_after_eq(jiffies, (unsigned long)rq->fifo_time))
-		return 1;
-
-	return 0;
+	return time_after_eq(jiffies, (unsigned long)rq->fifo_time);
 }
 
-/*
- * For the specified data direction, return the next request to dispatch using
- * arrival ordered lists.
- */
 static struct request *
 deadline_fifo_request(struct deadline_data *dd, int data_dir)
 {
@@ -259,22 +184,13 @@ deadline_fifo_request(struct deadline_data *dd, int data_dir)
 	if (data_dir == READ || !blk_queue_is_zoned(rq->q))
 		return rq;
 
-	/*
-	 * Look for a write request that can be dispatched, that is one with
-	 * an unlocked target zone.
-	 */
-	list_for_each_entry(rq, &dd->fifo_list[WRITE], queuelist) {
+	list_for_each_entry(rq, &dd->fifo_list[WRITE], queuelist)
 		if (blk_req_can_dispatch_to_zone(rq))
 			return rq;
-	}
 
 	return NULL;
 }
 
-/*
- * For the specified data direction, return the next request to dispatch using
- * sector position sorted lists.
- */
 static struct request *
 deadline_next_request(struct deadline_data *dd, int data_dir)
 {
@@ -290,10 +206,6 @@ deadline_next_request(struct deadline_data *dd, int data_dir)
 	if (data_dir == READ || !blk_queue_is_zoned(rq->q))
 		return rq;
 
-	/*
-	 * Look for a write request that can be dispatched, that is one with
-	 * an unlocked target zone.
-	 */
 	while (rq) {
 		if (blk_req_can_dispatch_to_zone(rq))
 			return rq;
@@ -304,8 +216,10 @@ deadline_next_request(struct deadline_data *dd, int data_dir)
 }
 
 /*
- * deadline_dispatch_requests selects the best request according to
- * read/write expire, fifo_batch, etc
+ * deadline_dispatch_requests: read-priority arbitration with a write
+ * starvation guard. Reads keep priority while any read is queued, but a
+ * write batch is served after `writes_starved` consecutive read batches so
+ * background writes are not postponed forever.
  */
 static int deadline_dispatch_requests(struct request_queue *q, int force)
 {
@@ -315,124 +229,59 @@ static int deadline_dispatch_requests(struct request_queue *q, int force)
 	struct request *rq, *next_rq;
 	int data_dir;
 
-	/*
-	 * batches are currently reads XOR writes
-	 */
+	/* continue an in-progress batch */
 	rq = deadline_next_request(dd, WRITE);
 	if (!rq)
 		rq = deadline_next_request(dd, READ);
 
 	if (rq && dd->batching < dd->fifo_batch)
-		/* we have a next request are still entitled to batch */
 		goto dispatch_request;
 
-	/*
-	 * at this point we are not running a batch. select the appropriate
-	 * data direction (read / write)
-	 */
-
-		if (reads) {
+	/* start a new batch: pick direction */
+	if (reads) {
 		BUG_ON(RB_EMPTY_ROOT(&dd->sort_list[READ]));
 
-		/* 
-		 * 【核心魔改】只要队列里有读请求，且读请求连续插队没超过 16 次（writes_starved），
-		 * 写请求就绝对不准插队！即使写请求饿死了，也必须先服务原神的读盘需求。
-		 */
-		//if (deadline_fifo_request(dd, WRITE) &&
-		    //(dd->starved >= dd->writes_starved)) {
-			// 只有极度饥饿时才分发写，分发后计数器清零
-			//dd->starved = 0; 
-			//goto dispatch_writes;
-		//}
-		
-		if (deadline_fifo_request(dd, WRITE) &&
-            (dd->starved >= dd->writes_starved)) {
-	
-	    /* 
-	     * 【终极降维魔改 2】：只要读盘链路上还有游戏文件（如原神、崩铁贴图）在泵出，
-	     * 不管系统后台的垃圾写盘请求饿死了多少次，一律无条件截断！
-	     * 剥夺写请求在游戏期间的一切插队特权，直通游戏的读请求最高绿色通道！
-	     */
-	    if (reads) {
-		    dd->starved++;
-		    data_dir = READ;
-		goto dispatch_find_request;
-	    }
+		/* read priority, with a write starvation guard */
+		if (writes && dd->starved >= dd->writes_starved) {
+			dd->starved = 0;
+			data_dir = WRITE;
+			goto dispatch_find_request;
+		}
 
-	    // 只有当游戏的读盘队列彻底空闲（reads 为假）时，才准极度吝啬地放行一次写操作
-	    dd->starved = 0;
-	    goto dispatch_writes;
-    }
-
-
-		// 正常情况下，无条件强制赋予读请求最高优先级
-		dd->starved++; 
+		dd->starved++;
 		data_dir = READ;
-
 		goto dispatch_find_request;
 	}
 
-
-	/*
-	 * there are either no reads or writes have been starved
-	 */
-
 	if (writes) {
-dispatch_writes:
 		BUG_ON(RB_EMPTY_ROOT(&dd->sort_list[WRITE]));
 
 		dd->starved = 0;
-
 		data_dir = WRITE;
-
 		goto dispatch_find_request;
 	}
 
 	return 0;
 
 dispatch_find_request:
-	/*
-	 * we are not running a batch, find best request for selected data_dir
-	 */
 	next_rq = deadline_next_request(dd, data_dir);
-	if (deadline_check_fifo(dd, data_dir) || !next_rq) {
-		/*
-		 * A deadline has expired, the last request was in the other
-		 * direction, or we have run out of higher-sectored requests.
-		 * Start again from the request with the earliest expiry time.
-		 */
+	if (deadline_check_fifo(dd, data_dir) || !next_rq)
 		rq = deadline_fifo_request(dd, data_dir);
-	} else {
-		/*
-		 * The last req was the same dir and we have a next request in
-		 * sort order. No expired requests so continue on from here.
-		 */
+	else
 		rq = next_rq;
-	}
 
-	/*
-	 * For a zoned block device, if we only have writes queued and none of
-	 * them can be dispatched, rq will be NULL.
-	 */
 	if (!rq)
 		return 0;
 
 	dd->batching = 0;
 
 dispatch_request:
-	/*
-	 * rq is the selected appropriate request.
-	 */
 	dd->batching++;
 	deadline_move_request(dd, rq);
 
 	return 1;
 }
 
-/*
- * For zoned block devices, write unlock the target zone of completed
- * write requests.
- */
 static void
 deadline_completed_request(struct request_queue *q, struct request *rq)
 {
@@ -449,9 +298,6 @@ static void deadline_exit_queue(struct elevator_queue *e)
 	kfree(dd);
 }
 
-/*
- * initialize elevator private data (deadline_data).
- */
 static int deadline_init_queue(struct request_queue *q, struct elevator_type *e)
 {
 	struct deadline_data *dd;
@@ -475,7 +321,6 @@ static int deadline_init_queue(struct request_queue *q, struct elevator_type *e)
 	dd->fifo_expire[READ] = read_expire;
 	dd->fifo_expire[WRITE] = write_expire;
 	dd->writes_starved = writes_starved;
-	dd->front_merges = 0;
 	dd->fifo_batch = fifo_batch;
 
 	spin_lock_irq(q->queue_lock);
@@ -485,9 +330,8 @@ static int deadline_init_queue(struct request_queue *q, struct elevator_type *e)
 }
 
 /*
- * sysfs parts below
+ * sysfs
  */
-
 static ssize_t
 deadline_var_show(int var, char *page)
 {
@@ -514,7 +358,6 @@ static ssize_t __FUNC(struct elevator_queue *e, char *page)		\
 SHOW_FUNCTION(deadline_read_expire_show, dd->fifo_expire[READ], 1);
 SHOW_FUNCTION(deadline_write_expire_show, dd->fifo_expire[WRITE], 1);
 SHOW_FUNCTION(deadline_writes_starved_show, dd->writes_starved, 0);
-SHOW_FUNCTION(deadline_front_merges_show, dd->front_merges, 0);
 SHOW_FUNCTION(deadline_fifo_batch_show, dd->fifo_batch, 0);
 #undef SHOW_FUNCTION
 
@@ -537,7 +380,6 @@ static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)	
 STORE_FUNCTION(deadline_read_expire_store, &dd->fifo_expire[READ], 0, INT_MAX, 1);
 STORE_FUNCTION(deadline_write_expire_store, &dd->fifo_expire[WRITE], 0, INT_MAX, 1);
 STORE_FUNCTION(deadline_writes_starved_store, &dd->writes_starved, INT_MIN, INT_MAX, 0);
-STORE_FUNCTION(deadline_front_merges_store, &dd->front_merges, 0, 1, 0);
 STORE_FUNCTION(deadline_fifo_batch_store, &dd->fifo_batch, 0, INT_MAX, 0);
 #undef STORE_FUNCTION
 
@@ -548,15 +390,13 @@ static struct elv_fs_entry deadline_attrs[] = {
 	DD_ATTR(read_expire),
 	DD_ATTR(write_expire),
 	DD_ATTR(writes_starved),
-	DD_ATTR(front_merges),
 	DD_ATTR(fifo_batch),
 	__ATTR_NULL
 };
 
 static struct elevator_type iosched_deadline = {
 	.ops.sq = {
-		.elevator_merge_fn = 		deadline_merge,
-		.elevator_merged_fn =		deadline_merged_request,
+		.elevator_merge_fn =		deadline_merge,
 		.elevator_merge_req_fn =	deadline_merged_requests,
 		.elevator_dispatch_fn =		deadline_dispatch_requests,
 		.elevator_completed_req_fn =	deadline_completed_request,
@@ -585,6 +425,6 @@ static void __exit deadline_exit(void)
 module_init(deadline_init);
 module_exit(deadline_exit);
 
-MODULE_AUTHOR("Jens Axboe");
+MODULE_AUTHOR("Jens Axboe (retuned for gaming by user)");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("deadline IO scheduler");
+MODULE_DESCRIPTION("deadline IO scheduler - read-priority gaming variant");
