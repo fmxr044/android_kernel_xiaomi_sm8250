@@ -854,7 +854,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_notsent_lowat",
 		.data		= &init_net.ipv4.sysctl_tcp_notsent_lowat,
 		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_douintvec,
 	},
 	{
@@ -884,7 +884,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_fastopen",
 		.data		= &init_net.ipv4.sysctl_tcp_fastopen,
 		.maxlen		= sizeof(int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec,
 	},
 	{
@@ -1268,6 +1268,7 @@ static __init int sysctl_ipv4_init(void)
 	init_net.ipv4.sysctl_max_syn_backlog = 4096;
 	init_net.ipv4.sysctl_tcp_pacing_ca_ratio = 110;
 	init_net.ipv4.sysctl_tcp_min_rtt_wlen = 20;
+	init_net.ipv4.sysctl_tcp_fastopen = 3;
 	//init_net.ipv4.sysctl_tcp_wmem[0] = 4096;
 	//init_net.ipv4.sysctl_tcp_wmem[1] = 87380;
 	//init_net.ipv4.sysctl_tcp_wmem[2] = 8388608;
@@ -1277,6 +1278,7 @@ static __init int sysctl_ipv4_init(void)
 	sysctl_tcp_low_latency = 0;
 	init_net.ipv4.sysctl_tcp_slow_start_after_idle = 0;
 	init_net.ipv4.sysctl_tcp_adv_win_scale = 2;
+	init_net.ipv4.sysctl_tcp_notsent_lowat = 16384;
 	
 	hdr = register_net_sysctl(&init_net, "net/ipv4", ipv4_table);
 	if (!hdr)
