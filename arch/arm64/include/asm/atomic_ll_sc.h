@@ -17,8 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef EXPORT_LL_SC_C
-#endif
 
 #ifndef __ASM_ATOMIC_LL_SC_H
 #define __ASM_ATOMIC_LL_SC_H
