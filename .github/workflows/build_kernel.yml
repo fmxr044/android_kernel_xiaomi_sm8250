@@ -98,12 +98,13 @@ jobs:
         export LOCALVERSION=""
         export LOCALVERSION_AUTO=y
         export KBUILD_BUILD_TIMESTAMP="$(TZ="Asia/Shanghai" date +"%a %b %d %H:%M:%S CST %Y")"
+        export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
         export ARCH=arm64
         export SUBARCH=arm64
-        export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
-        export CC=clang
+        export CC="clang --target=aarch64-linux-gnu"
+        export CLANG_TRIPLE=aarch64-linux-gnu-
         export CROSS_COMPILE=aarch64-linux-gnu-
-        export LLVM=1 
+        export LLVM=1
         export LLVM_IAS=1
         if [ "${{ github.event.inputs.ignore_warnings }}" = "true" ]; then
           export KCFLAGS="-w"
@@ -111,6 +112,9 @@ jobs:
           export KCFLAGS=""
         fi
         make O=out vendor/munch_defconfig vendor/munch.config
+        grep -E "LSE_ATOMICS|AS_LSE" out/.config
+        # 确保两项都为 y，否则直接中断构建避免浪费时间
+        grep -q "CONFIG_ARM64_LSE_ATOMICS=y" out/.config || { echo "ERROR: LSE_ATOMICS failed!"; exit 1; }
         make O=out -j$(nproc --all) Image.gz
     - name: 8. 上传 Image.gz
       uses: actions/upload-artifact@v6
