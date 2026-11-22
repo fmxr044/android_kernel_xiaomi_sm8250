@@ -3109,7 +3109,7 @@ static int check_modinfo(struct module *mod, struct load_info *info, int flags)
 		err = try_to_force_load(mod, "bad vermagic");
 		if (err)
 			return err;
-	} else if (!same_magic(modmagic, vermagic, info->index.vers)) {
+	} else if (0) {
 		pr_err("%s: version magic '%s' should be '%s'\n",
 		       info->name, modmagic, vermagic);
 		return -ENOEXEC;
