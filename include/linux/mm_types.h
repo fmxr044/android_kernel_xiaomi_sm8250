@@ -366,6 +366,7 @@ struct mm_struct {
 		struct vm_area_struct *mmap;		/* list of VMAs */
 		struct rb_root mm_rb;
 		u64 vmacache_seqnum;                   /* per-thread vmacache */
+		u64 __kabi_pad_mm_rb_lock;  /* keep ->pgd at 0x48 for 4.19.157 modules */
 #ifdef CONFIG_MMU
 		unsigned long (*get_unmapped_area) (struct file *filp,
 				unsigned long addr, unsigned long len,
