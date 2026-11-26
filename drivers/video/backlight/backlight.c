@@ -294,12 +294,56 @@ static void bl_device_release(struct device *dev)
 	kfree(bd);
 }
 
+/*
+ * MIUI/HyperOS 亮度服务依赖的克隆亮度节点
+ *
+ * 原厂 4.19.157 的 backlight 核心里带这段小米补丁：每个背光设备额外暴露
+ * brightness_clone 属性，MIUI 的 displayfeature / 亮度服务读写它来同步
+ * "用户期望亮度"的备份值，再配合 clone 热器件做散热限亮。
+ *
+ * 上游 4.19.325 没有这个属性，节点不存在时 MIUI 的亮度服务在初始化阶段
+ * 就判定背光不可用，直接放弃设置亮度：开机动画（走标准 brightness）能正常
+ * 显示，动画放完交给系统后就一直黑屏，而画面、触控、投屏全部正常。
+ */
+static ssize_t brightness_clone_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct backlight_device *bd = to_backlight_device(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", bd->props.brightness_clone);
+}
+
+static ssize_t brightness_clone_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int rc;
+	struct backlight_device *bd = to_backlight_device(dev);
+	unsigned long brightness;
+	char *envp[2];
+
+	rc = kstrtoul(buf, 0, &brightness);
+	if (rc)
+		return rc;
+
+	bd->props.brightness_clone_backup = brightness;
+	bd->props.brightness_clone = brightness;
+	envp[0] = "SOURCE=sysfs";
+	envp[1] = NULL;
+	kobject_uevent_env(&bd->dev.kobj, KOBJ_CHANGE, envp);
+	sysfs_notify(&bd->dev.kobj, NULL, "brightness_clone");
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(brightness_clone);
+
 static struct attribute *bl_device_attrs[] = {
 	&dev_attr_bl_power.attr,
 	&dev_attr_brightness.attr,
 	&dev_attr_actual_brightness.attr,
 	&dev_attr_max_brightness.attr,
 	&dev_attr_type.attr,
+	&dev_attr_brightness_clone.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(bl_device);

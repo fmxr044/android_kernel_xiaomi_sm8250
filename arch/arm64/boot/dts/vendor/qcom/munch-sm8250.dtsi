@@ -1333,3 +1333,23 @@ And public attribution of xiaomi platforms(like L11R and so and)
         qca,bt-vdd-dig-supply = <&pm8150_s6>;
         qca,bt-vdd-dig-voltage-level = <950000 950000>;
 };
+
+/*
+ * MIUI/HyperOS 背光通路修复
+ *
+ * sde_backlight_setup() 注册完 panel0-backlight 之后，会再调用
+ * sde_backlight_clone_setup() 注册亮度克隆热器件；而
+ * backlight_clone_cdev_register() 第一件事就是检查父节点(mdss_mdp)
+ * 是否带 "#cooling-cells"，没有就直接返回 -ENODEV。
+ *
+ * 结果是 sde_backlight_setup() 走进错误分支，把刚注册好的
+ * panel0-backlight 注销掉、bl_device 置空：
+ *   -> /sys/class/backlight/ 下没有任何设备
+ *   -> MIUI 的亮度服务无处可写，背光始终为 0
+ *   -> 画面、触控、投屏全部正常，但屏幕物理无背光=全黑
+ *
+ * 原厂 dtbo 的 fragment@69 正是给 mdss_mdp 补的这个属性。
+ */
+&mdss_mdp {
+	#cooling-cells = <0>;
+};

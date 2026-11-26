@@ -178,12 +178,15 @@ static int sde_backlight_setup(struct sde_connector *c_conn,
 	display_count++;
 	rc = sde_backlight_clone_setup(c_conn, dev->dev, c_conn->bl_device);
 	if (rc) {
-		SDE_ERROR("Failed to register backlight_clone_cdev: %ld\n",
-				    PTR_ERR(c_conn->cdev_clone));
-		backlight_clone_cdev_unregister(c_conn->cdev_clone);
-		backlight_device_unregister(c_conn->bl_device);
-		c_conn->bl_device = NULL;
-		return -ENODEV;
+		/*
+		 * 亮度克隆热器件只用于 display cooling，注册不上不应该连累
+		 * 真正的背光设备：原来这里会把刚注册的 panel0-backlight 注销，
+		 * 导致 /sys/class/backlight 下空掉，MIUI 亮度服务无处可写，
+		 * 表现为系统完全正常但屏幕没有任何背光（全黑）。
+		 */
+		SDE_ERROR("Failed to register backlight_clone_cdev: %d, keep backlight alive\n",
+				    rc);
+		c_conn->cdev_clone = NULL;
 	}
 	return 0;
 }

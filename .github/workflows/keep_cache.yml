@@ -1,48 +1,70 @@
-name: clang update & cache KeepAlive
+name: KeepAlive (clang cache + 定时保活)
+
+# 两件事：
+#   1. 维护 clang 23.0.1（clang-r614150）的缓存，避免构建时重复下载 ~2GB 工具链
+#   2. 每天提交一次心跳，防止 GitHub 因仓库长期无提交而停用定时任务（60 天规则）
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 3 * * *'      # 每天 03:00 UTC（北京时间 11:00）
   workflow_dispatch:
+
+env:
+  CLANG_VER: clang-r614150          # clang 23.0.1
+  CLANG_BRANCH: mirror-goog-main-llvm-toolchain-source
+
 jobs:
-  refresh-cache:
+  refresh:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - name: 1. get latest clang ver
-      id: get_version
-      run: |
-        LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
-        echo "latest ver: $LATEST_VER"
-    - name: 2. try get clang on cache storage
+    - name: 1. 检出仓库
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - name: 2. 恢复 Clang 缓存
       id: cache-clang
       uses: actions/cache@v6
       with:
         path: ${{ github.workspace }}/clang
-        key: aosp-clang-linux-x86
-    - name: 3. version comparison
+        key: ${{ env.CLANG_VER }}-linux-x86
+
+    - name: 3. 缓存未命中则下载
+      if: steps.cache-clang.outputs.cache-hit != 'true'
       run: |
-        LATEST_VER=$(curl -s "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86" | grep -o 'clang-r[0-9]*[a-z]*' | tail -n 1)
-        NEED_DOWNLOAD="false"
-        if [ "${{ steps.cache-clang.outputs.cache-hit }}" != 'true' ]; then
-          echo "cache is null ! exec download now"
-          NEED_DOWNLOAD="true"
+        set -e
+        mkdir -p "$GITHUB_WORKSPACE/clang"
+        cd "$GITHUB_WORKSPACE/clang"
+        URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/${CLANG_BRANCH}/${CLANG_VER}.tar.gz"
+        echo "downloading $CLANG_VER"
+        curl -fL --retry 3 --retry-delay 5 "$URL" -o clang.tar.gz
+        tar -xzf clang.tar.gz
+        rm -f clang.tar.gz
+        ./bin/clang --version | head -1
+
+    - name: 4. 校验版本
+      run: |
+        set -e
+        VERSION="$($GITHUB_WORKSPACE/clang/bin/clang --version | head -1)"
+        echo "$VERSION"
+        echo "$VERSION" | grep -q "23.0.1" || { echo "ERROR: clang 版本不是 23.0.1"; exit 1; }
+        echo "CLANG_OK"
+
+    - name: 5. 心跳提交（防空闲停用定时任务）
+      run: |
+        set -e
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        mkdir -p .github
+        {
+          echo "clang: ${CLANG_VER} (23.0.1)"
+          echo "last-beat: $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S %Z')"
+        } > .github/keepalive.txt
+        git add .github/keepalive.txt
+        if git diff --cached --quiet; then
+          echo "没有变化，跳过提交"
         else
-          LOCAL_VER=$(${{ github.workspace }}/clang/bin/clang --version | grep -o 'based on r[0-9]*' | grep -o 'r[0-9]*')
-          WEB_VER=$(echo "$LATEST_VER" | grep -o 'r[0-9]*')     
-          echo "local cache ver: ${LOCAL_VER}，latest ver: ${WEB_VER}"
-          if [ "$LOCAL_VER" != "$WEB_VER" ]; then
-            echo "new ver detected"
-            rm -rf ${{ github.workspace }}/clang
-            NEED_DOWNLOAD="true"
-          else
-            echo "already up-to-date no actions"
-            ${{ github.workspace }}/clang/bin/clang --version
-          fi
-        fi
-        if [ "$NEED_DOWNLOAD" = "true" ]; then
-          echo "downloading : $LATEST_VER"
-          mkdir -p ${{ github.workspace }}/clang
-          cd ${{ github.workspace }}/clang
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/$LATEST_VER.tar.gz -O clang.tar.gz
-          tar -xf clang.tar.gz
-          echo "upgrade complete"
+          git commit -m "chore: keepalive $(TZ=Asia/Shanghai date +%Y-%m-%d)"
+          git push
         fi
