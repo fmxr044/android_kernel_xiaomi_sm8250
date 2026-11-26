@@ -47,11 +47,11 @@ static void fts_game_mode_recovery(struct fts_ts_data *ts_data);
 #endif
 #define CMD0 0xc1 //GAME MODE REG
 #define CMD1 0x01 //GAME MODE SWITCH
-#define CMD2 0x20 //TOUCH REPORT RATE
-#define CMD3 0x01 //TOUCH TOLERANCE
-#define CMD4 0x01 //TOUCH UP THRESHOLD
-#define CMD5 0x01 //TOUCH AIM SENSITIVITY
-#define CMD6 0x01 //TOUCH TAP Stability
+#define CMD2 0x1E //TOUCH REPORT RATE
+#define CMD3 0x20 //TOUCH TOLERANCE
+#define CMD4 0x20 //TOUCH UP THRESHOLD
+#define CMD5 0x20 //TOUCH AIM SENSITIVITY
+#define CMD6 0x20 //TOUCH TAP Stability
 #define ZERO 0x00
 #define ONE 0x01
 #define TWO 0x02
@@ -70,9 +70,6 @@ void fts_reg_active(void)
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, 0x00);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, 0x01);
 	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, 0x01);
-	fts_write_reg(FTS_REG_MONITOR_MODE, 0x00);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, 0xFF);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, 0x00);
 	{
 		u8 cmd[7];
 		cmd[0] = CMD0;
@@ -98,14 +95,11 @@ void fts_reg_idle(void)
 	fts_write_reg(FTS_REG_CHARGER_MODE_EN, ZERO);
 	fts_write_reg(FTS_REG_GLOVE_MODE_EN, ONE);
 	fts_write_reg(FTS_REG_ESDCHECK_DISABLE, ONE);
-	fts_write_reg(FTS_REG_MONITOR_MODE, ONE);
-	fts_write_reg(FTS_REG_TIME_ENTER_MONITOR, TEN);
-	fts_write_reg(FTS_REG_EDGE_FILTER_LEVEL, ZERO);
 	{
 		u8 cmd[7];
 		cmd[0] = CMD0;
 		cmd[1] = ZERO;
-		cmd[2] = 0x1e;
+		cmd[2] = THREE;
 		cmd[3] = TEN;
 		cmd[4] = TEN;
 		cmd[5] = TEN;
@@ -1705,17 +1699,17 @@ static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][SET_CUR_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_CUR_VALUE] = 1;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MAX_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MIN_VALUE] = 1;//原1
-	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_DEF_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_CUR_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MAX_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MIN_VALUE] = 5;//原1
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_DEF_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_CUR_VALUE] = 5;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MAX_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MIN_VALUE] = 1;//原1
-	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_DEF_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_CUR_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MAX_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MIN_VALUE] = 5;//原1
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_DEF_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_CUR_VALUE] = 5;
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MAX_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_MIN_VALUE] = 5;//原1
@@ -1723,11 +1717,11 @@ static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][SET_CUR_VALUE] = 5;
 	xiaomi_touch_interfaces.touch_mode[Touch_Aim_Sensitivity][GET_CUR_VALUE] = 5;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MAX_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MIN_VALUE] = 1;//原1
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_DEF_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE] = 1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_CUR_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MAX_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_MIN_VALUE] = 5;//原1
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_DEF_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][SET_CUR_VALUE] = 5;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tap_Stability][GET_CUR_VALUE] = 5;
 
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_MAX_VALUE] = 1;//原3>通过EXPERT_ARRAY_SIZE定义获取
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_MIN_VALUE] = 1;
@@ -1735,13 +1729,13 @@ static void fts_init_touch_mode_data(struct fts_ts_data *ts_data)
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][SET_CUR_VALUE] = 1;
 	xiaomi_touch_interfaces.touch_mode[Touch_Expert_Mode][GET_CUR_VALUE] = 1;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MAX_VALUE] = 0;//原3
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MAX_VALUE] = 3;//原3
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MIN_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] = 0;
 
-	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MAX_VALUE] = 0;//原3
+	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MAX_VALUE] = 3;//原3
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MIN_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_DEF_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][SET_CUR_VALUE] = 0;
