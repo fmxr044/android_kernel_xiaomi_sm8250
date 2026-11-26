@@ -187,7 +187,9 @@ jobs:
         export CCACHE_MAXSIZE=${{ env.CCACHE_MAXSIZE }}
         export CCACHE_COMPILERCHECK=content
         export CCACHE_SLOPPINESS=time_macros,include_file_ctime,include_file_mtime,file_stat_matches
-        export CC="ccache clang --target=aarch64-linux-gnu"
+        # 注意：LLVM=1 会让内核 Makefile 把 CC 覆盖成 clang，
+        # 环境变量不生效，必须用 make 命令行变量才能走 ccache
+        CC_WRAPPED="ccache clang --target=aarch64-linux-gnu"
         ccache --zero-stats || true
 
         if [ "${{ github.event.inputs.ignore_warnings }}" = "true" ]; then
@@ -196,7 +198,7 @@ jobs:
           export KCFLAGS=""
         fi
 
-        make O=out vendor/munch_defconfig vendor/munch.config
+        make O=out ARCH=arm64 CC="$CC_WRAPPED" vendor/munch_defconfig vendor/munch.config
 
         echo "===== 配置校验 ====="
         grep -E "LSE_ATOMICS|AS_LSE" out/.config
@@ -212,11 +214,11 @@ jobs:
         grep -q "CONFIG_MODVERSIONS=y" out/.config || { echo "ERROR: MODVERSIONS 未开，vendor .ko 会加载失败"; exit 1; }
         echo "MODVERSIONS_OK"
 
-        make O=out -j$(nproc --all) Image.gz
+        make O=out ARCH=arm64 CC="$CC_WRAPPED" -j$(nproc --all) Image.gz
 
         # dtb 单独编；失败不阻塞主产物
-        make O=out -j$(nproc --all) vendor/qcom/kona-v2.1.dtb || \
-          make O=out -j$(nproc --all) dtbs || true
+        make O=out ARCH=arm64 CC="$CC_WRAPPED" -j$(nproc --all) vendor/qcom/kona-v2.1.dtb || \
+          make O=out ARCH=arm64 CC="$CC_WRAPPED" -j$(nproc --all) dtbs || true
 
     - name: 11. 打包产物
       run: |
@@ -251,6 +253,9 @@ jobs:
         echo "===== ccache 统计 ====="
         export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache
         ccache --show-stats || true
+        CACHEABLE=$(ccache --print-stats | awk -F'\t' '/cache_miss|cache_hit/ {s+=$2} END {print s+0}')
+        echo "ccache 记录的编译次数: $CACHEABLE"
+        [ "$CACHEABLE" -gt 0 ] || { echo "ERROR: ccache 没有生效（0 次记录）"; exit 1; }
 
     - name: 12. 上传产物
       uses: actions/upload-artifact@v6
