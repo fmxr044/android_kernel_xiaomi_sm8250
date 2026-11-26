@@ -23,25 +23,39 @@ jobs:
       with:
         fetch-depth: 1
 
-    - name: 2. 恢复 Clang 缓存
+    - name: 2. 恢复 Clang 缓存（复用仓库现有缓存）
       id: cache-clang
       uses: actions/cache@v6
       with:
         path: ${{ github.workspace }}/clang
-        key: ${{ env.CLANG_VER }}-linux-x86
+        key: aosp-clang-linux-x86-23.0.1
+        restore-keys: |
+          aosp-clang-linux-x86
 
-    - name: 3. 缓存未命中则下载
-      if: steps.cache-clang.outputs.cache-hit != 'true'
+    - name: 3. 确保 Clang 23.0.1（缓存里不是则补齐）
       run: |
         set -e
-        mkdir -p "$GITHUB_WORKSPACE/clang"
-        cd "$GITHUB_WORKSPACE/clang"
-        URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/${CLANG_BRANCH}/${CLANG_VER}.tar.gz"
-        echo "downloading $CLANG_VER"
-        curl -fL --retry 3 --retry-delay 5 "$URL" -o clang.tar.gz
-        tar -xzf clang.tar.gz
-        rm -f clang.tar.gz
-        ./bin/clang --version | head -1
+        CLANG_BIN="$GITHUB_WORKSPACE/clang/bin/clang"
+        NEED=0
+        if [ -x "$CLANG_BIN" ]; then
+          V="$($CLANG_BIN --version | head -1)"
+          echo "cache: $V"
+          echo "$V" | grep -q "23.0.1" || NEED=1
+        else
+          echo "cache miss"
+          NEED=1
+        fi
+        if [ "$NEED" = "1" ]; then
+          echo "下载 $CLANG_VER (23.0.1)"
+          rm -rf "$GITHUB_WORKSPACE/clang"
+          mkdir -p "$GITHUB_WORKSPACE/clang"
+          cd "$GITHUB_WORKSPACE/clang"
+          URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/${CLANG_BRANCH}/${CLANG_VER}.tar.gz"
+          curl -fL --retry 3 --retry-delay 5 "$URL" -o clang.tar.gz
+          tar -xzf clang.tar.gz
+          rm -f clang.tar.gz
+        fi
+        "$CLANG_BIN" --version | head -1
 
     - name: 4. 校验版本
       run: |
