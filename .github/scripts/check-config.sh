@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 双系统统一内核 —— 配置级适配自检
+# MIUI/HyperOS 内核 —— 配置级适配自检
 #
 # 为什么需要这个：
 #   arch/arm64/configs/vendor/munch.config 里的开关必须真的进了 out/.config，

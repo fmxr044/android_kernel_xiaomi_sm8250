@@ -1,8 +1,8 @@
-name: Unified Kernel (AOSP + MIUI/HyperOS)
+name: MIUI/HyperOS Kernel (munch)
 
 # 双系统统一内核：
 #   - 显示适配（l11r 面板 / mdss_mdp cooling-cells / 背光克隆）已直接写进源码，不再编译时打补丁
-#   - 一份 defconfig 同时满足 AOSP 与 MIUI/HyperOS
+#   - 本分支只服务 MIUI / HyperOS；纯 AOSP 继续用 master 分支
 #   - clang-r614150（clang 23.0.1）固定版本，走仓库 clang 缓存
 #   - 无 LTO（CONFIG_LTO_NONE=y），与原厂一致
 on:
@@ -11,7 +11,7 @@ on:
       branch:
         description: 'Source branch'
         required: true
-        default: 'unified-aosp-miui'
+        default: 'miui-hyperos'
         type: string
       compile_variant:
         description: 'Select Variant (DEF= with ksu)'
@@ -208,7 +208,7 @@ jobs:
           echo "WARN: 没编出 kona-v2.1.dtb，zip 只含 Image.gz"
         fi
 
-        NAME="${{ matrix.variant }}_unified-aosp-miui_munch_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M)_$(git rev-parse --short HEAD).zip"
+        NAME="${{ matrix.variant }}_miui-hyperos_munch_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M)_$(git rev-parse --short HEAD).zip"
         cd release && zip -9 "../$NAME" * && cd ..
         ls -lh "$NAME"
         sha256sum "$NAME" | tee "$NAME.sha256"
@@ -228,7 +228,7 @@ jobs:
     - name: 11. 上传产物
       uses: actions/upload-artifact@v6
       with:
-        name: Munch-Unified-${{ matrix.variant }}
+        name: Munch-MIUI-${{ matrix.variant }}
         path: |
           ${{ github.workspace }}/release/Image.gz
           ${{ github.workspace }}/out/.config
