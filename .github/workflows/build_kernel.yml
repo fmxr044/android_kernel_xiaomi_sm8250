@@ -181,19 +181,11 @@ jobs:
 
         make O=out vendor/munch_defconfig vendor/munch.config
 
-        echo "===== 配置校验 ====="
-        grep -E "LSE_ATOMICS|AS_LSE" out/.config
-        grep -q "CONFIG_ARM64_LSE_ATOMICS=y" out/.config || { echo "ERROR: LSE_ATOMICS failed!"; exit 1; }
-
-        # 无 LTO：与原厂、lineage 基线一致
-        grep -q "CONFIG_LTO_NONE=y" out/.config || { echo "ERROR: CONFIG_LTO_NONE 未生效"; exit 1; }
-        if grep -q "^CONFIG_LTO_CLANG=y" out/.config; then echo "ERROR: LTO_CLANG 被打开了"; exit 1; fi
-        if grep -q "^CONFIG_THINLTO=y" out/.config; then echo "ERROR: THINLTO 被打开了"; exit 1; fi
-        echo "NO_LTO_OK"
-
-        # 双系统必需：模块版本校验（vendor 分区 .ko 的 vermagic 带 modversions）
-        grep -q "CONFIG_MODVERSIONS=y" out/.config || { echo "ERROR: MODVERSIONS 未开，vendor .ko 会加载失败"; exit 1; }
-        echo "MODVERSIONS_OK"
+        # 配置级适配全部写在 arch/arm64/configs/vendor/munch.config（源码内 fragment），
+        # 这里只负责核对它真的进了 out/.config。kconfig 会静默丢弃不存在的符号，
+        # 光写文件不算数——缺一项就直接 fail，别浪费时间编一小时。
+        echo "===== 配置级适配自检 ====="
+        bash .github/scripts/check-config.sh out/.config
 
         make O=out -j$(nproc --all) Image.gz
 
@@ -239,6 +231,7 @@ jobs:
         name: Munch-Unified-${{ matrix.variant }}
         path: |
           ${{ github.workspace }}/release/Image.gz
+          ${{ github.workspace }}/out/.config
           ${{ github.workspace }}/*.zip
           ${{ github.workspace }}/*.zip.sha256
         if-no-files-found: error
