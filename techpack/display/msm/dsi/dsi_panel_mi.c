@@ -1744,6 +1744,19 @@ int mi_dsi_panel_read_lhbm_white_reg(struct dsi_panel *panel, int fod_lhbm_white
 		return -EAGAIN;
 	}
 
+	/*
+	 * 面板没配 mi,mdss-dsi-panel-fod-lhbm-white-update-flag 时，fod_lhbm_white_cfg
+	 * 里的 update_index / 命令索引全是 0，继续往下走会拿空命令集去读寄存器，
+	 * 轻则 EAGAIN 刷屏，重则越界取 tx_buf。这里直接返回，当作该面板不支持白点校准。
+	 */
+	if (!panel->mi_cfg.fod_lhbm_white_update_flag)
+		return 0;
+
+	priv_info = panel->cur_mode->priv_info;
+	cmd_set = &priv_info->cmd_sets[DSI_CMD_SET_MI_FOD_LHBM_WHITE_READ_B2_REG];
+	if (!cmd_set || !cmd_set->count)
+		return 0;
+
 	fod_lhbm_white_cfg = &panel->mi_cfg.fod_lhbm_white_cfg[fod_lhbm_white_state];
 	if (fod_lhbm_white_cfg->update_done) {
 		pr_debug("fod lhbm %d param already updated\n",fod_lhbm_white_state);
@@ -1862,6 +1875,11 @@ int mi_dsi_panel_read_lhbm_white_param(struct dsi_panel *panel)
 	if (!panel || !panel->cur_mode || !panel->cur_mode->priv_info ||!display) {
 		pr_err("invalid params\n");
 		return -EAGAIN;
+	}
+
+	if (!panel->mi_cfg.fod_lhbm_white_update_flag) {
+		pr_debug("[%s] fod_lhbm_white_update_flag not configured, skip\n", panel->type);
+		return 0;
 	}
 
 	rc = mi_dsi_panel_read_lhbm_white_reg(panel,FOD_LHBM_WHITE_1000NIT_GIROFF);
@@ -2000,6 +2018,9 @@ int mi_dsi_panel_update_lhbm_white_param(struct dsi_panel *panel, int fod_lhbm_w
 	u8 *tx_buf;
 	size_t tx_len;
 	u32 param_len;
+
+	if (!panel || !panel->mi_cfg.fod_lhbm_white_update_flag)
+		return 0;
 
 	fod_lhbm_white_cfg = &panel->mi_cfg.fod_lhbm_white_cfg[fod_lhbm_white_state];
 

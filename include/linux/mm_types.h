@@ -3,6 +3,7 @@
 #define _LINUX_MM_TYPES_H
 
 #include <linux/mm_types_task.h>
+#include <linux/build_bug.h>
 
 #include <linux/auxvec.h>
 #include <linux/list.h>
@@ -524,6 +525,16 @@ struct mm_struct {
 	 */
 	unsigned long cpu_bitmap[];
 };
+
+/*
+ * KABI 保护：原厂 4.19.157 的 mm_struct->pgd 固定在 0x48，vendor 分区里的 .ko
+ * 是按这个偏移写死编译的。偏移一旦漂移，模块取到的就不是页表基址，会直接 panic。
+ * 这里钉死偏移，漂了就编译失败，别等刷到手机上才发现。
+ */
+#if defined(CONFIG_ARM64) && !defined(CONFIG_GCC_PLUGIN_RANDSTRUCT)
+static_assert(offsetof(struct mm_struct, pgd) == 0x48,
+	      "mm_struct->pgd 必须在 0x48（与原厂 4.19.157 布局一致），否则 vendor 模块会读到错的页表指针");
+#endif
 
 extern struct mm_struct init_mm;
 
