@@ -3,6 +3,11 @@ name: Lawlessness
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Source branch'
+        required: true
+        default: 'miui'
+        type: string
       compile_variant:
         description: 'Select Variant (DEF= with ksu)'
         required: true
@@ -44,7 +49,7 @@ jobs:
     - name: 1. 检出云端内核源码
       uses: actions/checkout@v6
       with:
-        ref: master   
+        ref: ${{ github.event.inputs.branch }}
     - name: 2. 初始化编译环境
       run: |
         sudo apt-get update
@@ -95,8 +100,6 @@ jobs:
         cd $GITHUB_WORKSPACE
         export KBUILD_BUILD_USER="kleaf"
         export KBUILD_BUILD_HOST="build-host"
-        export LOCALVERSION=""
-        export LOCALVERSION_AUTO=y
         export KBUILD_BUILD_TIMESTAMP="$(TZ="Asia/Shanghai" date +"%a %b %d %H:%M:%S CST %Y")"
         export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
         export ARCH=arm64
