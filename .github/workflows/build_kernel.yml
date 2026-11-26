@@ -3,7 +3,7 @@ name: Unified Kernel (AOSP + MIUI/HyperOS)
 # 双系统统一内核：
 #   - 显示适配（l11r 面板 / mdss_mdp cooling-cells / 背光克隆）已直接写进源码，不再编译时打补丁
 #   - 一份 defconfig 同时满足 AOSP 与 MIUI/HyperOS
-#   - clang-r614150（clang 23.0.1）固定版本，clang 与 ccache 双缓存
+#   - clang-r614150（clang 23.0.1）固定版本，走仓库 clang 缓存
 #   - 无 LTO（CONFIG_LTO_NONE=y），与原厂一致
 on:
   workflow_dispatch:
@@ -31,7 +31,6 @@ on:
 env:
   CLANG_VER: clang-r614150          # clang 23.0.1
   CLANG_BRANCH: mirror-goog-main-llvm-toolchain-source
-  CCACHE_MAXSIZE: 6G
 
 jobs:
   matrix-generator:
@@ -69,7 +68,7 @@ jobs:
     - name: 2. 初始化编译环境
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib \
+        sudo apt-get install -y bc bison build-essential curl flex g++-multilib \
           gcc-multilib git gnupg gperf libelf-dev libssl-dev lzop rsync schedtool \
           squashfs-tools xsltproc zip zlib1g-dev
 
@@ -117,22 +116,13 @@ jobs:
         echo "$VERSION" | grep -q "23.0.1" || { echo "ERROR: clang 版本不是 23.0.1"; exit 1; }
         echo "CLANG_OK"
 
-    - name: 6. 恢复 ccache
-      id: cache-ccache
-      uses: actions/cache@v6
-      with:
-        path: ${{ github.workspace }}/.ccache
-        key: ccache-${{ matrix.variant }}-${{ hashFiles('arch/arm64/configs/vendor/munch_defconfig', 'arch/arm64/configs/vendor/munch.config') }}
-        restore-keys: |
-          ccache-${{ matrix.variant }}-
-
-    - name: 7. 集成 ReSukiSU
+    - name: 6. 集成 ReSukiSU
       if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
         curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
 
-    - name: 8. KSU 定制
+    - name: 7. KSU 定制
       if: matrix.variant != 'normal'
       run: |
         cd $GITHUB_WORKSPACE
@@ -148,7 +138,7 @@ jobs:
           echo "未检测到特定标志，赋能失败！"
         fi
 
-    - name: 9. 清理 KSU 配置（无 KSU 变体）
+    - name: 8. 清理 KSU 配置（无 KSU 变体）
       if: matrix.variant == 'normal'
       run: |
         cd $GITHUB_WORKSPACE
@@ -164,7 +154,7 @@ jobs:
         echo "关闭本地源码完整性校验"
         git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
 
-    - name: 10. 配置环境 & 编译（无 LTO）
+    - name: 9. 配置环境 & 编译（无 LTO）
       run: |
         set -e
         cd $GITHUB_WORKSPACE
@@ -181,16 +171,7 @@ jobs:
         export CLANG_TRIPLE=aarch64-linux-gnu-
         export CROSS_COMPILE=aarch64-linux-gnu-
 
-        # ccache：跨 run 复用编译结果
-        export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache
-        export CCACHE_BASEDIR=$GITHUB_WORKSPACE
-        export CCACHE_MAXSIZE=${{ env.CCACHE_MAXSIZE }}
-        export CCACHE_COMPILERCHECK=content
-        export CCACHE_SLOPPINESS=time_macros,include_file_ctime,include_file_mtime,file_stat_matches
-        # 注意：LLVM=1 会让内核 Makefile 把 CC 覆盖成 clang，
-        # 环境变量不生效，必须用 make 命令行变量才能走 ccache
-        CC_WRAPPED="ccache clang --target=aarch64-linux-gnu"
-        ccache --zero-stats || true
+        export CC="clang --target=aarch64-linux-gnu"
 
         if [ "${{ github.event.inputs.ignore_warnings }}" = "true" ]; then
           export KCFLAGS="-w"
@@ -198,7 +179,7 @@ jobs:
           export KCFLAGS=""
         fi
 
-        make O=out ARCH=arm64 CC="$CC_WRAPPED" vendor/munch_defconfig vendor/munch.config
+        make O=out vendor/munch_defconfig vendor/munch.config
 
         echo "===== 配置校验 ====="
         grep -E "LSE_ATOMICS|AS_LSE" out/.config
@@ -214,13 +195,13 @@ jobs:
         grep -q "CONFIG_MODVERSIONS=y" out/.config || { echo "ERROR: MODVERSIONS 未开，vendor .ko 会加载失败"; exit 1; }
         echo "MODVERSIONS_OK"
 
-        make O=out ARCH=arm64 CC="$CC_WRAPPED" -j$(nproc --all) Image.gz
+        make O=out -j$(nproc --all) Image.gz
 
         # dtb 单独编；失败不阻塞主产物
-        make O=out ARCH=arm64 CC="$CC_WRAPPED" -j$(nproc --all) vendor/qcom/kona-v2.1.dtb || \
-          make O=out ARCH=arm64 CC="$CC_WRAPPED" -j$(nproc --all) dtbs || true
+        make O=out -j$(nproc --all) vendor/qcom/kona-v2.1.dtb || \
+          make O=out -j$(nproc --all) dtbs || true
 
-    - name: 11. 打包产物
+    - name: 10. 打包产物
       run: |
         set -e
         cd $GITHUB_WORKSPACE
@@ -250,14 +231,9 @@ jobs:
         print('IMAGE_OK')
         PY
 
-        echo "===== ccache 统计 ====="
-        export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache
-        ccache --show-stats || true
-        CACHEABLE=$(ccache --print-stats | awk -F'\t' '/cache_miss|cache_hit/ {s+=$2} END {print s+0}')
-        echo "ccache 记录的编译次数: $CACHEABLE"
-        [ "$CACHEABLE" -gt 0 ] || { echo "ERROR: ccache 没有生效（0 次记录）"; exit 1; }
 
-    - name: 12. 上传产物
+
+    - name: 11. 上传产物
       uses: actions/upload-artifact@v6
       with:
         name: Munch-Unified-${{ matrix.variant }}
