@@ -833,6 +833,15 @@ int dsi_panel_esd_irq_ctrl_locked(struct dsi_panel *panel,
 	}
 
 	mi_cfg = &panel->mi_cfg;
+
+	/*
+	 * 关闭 ESD 中断前先等在跑的处理函数结束，避免 unprepare 过程中
+	 * 还有一个 ESD handler 在跑，导致面板复位时序被打断（黑屏）。
+	 */
+	if (!enable && gpio_is_valid(panel->mi_cfg.esd_err_irq_gpio) &&
+	    panel->mi_cfg.esd_err_irq)
+		synchronize_irq(panel->mi_cfg.esd_err_irq);
+
 	if (gpio_is_valid(mi_cfg->esd_err_irq_gpio)) {
 		if (mi_cfg->esd_err_irq) {
 			if (enable) {
@@ -3977,14 +3986,18 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 		break;
 	case DISPPARAM_DC_ON:
 		pr_info("DC on\n");
-		if (mi_cfg->dc_type == 0) {
-			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DC_ON);
-			if (rc)
-				pr_err("[%s] failed to send DSI_CMD_SET_MI_DC_ON cmd, rc=%d\n",
-						panel->name, rc);
-			else
-				rc = dsi_panel_update_backlight(panel, mi_cfg->last_bl_level);
-		}
+		/*
+		 * 不再依赖 dts 里的 dc-type 决定走哪条命令：先按 DC 命令下发，
+		 * 面板不认（返回错误）就自动降级到 DIMMING 命令，最后把当前亮度
+		 * 重新写一遍。这样同一份代码在 dc-type=0/1 的面板、以及原厂没配
+		 * dc-type 的面板上都不会出现“切 DC 失败导致背光不亮”。
+		 */
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DC_ON);
+		if (rc)
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DIMMINGON);
+		if (rc)
+			pr_warn("[%s] no DC on cmd available, keep dimming\n", panel->name);
+		dsi_panel_update_backlight(panel, mi_cfg->last_bl_level);
 		if (panel->mi_cfg.panel_id == 0x4C334100420200) {
 			mi_dsi_update_lhbm_cmd_b2reg(panel, true);
 			mi_dsi_update_nolp_b2reg(panel, true);
@@ -3993,14 +4006,12 @@ int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param)
 		break;
 	case DISPPARAM_DC_OFF:
 		pr_info("DC off\n");
-		if (mi_cfg->dc_type == 0) {
-			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DC_OFF);
-			if (rc)
-				pr_err("[%s] failed to send DSI_CMD_SET_MI_DC_OFF cmd, rc=%d\n",
-						panel->name, rc);
-			else
-				rc = dsi_panel_update_backlight(panel, mi_cfg->last_bl_level);
-		}
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DC_OFF);
+		if (rc)
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DIMMINGOFF);
+		if (rc)
+			pr_warn("[%s] no DC off cmd available, keep dimming\n", panel->name);
+		dsi_panel_update_backlight(panel, mi_cfg->last_bl_level);
 		if (panel->mi_cfg.panel_id == 0x4C334100420200) {
 			mi_dsi_update_lhbm_cmd_b2reg(panel, false);
 			mi_dsi_update_nolp_b2reg(panel, false);

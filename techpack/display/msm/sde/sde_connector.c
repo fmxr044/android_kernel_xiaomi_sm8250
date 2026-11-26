@@ -2712,6 +2712,25 @@ static irqreturn_t esd_err_irq_handle(int irq, void *data)
 
 	if (c_conn->connector_type == DRM_MODE_CONNECTOR_DSI) {
 		dsi_panel_acquire_panel_lock(display->panel);
+
+		/*
+		 * 丢弃无效的 ESD 中断：ESD 检查已关闭、面板未初始化、或当前不在
+		 * ON/LP1/LP2 状态时，ESD 脚上的毛刺不该被当成 panel dead。
+		 * 开机动画播完、进入 doze 或息屏瞬间的误报会直接上报 PANEL_DEAD，
+		 * 表现就是“有画面但黑屏”。这段逻辑与原厂/参考内核一致，
+		 * 不依赖任何编译开关，运行时自适应。
+		 */
+		if (!display->panel->mi_cfg.esd_err_enabled ||
+		    !dsi_panel_initialized(display->panel) ||
+		    (display->panel->power_mode != SDE_MODE_DPMS_ON &&
+		     display->panel->power_mode != SDE_MODE_DPMS_LP1 &&
+		     display->panel->power_mode != SDE_MODE_DPMS_LP2)) {
+			DSI_INFO("%s esd irq ignored while disabled or inactive (power_mode=%d)\n",
+				 display->display_type, display->panel->power_mode);
+			dsi_panel_release_panel_lock(display->panel);
+			return IRQ_HANDLED;
+		}
+
 		dsi_panel_esd_irq_ctrl_locked(display->panel, false);
 
 		if (!dsi_panel_initialized(display->panel)) {
@@ -2742,7 +2761,8 @@ static irqreturn_t esd_err_irq_handle(int irq, void *data)
 		dsi_panel_release_panel_lock(display->panel);
 
 		if (power_mode == SDE_MODE_DPMS_ON ||
-			power_mode == SDE_MODE_DPMS_LP1) {
+			power_mode == SDE_MODE_DPMS_LP1 ||
+			power_mode == SDE_MODE_DPMS_LP2) {
 			_sde_connector_report_panel_dead(c_conn, false);
 		} else {
 			c_conn->panel_dead = true;
