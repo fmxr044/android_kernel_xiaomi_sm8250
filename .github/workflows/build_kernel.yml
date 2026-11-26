@@ -94,94 +94,8 @@ jobs:
         sed -i '/obj-\$(CONFIG_KSU) += kernelsu\//d' drivers/Makefile
         sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
         echo "关闭本地源码完整性校验"
-        git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"   
-    - name: 7. MIUI 适配（编译时打补丁，可重复执行）
-      run: |
-        cd $GITHUB_WORKSPACE
-        set -e
-        DTS=arch/arm64/boot/dts/vendor/qcom/munch-sm8250.dtsi
-        PANEL=arch/arm64/boot/dts/vendor/qcom/dsi-panel-l11r-38-08-0a-dsc-cmd.dtsi
-        CONN=techpack/display/msm/sde/sde_connector.c
-
-        echo "===== [1/3] mdss_mdp 补 #cooling-cells（背光克隆热器件父节点要求）====="
-        if grep -q 'MIUI-DISPLAY-FIX: mdss_mdp #cooling-cells' "$DTS"; then
-          echo "已打过，跳过"
-        else
-          grep -q '^&mdss_mdp {' "$DTS" || { echo "ERROR: 找不到 &mdss_mdp 节点"; exit 1; }
-          cat >> "$DTS" <<'EOF'
-
-        /*
-         * MIUI-DISPLAY-FIX: mdss_mdp #cooling-cells
-         *
-         * sde_backlight_setup() 注册完 panel0-backlight 后会注册亮度克隆热器件，
-         * 而该热器件要求父节点(mdss_mdp)带 "#cooling-cells"，缺了直接 -ENODEV，
-         * 于是刚注册好的背光设备被注销，/sys/class/backlight 下空掉，
-         * MIUI 亮度服务无处可写 → 有画面、有触控，但没有背光（全黑）。
-         * 原厂 dtbo 的 fragment@69 补的就是这个属性。
-         */
-        &mdss_mdp {
-        	#cooling-cells = <0>;
-        };
-        EOF
-          echo "已补 &mdss_mdp #cooling-cells"
-        fi
-
-        echo "===== [2/3] l11r 面板补 mi,panel-id / mi,mdss-dsi-panel-dc-type ====="
-        if grep -q 'mi,panel-id = "L11R"' "$PANEL"; then
-          echo "已打过，跳过"
-        else
-          grep -q '^&dsi_l11r_38_08_0a_dsc_cmd {' "$PANEL" || { echo "ERROR: 找不到 l11r 面板节点"; exit 1; }
-          grep -q 'mi,mdss-dsi-panel-dc-threshold = <440>;' "$PANEL" || { echo "ERROR: 找不到 dc-threshold 锚点"; exit 1; }
-          sed -i '/^&dsi_l11r_38_08_0a_dsc_cmd {$/a\	mi,panel-id = "L11R", "8\\b";' "$PANEL"
-          sed -i 's|^\tmi,mdss-dsi-panel-dc-threshold = <440>;|\tmi,mdss-dsi-panel-dc-type = <0>;\n&|' "$PANEL"
-          echo "已补 panel-id / dc-type"
-        fi
-
-        echo "===== [3/3] 背光克隆热器件注册失败不再注销真正的背光设备 ====="
-        if grep -q 'keep backlight alive' "$CONN"; then
-          echo "已打过，跳过"
-        else
-          grep -q 'backlight_device_unregister(c_conn->bl_device);' "$CONN" || { echo "ERROR: 找不到背光注销逻辑"; exit 1; }
-          python3 - "$CONN" <<'PY'
-        import sys
-        p = sys.argv[1]
-        s = open(p, encoding='utf-8').read()
-        old = '''	rc = sde_backlight_clone_setup(c_conn, dev->dev, c_conn->bl_device);
-        	if (rc) {
-        		SDE_ERROR("Failed to register backlight_clone_cdev: %ld\\n",
-        				    PTR_ERR(c_conn->cdev_clone));
-        		backlight_clone_cdev_unregister(c_conn->cdev_clone);
-        		backlight_device_unregister(c_conn->bl_device);
-        		c_conn->bl_device = NULL;
-        		return -ENODEV;
-        	}
-        '''
-        new = '''	rc = sde_backlight_clone_setup(c_conn, dev->dev, c_conn->bl_device);
-        	if (rc) {
-        		/*
-        		 * 亮度克隆热器件只用于 display cooling，注册不上不应该连累
-        		 * 真正的背光设备：原来这里会把刚注册的 panel0-backlight 注销，
-        		 * 导致 /sys/class/backlight 下空掉，MIUI 亮度服务无处可写，
-        		 * 表现为系统完全正常但屏幕没有任何背光（全黑）。
-        		 */
-        		SDE_ERROR("Failed to register backlight_clone_cdev: %d, keep backlight alive\\n",
-        				    rc);
-        		c_conn->cdev_clone = NULL;
-        	}
-        '''
-        assert s.count(old) == 1, "锚点匹配数 %d != 1" % s.count(old)
-        open(p, 'w', encoding='utf-8').write(s.replace(old, new))
-        PY
-          echo "已改为不注销背光设备"
-        fi
-
-        echo "===== 补丁结果自检 ====="
-        grep -n -A1 '^&mdss_mdp {' "$DTS" | tail -3
-        grep -n 'mi,panel-id\|mi,mdss-dsi-panel-dc-type' "$PANEL"
-        grep -n 'keep backlight alive' "$CONN"
-        echo "MIUI_ADAPT_OK"
-
-    - name: 8. 配置环境&开始编译
+        git diff --name-only | xargs -I {} git update-index --assume-unchanged "{}"
+    - name: 7. 配置环境&开始编译
       run: |
         cd $GITHUB_WORKSPACE
         export KBUILD_BUILD_USER="kleaf"
@@ -205,7 +119,7 @@ jobs:
         # 确保两项都为 y，否则直接中断构建避免浪费时间
         grep -q "CONFIG_ARM64_LSE_ATOMICS=y" out/.config || { echo "ERROR: LSE_ATOMICS failed!"; exit 1; }
         make O=out -j$(nproc --all) Image.gz
-    - name: 9. 上传 Image.gz
+    - name: 8. 上传 Image.gz
       uses: actions/upload-artifact@v6
       with:
         name: Munch-Image-${{ matrix.variant }}
