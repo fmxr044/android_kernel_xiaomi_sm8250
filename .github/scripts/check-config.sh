@@ -44,6 +44,7 @@ QPNP_FG_GEN4:n
 FUEL_GAUGE_BQ27Z561_MUNCH:y
 QPNP_SMB5_MUNCH:y
 INPUT_AW8697_HAPTIC:y
+INPUT_AW86927_HAPTIC:n
 TOUCHSCREEN_FOCALTECH_3658U:y
 TOUCHSCREEN_XIAOMI_TOUCHFEATURE:y
 FB:y
@@ -82,7 +83,9 @@ while read -r entry; do
   [ -z "$entry" ] && continue
   name="${entry%%:*}"; want="${entry#*:}"
   got="$(get_val "CONFIG_${name}")"
-  if [ "$got" = "$want" ]; then
+  # 期望 n 时，符号在本树里根本不存在也算满足：不存在就是永远关不掉也开不起，
+  # 等价于 disabled。只有期望 y / m / 具体值时，缺符号才算真的没生效。
+  if [ "$got" = "$want" ] || { [ "$want" = "n" ] && [ "$got" = "__MISSING__" ]; }; then
     printf '%-40s %-22s %s\n' "$name" "$want" "$got"
   else
     printf '%-40s %-22s %s   <<< 未生效\n' "$name" "$want" "$got"
