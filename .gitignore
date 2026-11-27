@@ -134,3 +134,16 @@ all.config
 
 # fetched Android config fragments
 kernel/configs/android-*.cfg
+
+# ---- 本地构建产物 / 临时脚本（不入库）----
+/out/
+/build.log
+/build*.log
+/build.sh
+/build-port.sh
+/KernelSU/
+/drivers/kernelsu
+
+# .github 是构建流程，别被上面的 ".*" 规则误伤
+!.github/
+!.github/**

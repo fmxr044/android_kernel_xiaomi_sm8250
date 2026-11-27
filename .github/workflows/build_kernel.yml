@@ -173,11 +173,9 @@ jobs:
 
         export CC="clang --target=aarch64-linux-gnu"
 
-        if [ "${{ github.event.inputs.ignore_warnings }}" = "true" ]; then
-          export KCFLAGS="-w"
-        else
-          export KCFLAGS=""
-        fi
+        # 本树是 vendor 老树 + 新版 clang，各目录里散落的 -Werror 会把大量
+        # 无害告警升级成编译错误。统一用 -w，不再去逐个目录改 Makefile。
+        export KCFLAGS="-w"
 
         make O=out vendor/munch_defconfig vendor/munch.config
 
@@ -188,6 +186,9 @@ jobs:
         bash .github/scripts/check-config.sh out/.config
 
         make O=out -j$(nproc --all) Image.gz
+
+        # 显示栈自检：确认编进去的是 MIUI 栈，不是旧 msm
+        bash .github/scripts/check-display-stack.sh out/vmlinux
 
         # dtb 单独编；失败不阻塞主产物
         make O=out -j$(nproc --all) vendor/qcom/kona-v2.1.dtb || \
