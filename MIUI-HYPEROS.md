@@ -14,15 +14,36 @@
 
 ### 1. 显示 / 背光（黑屏的直接成因）
 
+**显示栈整份换成小米 MIUI 版的 `msm` 显示栈**（来自同平台 4.19.325 的 ki 内核，实测能在 munch 上点亮）。
+
+做法是在 `techpack/display/msm/` 里**就地替换**：59 个文件用 MIUI 版内容覆盖，新增 `xiaomi_frame_stat.c/.h`，
+`Makefile` 只补一行 `xiaomi_frame_stat.o`（include 路径保持 `msm` 不变）。这样仓库里不会出现两份 17 万行的重复显示栈，
+`techpack/display/Makefile` 也不用再按开关二选一。整套差异约 **2500 行**。
+
+MIUI 栈带来的关键能力（lineage 那版 `msm` 没有）：
+
+| 能力 | 位置 | 作用 |
+|---|---|---|
+| ESD 中断有效性判定 | `sde/sde_connector.c` | 先判 `esd_err_enabled` / 面板是否初始化 / power_mode 是否 ON·LP1·LP2，不满足直接丢弃。开机动画结束、息屏、DozeSuspend 瞬间的毛刺不再被当成 panel dead（原来的表现就是"有画面但全黑"） |
+| `mi_dsi_panel_*` 一整套面板 MI 接口 | `dsi/dsi_panel_mi.c`、`dsi_display_mi.c` | MIUI 亮度/dimming/DC/Doze 服务的入口，lineage 版是残缺的子集 |
+| FOD LHBM（指纹区提亮） | `dsi/mi_disp_lhbm.c`、白点校准 | HyperOS 的指纹低亮提亮链路，含 `fod_lhbm_white_update_flag` 防护 |
+| smart FPS 统计 | `xiaomi_frame_stat.c` | MIUI 的变帧率/刷新率联动 |
+| DC 调光降级 | `dsi_panel_mi.c` `DISPPARAM_DC_ON/OFF` | 先发 DC 命令，失败自动降级 DIMMING |
+| 关 ESD 中断前 `synchronize_irq()` | `dsi_panel_mi.c` | 避免 unprepare 时序被还在跑的处理函数打断 |
+
+此外保留了我们自己补的一处健壮性修复（MIUI 原版没有）：
+
 | 文件 | 改动 | 作用 |
 |---|---|---|
-| `techpack/display/msm/sde/sde_connector.c` | ESD 中断里先判 `esd_err_enabled` / 面板是否初始化 / power_mode 是否 ON·LP1·LP2，不满足直接丢弃 | 开机动画结束、息屏、DozeSuspend 瞬间的毛刺不再被当成 panel dead（原来的表现就是"有画面但全黑"） |
-| 同上 | `power_mode == LP2` 也算活动态 | HyperOS 的 AOD / DozeSuspend 不被误判成面板挂了 |
-| 同上 | 亮度克隆热器件注册失败时**不再注销背光设备** | 原来注册失败会把 `panel0-backlight` 一起注销，`/sys/class/backlight` 直接空掉，MIUI 亮度服务无处可写 → 物理无背光 |
-| `techpack/display/msm/dsi/dsi_panel_mi.c` | 关 ESD 中断前 `synchronize_irq()` | 避免 unprepare 时序被还在跑的处理函数打断 |
-| 同上 | DC 调光不再按 dts 的 `dc-type` 二选一：先发 DC 命令，失败自动降级 DIMMING，最后无条件重写当前亮度 | 面板没配 `dc-type`、或 DC 命令不被支持时，也不会切 DC 后不亮 |
-| 同上 | FOD LHBM 白点校准三段入口加 `fod_lhbm_white_update_flag` 防护 | 面板没配白点参数时直接返回，不再拿空命令集去读寄存器（EAGAIN 刷屏 / 极端情况越界） |
+| `techpack/display/msm/sde/sde_connector.c` | 亮度克隆热器件注册失败时**不再注销背光设备** | 原逻辑注册失败会把 `panel0-backlight` 一起注销，`/sys/class/backlight` 直接空掉，MIUI 亮度服务无处可写 → 物理无背光 |
 | `drivers/video/backlight/backlight.c` | 补回 `brightness_clone` 属性 | MIUI 亮度服务读写"用户期望亮度备份值"，没有这个节点初始化阶段就放弃设亮度 |
+
+配套依赖（MIUI 栈要的，本树原来没有）：
+
+| 文件 | 改动 |
+|---|---|
+| `drivers/gpu/drm/drm_sysfs_mi.c`、`drm_ioctl_mi.c`、`drm_internal_mi.h` | 小米 drm sysfs/ioctl 补丁（`connector_kdev`、`color_transform_pcc_cfg`、MI ioctl 号段），`drivers/gpu/drm/Makefile` 用 mi 版替换上游 `drm_sysfs.o` / `drm_ioctl.o` |
+| `fs/file.c` + `include/linux/file.h` | 补 `get_unused_fd_start_flags()`（`sde/sde_fence.c` 用它申请带 CLOEXEC 的 fd） |
 
 ### 2. 触控
 
@@ -103,9 +124,24 @@ workflow：`.github/workflows/build_kernel.yml`（`MIUI/HyperOS Kernel (munch)`�
 - `mm_struct->pgd` 的编译期断言通过（说明偏移确实是 0x48）
 - `make dtbs` → `munch-sm8250-overlay.dtbo` 正常产出，overlay 里含 `mi,panel-id`(L11R) / `mi,mdss-dsi-panel-dc-type` / `#cooling-cells`
 
+### 显示栈移植后的复验（2026-11-27 下午）
+
+换成 MIUI 显示栈之后重新整编（同一套 clang 23.0.1 / LLD / 无 LTO）：
+
+- `make O=out vendor/munch_defconfig vendor/munch.config` → 通过
+- `make O=out -j8 Image.gz` → **BUILD_EXIT=0**，Image.gz 20.57 MiB
+- vmlinux 里核对到 MIUI 栈特征符号：`sde_kms`、`dsi_panel_mi`、`mi_disp_lhbm`、`smart_fps_value`
+  （`smart_fps_value` 是 lineage 那版 `msm` 里没有的，能对上就证明编的是 MIUI 栈，不是旧的）
+- vermagic：`SMP preempt mod_unload modversions aarch64`
+- Image.gz sha256 前缀 `f6db7f4a199ec4…`
+
 ---
 
 ## 五、没搬的东西（说明原因，不是漏）
+
+- ki 的 `usb/pd/policy_engine_munch.c`（munch 专用 PD 充电策略引擎，配 `pd_policy_manager_munch.c`）：
+  它属于充电策略层，跟显示/亮屏无关；本树已有 `CONFIG_USB_PD_POLICY=y` 那套，两套同时编会抢同一批 `usbpd_*` 导出符号。
+  只在移植过程中作为依赖临时拷过，最终没入库（备份在 `port-ref/usbpd/` 之外不随仓库走）。
 
 - ki 的 `exposure_adjustment`（DSPP PCC 防闪 DC 调光）：依赖它自己那套 `exposure_adjustment.c/h` 与 PCC 寄存器表，属于画质增强，跟"能不能开机、亮不亮"无关，先不掺进来减少变量。
 - `ki_profile` / Rust 充电限流 / Ki-Settings WebUI：那是 ki 的自有功能层，与本分支目标无关。
