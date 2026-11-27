@@ -11850,6 +11850,12 @@ struct hdd_context *hdd_context_create(struct device *dev)
 	}
 
 	status = cfg_parse(WLAN_INI_FILE);
+	if (QDF_IS_STATUS_ERROR(status) &&
+	    (strcmp(WLAN_INI_FILE, WLAN_INI_FILE_FALLBACK) != 0)) {
+		hdd_warn("Failed to parse cfg %s; status:%d, retry with %s",
+			 WLAN_INI_FILE, status, WLAN_INI_FILE_FALLBACK);
+		status = cfg_parse(WLAN_INI_FILE_FALLBACK);
+	}
 	if (QDF_IS_STATUS_ERROR(status)) {
 		hdd_err("Failed to parse cfg %s; status:%d\n",
 			WLAN_INI_FILE, status);
